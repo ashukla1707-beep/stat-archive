@@ -923,6 +923,13 @@ body{
     color:#245e57!important;
   }
 
+  body[data-theme="light"] #summaryTypeBreakdown{
+    color:#4a544e!important;
+  }
+  body[data-theme="light"] #summaryTypeBreakdown b{
+    color:#245e57!important;
+  }
+
   body[data-theme="light"] .cursor-dot{
     background:#d96f5f;
     box-shadow:0 0 12px rgba(217,111,95,.22);
@@ -2079,23 +2086,34 @@ body[data-theme="light"] .curve-dot{
 
   <div class="archive-summary" id="archiveSummary" style="max-width:1120px;margin:0 auto 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
     <div style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
-      <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Entries</div>
-      <div id="summaryEntries" style="margin-top:4px;font:700 20px 'JetBrains Mono',monospace;color:#f5f7fb;">—</div>
-    </div>
-    <div style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
       <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Subjects</div>
       <div id="summarySubjects" style="margin-top:4px;font:700 20px 'JetBrains Mono',monospace;color:#f5f7fb;">—</div>
     </div>
     <div style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
-      <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Access</div>
-      <div id="summaryAccess" style="margin-top:4px;font:700 12px 'JetBrains Mono',monospace;color:#5ee7f7;">READ ONLY</div>
+      <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Entries</div>
+      <div id="summaryEntries" style="margin-top:4px;font:700 20px 'JetBrains Mono',monospace;color:#f5f7fb;">—</div>
     </div>
     <div class="admin-storage" id="adminStorageCard" style="padding:13px 15px;border:1px solid rgba(94,231,247,.15);border-radius:12px;background:rgba(15,20,29,.62);">
-      <div class="storage-label">
-        <span>Storage used</span><span class="storage-pulse"></span>
+      <div class="storage-label" style="display:flex;align-items:center;gap:6px;font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">
+        <span id="summaryStorageLabel">Activity</span><span class="storage-pulse"></span>
       </div>
-      <div class="storage-value" id="summaryStorage">—</div>
-      <div class="storage-meta" id="summaryStorageMeta">Admin view · archive files</div>
+      <div id="summaryActivity" style="display:flex;align-items:center;gap:16px;margin-top:7px;">
+        <div>
+          <div style="font:700 19px 'JetBrains Mono',monospace;color:#f5f7fb;" id="summaryPreviewCount">—</div>
+          <div style="margin-top:2px;font:600 8px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.06em;">Previewed</div>
+        </div>
+        <div style="width:1px;height:28px;background:rgba(148,163,184,.16);"></div>
+        <div>
+          <div style="font:700 19px 'JetBrains Mono',monospace;color:#f5f7fb;" id="summaryDownloadCount">—</div>
+          <div style="margin-top:2px;font:600 8px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.06em;">Downloaded</div>
+        </div>
+      </div>
+      <div id="summaryStorage" style="display:none;margin-top:4px;font:700 20px 'JetBrains Mono',monospace;color:#f5f7fb;">—</div>
+      <div id="summaryStorageMeta" style="display:none;margin-top:3px;font:500 10px 'JetBrains Mono',monospace;color:#687487;">Contributor/Admin view · archive files</div>
+    </div>
+    <div style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
+      <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Access</div>
+      <div id="summaryAccess" style="margin-top:4px;font:700 12px 'JetBrains Mono',monospace;color:#5ee7f7;">READ ONLY</div>
     </div>
   </div>
 
@@ -2163,8 +2181,6 @@ body[data-theme="light"] .curve-dot{
       <span class="form-title">File a new entry</span>
       <button type="button" class="close-btn" id="closeFormBtn">✕</button>
     </div>
-    <label>Title</label>
-    <input type="text" id="titleInput" placeholder="e.g. Gambler's Ruin — worked solutions" />
     <div class="form-row">
       <div>
         <label>Subject</label>
@@ -2181,11 +2197,22 @@ body[data-theme="light"] .curve-dot{
         </select>
       </div>
     </div>
-    <label>Year / term (optional)</label>
-    <input type="text" id="yearInput" placeholder="e.g. 2026, Semester II" />
+    <div id="titleField">
+      <label id="titleLabel">Title (required)</label>
+      <input type="text" id="titleInput" placeholder="Name of the book" />
+    </div>
+    <div id="subtitleField">
+      <label id="subtitleLabel">Subtitle (optional)</label>
+      <input type="text" id="subtitleInput" placeholder="e.g. Chapter 3 — Estimation methods" />
+    </div>
+    <div id="yearField">
+      <label id="yearLabel">Year (required)</label>
+      <input type="text" id="yearInput" placeholder="e.g. 2026" />
+    </div>
     <label>File</label>
     <input type="file" id="fileInput" />
     <div class="hint" id="fileSizeHint">Previous Year Question &amp; Mid-Term Question: up to 1 MB. Notes &amp; Books: up to 20 MB. Others: up to 10 MB.</div>
+    <div class="error-banner" id="formErrorBanner" style="margin-top:12px;"></div>
     <button type="submit" class="submit-btn" id="submitBtn">Add to archive</button>
   </form>
 </div>
@@ -2241,10 +2268,70 @@ let entries = [];
 let subjects = [...DEFAULT_SUBJECTS];
 let hiddenDefaults = [];
 let filterSubject = "ALL";
+let showAllSubjectPills = false;
+const VISIBLE_SUBJECT_LIMIT = 5;
 let filterType = "ALL";
 let searchQ = "";
 let session = null;
 let archiveRole = "viewer"; // viewer | contributor | admin; enforced by Supabase too
+let justSignedIn = false; // true only right after the login form is submitted — used to
+                           // distinguish a real sign-in from Supabase restoring a session
+                           // from storage on page load (which also fires "SIGNED_IN").
+
+/* ===== 24-hour auto sign-out ===== */
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const LOGIN_AT_KEY = "statArchiveLoginAt";
+let autoSignOutTimer = null;
+
+function markLoginTime() {
+  localStorage.setItem(LOGIN_AT_KEY, String(Date.now()));
+}
+
+function clearLoginTime() {
+  localStorage.removeItem(LOGIN_AT_KEY);
+  if (autoSignOutTimer) {
+    clearTimeout(autoSignOutTimer);
+    autoSignOutTimer = null;
+  }
+}
+
+// Returns true if the stored login is older than 24h (or malformed).
+function isLoginExpired() {
+  const at = Number(localStorage.getItem(LOGIN_AT_KEY));
+  if (!at) return false; // no timestamp recorded — don't punish existing sessions
+  return Date.now() - at >= SESSION_MAX_AGE_MS;
+}
+
+function scheduleAutoSignOut() {
+  if (autoSignOutTimer) clearTimeout(autoSignOutTimer);
+  const at = Number(localStorage.getItem(LOGIN_AT_KEY)) || Date.now();
+  const remaining = SESSION_MAX_AGE_MS - (Date.now() - at);
+  if (remaining <= 0) {
+    autoSignOut();
+    return;
+  }
+  // setTimeout is capped in practice by tab lifetime; also re-checked on
+  // visibility change below as a safety net for sleeping/backgrounded tabs.
+  autoSignOutTimer = setTimeout(autoSignOut, remaining);
+}
+
+async function autoSignOut() {
+  clearLoginTime();
+  if (session) {
+    await sb.auth.signOut();
+    showError("You've been signed out after 24 hours. Please sign in again.");
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && session) {
+    if (isLoginExpired()) {
+      autoSignOut();
+    } else {
+      scheduleAutoSignOut();
+    }
+  }
+});
 
 function showError(msg) {
   const el = document.getElementById("errorBanner");
@@ -2258,30 +2345,84 @@ function formatSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-function updateStorageUI() {
-  const card = document.getElementById("adminStorageCard");
-  const value = document.getElementById("summaryStorage");
-  const meta = document.getElementById("summaryStorageMeta");
-  if (!card || !value) return;
+// Short labels for the type-breakdown chips (keeps the card compact).
+const TYPE_ABBR = {
+  "Notes": "Notes",
+  "Books": "Books",
+  "Previous Year Question": "PYQ",
+  "Mid-Term Question": "Mid-Term",
+  "Others": "Others"
+};
 
-  if (archiveRole !== "admin") {
-    card.style.display = "none";
-    return;
-  }
+async function loadActivityStats() {
+  try {
+    const { data, error } = await sb
+      .from("archive_activity")
+      .select("preview_count,download_count")
+      .eq("id", true)
+      .single();
 
-  const totalBytes = entries.reduce((sum, entry) => {
-    const size = Number(entry.size);
-    return sum + (Number.isFinite(size) && size > 0 ? size : 0);
-  }, 0);
+    if (error) throw error;
 
-  card.style.display = "block";
-  value.textContent = formatSize(totalBytes);
-  if (meta) {
-    const count = entries.length;
-    meta.textContent = `${count} archived ${count === 1 ? "file" : "files"} · R2 archive`;
+    const previewEl = document.getElementById("summaryPreviewCount");
+    const downloadEl = document.getElementById("summaryDownloadCount");
+    if (previewEl) previewEl.textContent = Number(data?.preview_count || 0).toLocaleString();
+    if (downloadEl) downloadEl.textContent = Number(data?.download_count || 0).toLocaleString();
+  } catch (err) {
+    console.warn("Could not load activity stats:", err);
+    const previewEl = document.getElementById("summaryPreviewCount");
+    const downloadEl = document.getElementById("summaryDownloadCount");
+    if (previewEl) previewEl.textContent = "—";
+    if (downloadEl) downloadEl.textContent = "—";
   }
 }
 
+async function incrementActivity(kind) {
+  try {
+    await sb.rpc("increment_archive_activity", { p_event: kind });
+    await loadActivityStats();
+  } catch (err) {
+    // Activity tracking must never block preview/download.
+    console.warn("Could not record activity:", err);
+  }
+}
+
+function updateStorageUI() {
+  const card = document.getElementById("adminStorageCard");
+  const label = document.getElementById("summaryStorageLabel");
+  const value = document.getElementById("summaryStorage");
+  const meta = document.getElementById("summaryStorageMeta");
+  const activity = document.getElementById("summaryActivity");
+  if (!card) return;
+
+  card.style.display = "block";
+
+  if (archiveRole === "admin" || archiveRole === "contributor") {
+    if (activity) activity.style.display = "none";
+    value.style.display = "block";
+    if (meta) meta.style.display = "block";
+
+    const totalBytes = entries.reduce((sum, entry) => {
+      const size = Number(entry.size);
+      return sum + (Number.isFinite(size) && size > 0 ? size : 0);
+    }, 0);
+
+    if (label) label.textContent = "Storage used";
+    value.textContent = formatSize(totalBytes);
+    if (meta) {
+      const count = entries.length;
+      meta.textContent = `${count} archived ${count === 1 ? "file" : "files"} · R2 archive`;
+    }
+    return;
+  }
+
+  // Public/read-only visitors see global preview/download activity.
+  if (label) label.textContent = "Activity";
+  if (activity) activity.style.display = "flex";
+  value.style.display = "none";
+  if (meta) meta.style.display = "none";
+  loadActivityStats();
+}
 function subjectMeta(code) {
   return subjects.find(s => s.code === code) || subjects[subjects.length - 1];
 }
@@ -2454,6 +2595,19 @@ async function loadSubjectsFromWorker() {
 async function init() {
   const { data } = await sb.auth.getSession();
   session = data.session;
+
+  if (session && isLoginExpired()) {
+    await sb.auth.signOut();
+    session = null;
+    clearLoginTime();
+    showError("You've been signed out after 24 hours. Please sign in again.");
+  } else if (session) {
+    // Existing session with no recorded login time (e.g. from before this
+    // feature, or a page refresh) — start the 24h clock now.
+    if (!localStorage.getItem(LOGIN_AT_KEY)) markLoginTime();
+    scheduleAutoSignOut();
+  }
+
   await getArchiveRole();
   updateAuthUI();
 
@@ -2467,6 +2621,19 @@ async function init() {
 
 sb.auth.onAuthStateChange(async (event, s) => {
   session = s;
+
+  // TOKEN_REFRESHED fires whenever the tab regains focus — including right
+  // after the native file picker closes. It doesn't represent an actual
+  // sign-in/out, so skip the full reload here; otherwise it rebuilds the
+  // upload form's Subject dropdown mid-entry and wipes what was chosen.
+  if (event === "TOKEN_REFRESHED") {
+    return;
+  }
+
+  if (event === "SIGNED_OUT") {
+    clearLoginTime();
+  }
+
   await getArchiveRole();
   updateAuthUI();
   entries = await loadEntries();
@@ -2475,9 +2642,10 @@ sb.auth.onAuthStateChange(async (event, s) => {
   renderTypeFilters();
   renderSubjectOptions();
   render();
-  if (event === "SIGNED_IN" && archiveRole === "contributor") {
+  if (event === "SIGNED_IN" && archiveRole === "contributor" && justSignedIn) {
     document.getElementById("contributorDisclaimerOverlay").style.display = "flex";
   }
+  justSignedIn = false;
 });
 
 function codeFromName(name, existingCodes) {
@@ -2501,9 +2669,14 @@ function renderSubjectFilters() {
   };
   row.appendChild(allPill);
 
-  [...subjects]
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
-    .forEach(s => {
+  const sortedSubjects = [...subjects]
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+  const visibleSubjects = showAllSubjectPills
+    ? sortedSubjects
+    : sortedSubjects.slice(0, VISIBLE_SUBJECT_LIMIT);
+
+  visibleSubjects.forEach(s => {
       const pill = document.createElement("span");
       pill.className = "pill subject-pill" + (filterSubject === s.code ? " active" : "");
 
@@ -2560,6 +2733,19 @@ function renderSubjectFilters() {
 
       row.appendChild(pill);
     });
+
+  if (sortedSubjects.length > VISIBLE_SUBJECT_LIMIT) {
+    const othersPill = document.createElement("span");
+    othersPill.className = "pill";
+    othersPill.textContent = showAllSubjectPills
+      ? "Show less"
+      : `Others (${sortedSubjects.length - VISIBLE_SUBJECT_LIMIT})`;
+    othersPill.onclick = () => {
+      showAllSubjectPills = !showAllSubjectPills;
+      renderSubjectFilters();
+    };
+    row.appendChild(othersPill);
+  }
 
   const addPill = document.createElement("span");
   addPill.className = "pill pill-dashed";
@@ -2807,6 +2993,7 @@ function renderTypeFilters() {
 
 function renderSubjectOptions() {
   const sel = document.getElementById("subjectSelect");
+  const previouslySelected = sel.value;
   sel.innerHTML = "";
 
   const placeholder = document.createElement("option");
@@ -2826,6 +3013,10 @@ function renderSubjectOptions() {
       opt.textContent = s.name;
       sel.appendChild(opt);
     });
+
+  if (previouslySelected && [...sel.options].some(o => o.value === previouslySelected)) {
+    sel.value = previouslySelected;
+  }
 }
 
 
@@ -2869,7 +3060,14 @@ function render() {
   const summaryEntries = document.getElementById("summaryEntries");
   const summarySubjects = document.getElementById("summarySubjects");
   if (summaryEntries) summaryEntries.textContent = entries.length;
-  if (summarySubjects) summarySubjects.textContent = subjects.length;
+
+  // Count only subjects that actually have at least one archived file.
+  // This is based on entries, not on the total subject list.
+  const subjectsWithFiles = new Set(
+    entries.map(entry => entry.subject).filter(Boolean)
+  ).size;
+  if (summarySubjects) summarySubjects.textContent = subjectsWithFiles;
+
   updateStorageUI();
   const empty = document.getElementById("emptyState");
   const list = filteredEntries();
@@ -2936,6 +3134,9 @@ async function previewEntry(entry) {
   body.innerHTML = `<div class="preview-fallback">Loading preview…</div>`;
   overlay.style.display = "flex";
   showError("");
+
+  // Count one preview per visitor click. Tracking is non-blocking.
+  incrementActivity("preview");
 
   const mime = guessMime(entry.filename, "");
 
@@ -3065,6 +3266,9 @@ async function downloadEntry(entry, btn) {
 
     if (!response.ok) throw new Error("Couldn't download that file.");
 
+    // Count only successful file fetches as downloads.
+    incrementActivity("download");
+
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3155,17 +3359,48 @@ document.getElementById("searchClear").onclick = () => {
 
 document.getElementById("openFormBtn").onclick = () => {
   if (!session) { showError("Sign in to file a new entry."); return; }
+  showFormError("");
   document.getElementById("overlay").style.display = "flex";
 };
-document.getElementById("closeFormBtn").onclick = () => { document.getElementById("overlay").style.display = "none"; };
+document.getElementById("closeFormBtn").onclick = () => { document.getElementById("overlay").style.display = "none"; showFormError(""); };
 document.getElementById("overlay").addEventListener("click", (e) => {
-  if (e.target.id === "overlay") document.getElementById("overlay").style.display = "none";
+  if (e.target.id === "overlay") { document.getElementById("overlay").style.display = "none"; showFormError(""); }
 });
+
+const YEAR_REQUIRED_TYPES = ["Previous Year Question", "Mid-Term Question"];
 
 function updateFileSizeHint() {
   const type = document.getElementById("typeSelect").value;
   document.getElementById("fileSizeHint").textContent =
     `Up to ${formatSize(maxBytesForType(type))} for ${type}.`;
+
+  const titleField = document.getElementById("titleField");
+  const titleInput = document.getElementById("titleInput");
+  if (type === "Others" || type === "Books") {
+    titleField.style.display = "";
+    titleInput.placeholder = type === "Books" ? "Name of the book" : "Describe what this file is";
+  } else {
+    titleField.style.display = "none";
+    titleInput.value = "";
+  }
+
+  const subtitleField = document.getElementById("subtitleField");
+  const subtitleInput = document.getElementById("subtitleInput");
+  if (type === "Notes") {
+    subtitleField.style.display = "";
+  } else {
+    subtitleField.style.display = "none";
+    subtitleInput.value = "";
+  }
+
+  const yearField = document.getElementById("yearField");
+  const yearInput = document.getElementById("yearInput");
+  if (YEAR_REQUIRED_TYPES.includes(type)) {
+    yearField.style.display = "";
+  } else {
+    yearField.style.display = "none";
+    yearInput.value = "";
+  }
 }
 document.getElementById("typeSelect").addEventListener("change", updateFileSizeHint);
 updateFileSizeHint();
@@ -3181,9 +3416,16 @@ function showLoginError(msg) {
   el.style.display = msg ? "flex" : "none";
 }
 
+function showFormError(msg) {
+  const el = document.getElementById("formErrorBanner");
+  el.textContent = msg;
+  el.style.display = msg ? "flex" : "none";
+}
+
 document.getElementById("authBtn").onclick = async () => {
   if (session) {
     await sb.auth.signOut();
+    clearLoginTime();
     render();
   } else {
     showLoginError("");
@@ -3211,12 +3453,16 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   btn.disabled = true;
   btn.textContent = "Signing in…";
   try {
+    justSignedIn = true;
     const { error } = await sb.auth.signInWithPassword({ email: loginEmail, password: passcode });
     if (error) throw error;
+    markLoginTime();
+    scheduleAutoSignOut();
     document.getElementById("loginOverlay").style.display = "none";
     document.getElementById("passcodeInput").value = "";
     render();
   } catch (err) {
+    justSignedIn = false;
     showLoginError(err?.message ? `Sign-in failed: ${err.message}` : "Incorrect passcode. Ask your senior batch for the current one.");
   } finally {
     btn.disabled = false;
@@ -3226,17 +3472,17 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 
 document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  showError("");
+  showFormError("");
 
   if (!session) {
-    showError("Sign in to file a new entry.");
+    showFormError("Sign in to file a new entry.");
     return;
   }
 
   const file = document.getElementById("fileInput").files[0];
 
   if (!file) {
-    showError("Choose a file to file into the archive.");
+    showFormError("Choose a file to file into the archive.");
     return;
   }
 
@@ -3244,7 +3490,7 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   const typeLimit = maxBytesForType(selectedType);
 
   if (file.size > typeLimit) {
-    showError(
+    showFormError(
       `That file is ${formatSize(file.size)}. ${selectedType} files must be under ${formatSize(typeLimit)}.`
     );
     return;
@@ -3253,7 +3499,21 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   const selected = document.getElementById("subjectSelect").selectedOptions[0];
 
   if (!selected?.value) {
-    showError("Choose a subject.");
+    showFormError("Choose a subject.");
+    return;
+  }
+
+  if ((selectedType === "Others" || selectedType === "Books") && !document.getElementById("titleInput").value.trim()) {
+    showFormError(
+      selectedType === "Books"
+        ? "Add a title for the book."
+        : "Add a title describing the file when Type is \"Others\"."
+    );
+    return;
+  }
+
+  if (YEAR_REQUIRED_TYPES.includes(selectedType) && !document.getElementById("yearInput").value.trim()) {
+    showFormError(`Add a year for ${selectedType}.`);
     return;
   }
 
@@ -3280,13 +3540,25 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       file
     );
 
-    form.append(
-      "title",
+    const subjectName = selected.textContent;
+
+    const subtitleValue = document
+      .getElementById("subtitleInput")
+      .value
+      .trim();
+
+    const baseTitle =
       document
         .getElementById("titleInput")
         .value
         .trim() ||
-        file.name
+        `${subjectName} — ${selectedType}`;
+
+    form.append(
+      "title",
+      selectedType === "Notes" && subtitleValue
+        ? `${baseTitle}: ${subtitleValue}`
+        : baseTitle
     );
 
     form.append(
@@ -3326,7 +3598,7 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   } catch (err) {
     console.error(err);
 
-    showError(
+    showFormError(
       err?.message
         ? `Upload failed: ${err.message}`
         : "Upload failed."
