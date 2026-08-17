@@ -327,10 +327,74 @@ body{
   }
 
   .grid{
-    margin:0 auto;display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
-    gap:15px;
+    margin:0 auto;display:flex;flex-direction:column;gap:26px;
   }
+
+  .subject-row{max-width:1120px;margin:0 auto;width:100%}
+  .subject-row-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    margin:0 0 12px;padding:0 2px;
+  }
+  .subject-row-title{
+    display:flex;align-items:baseline;gap:9px;
+    font:700 14.5px 'JetBrains Mono',monospace;color:var(--text);letter-spacing:.01em;
+  }
+  .subject-row-count{
+    font:600 10px 'JetBrains Mono',monospace;color:var(--muted);
+    background:rgba(148,163,184,.1);padding:3px 9px;border-radius:20px;
+  }
+  .subject-carousel{position:relative}
+  .subject-track{
+    display:flex;gap:15px;overflow-x:auto;scroll-behavior:smooth;
+    scroll-snap-type:x mandatory;padding:2px 2px 6px;margin:-2px -2px -6px;
+    -ms-overflow-style:none;scrollbar-width:none;
+  }
+  .subject-track::-webkit-scrollbar{display:none}
+  .subject-track .card{
+    flex:0 0 calc((100% - 3*15px)/4);min-width:0;scroll-snap-align:start;
+  }
+  .subject-nav-row{
+    position:absolute;inset:0;pointer-events:none;
+  }
+  .subject-nav{
+    position:absolute;top:50%;pointer-events:auto;
+    width:34px;height:34px;border-radius:50%;
+    display:none;align-items:center;justify-content:center;cursor:pointer;z-index:4;
+    background:var(--panel-solid);border:1px solid var(--line-strong);color:var(--text);
+    font-size:15px;line-height:1;box-shadow:0 10px 26px rgba(0,0,0,.28);transition:.15s ease;
+  }
+  .subject-nav:hover{background:var(--cyan);color:#061016;border-color:var(--cyan)}
+  .subject-nav.show{display:flex}
+  .subject-nav-prev{left:0;transform:translate(-50%,-50%)}
+  .subject-nav-next{right:0;transform:translate(50%,-50%)}
+
+  @media(max-width:1199px){
+    .subject-track .card{flex-basis:calc((100% - 2*15px)/3)}
+  }
+  @media(max-width:899px){
+    .subject-track .card{flex-basis:calc((100% - 15px)/2)}
+  }
+  @media(max-width:700px){
+    .subject-track .card{flex-basis:100%}
+    /* On mobile a full-width card would sit under the overlay arrows,
+       so the nav row drops below the track as a small button pair
+       instead of floating on top of the card content. */
+    .subject-nav-row{
+      position:static;display:flex;justify-content:flex-end;gap:10px;
+      margin-top:10px;pointer-events:auto;
+    }
+    .subject-nav{
+      position:static;transform:none;width:34px;height:34px;font-size:14px;
+    }
+  }
+
+  body[data-theme="light"] .subject-row-title{color:#27302d}
+  body[data-theme="light"] .subject-row-count{color:#6f766f;background:rgba(52,125,115,.08)}
+  body[data-theme="light"] .subject-nav{
+    background:#faf7ef;border-color:#c9bfad;color:#27302d;
+  }
+  body[data-theme="light"] .subject-nav:hover{background:#347d73;color:#fff;border-color:#347d73}
+
   .card{
     position:relative;padding:18px 17px 15px;
     background:linear-gradient(180deg,rgba(18,25,37,.9),rgba(12,17,25,.92));
@@ -414,7 +478,6 @@ body{
     .sub{font-size:13.5px}
     .authbar{align-items:flex-start}
     .authbar .status{line-height:1.45}
-    .grid{grid-template-columns:1fr}
     .card-title{min-height:0}
     .form-row{flex-direction:column;gap:0}
   }
@@ -902,7 +965,10 @@ body{
   }
 
   body[data-theme="light"] #summaryEntries,
-  body[data-theme="light"] #summarySubjects{
+  body[data-theme="light"] #summarySubjects,
+  body[data-theme="light"] #summaryPreviewCount,
+  body[data-theme="light"] #summaryDownloadCount,
+  body[data-theme="light"] #summaryStorage{
     color:#27302d!important;
     font-family:'Space Mono',monospace!important;
   }
@@ -2000,6 +2066,88 @@ body[data-theme="light"] .curve-dot{
 }
 </style>
 
+
+<style id="summary-card-spacing-fix">
+  /* Clean, consistent summary cards */
+  #archiveSummary{
+    align-items:stretch !important;
+    gap:12px !important;
+  }
+
+  #archiveSummary > div{
+    box-sizing:border-box !important;
+    min-height:0 !important;
+    padding:14px 16px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    justify-content:flex-start !important;
+    border-radius:12px !important;
+  }
+
+  #archiveSummary > div > div:not(#summaryActivity){
+    flex-shrink:0;
+  }
+
+  #archiveSummary .summary-label,
+  #archiveSummary .storage-label{
+    min-height:12px;
+    line-height:12px !important;
+    margin:0 !important;
+  }
+
+  #archiveSummary #summarySubjects,
+  #archiveSummary #summaryEntries,
+  #archiveSummary #summaryAccess,
+  #archiveSummary #summaryStorage{
+    margin-top:8px !important;
+    line-height:1.05 !important;
+  }
+
+  #archiveSummary #summaryActivity{
+    display:flex;
+    align-items:flex-end;
+    gap:22px;
+    margin:8px 0 0 !important;
+    min-height:auto;
+    line-height:1 !important;
+  }
+
+  #archiveSummary #summaryActivity > div{
+    min-width:0;
+  }
+
+  #archiveSummary #summaryActivity > div > div:first-child{
+    line-height:1 !important;
+  }
+
+  #archiveSummary #summaryActivity > div > div:last-child{
+    margin-top:5px !important;
+    line-height:1 !important;
+  }
+
+  #archiveSummary #summaryActivity > div:nth-child(2){
+    height:28px !important;
+    flex:0 0 1px;
+  }
+
+  #archiveSummary #summaryStorageMeta{
+    margin-top:6px !important;
+    line-height:1.25 !important;
+  }
+
+  @media (max-width:700px){
+    #archiveSummary{
+      grid-template-columns:repeat(2,1fr) !important;
+    }
+  }
+
+  @media (max-width:430px){
+    #archiveSummary{
+      grid-template-columns:1fr !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -2093,9 +2241,9 @@ body[data-theme="light"] .curve-dot{
       <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Entries</div>
       <div id="summaryEntries" style="margin-top:4px;font:700 20px 'JetBrains Mono',monospace;color:#f5f7fb;">—</div>
     </div>
-    <div class="admin-storage" id="adminStorageCard" style="padding:13px 15px;border:1px solid rgba(94,231,247,.15);border-radius:12px;background:rgba(15,20,29,.62);">
+    <div class="admin-storage" id="adminStorageCard" style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
       <div class="storage-label" style="display:flex;align-items:center;gap:6px;font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">
-        <span id="summaryStorageLabel">Activity</span><span class="storage-pulse"></span>
+        <span id="summaryStorageLabel">Last month activity</span><span class="storage-pulse"></span>
       </div>
       <div id="summaryActivity" style="display:flex;align-items:center;gap:16px;margin-top:7px;">
         <div>
@@ -2111,8 +2259,8 @@ body[data-theme="light"] .curve-dot{
       <div id="summaryStorage" style="display:none;margin-top:4px;font:700 20px 'JetBrains Mono',monospace;color:#f5f7fb;">—</div>
       <div id="summaryStorageMeta" style="display:none;margin-top:3px;font:500 10px 'JetBrains Mono',monospace;color:#687487;">Contributor/Admin view · archive files</div>
     </div>
-    <div style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
-      <div style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Access</div>
+    <div class="summary-card" style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
+      <div class="summary-label" style="font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">Access</div>
       <div id="summaryAccess" style="margin-top:4px;font:700 12px 'JetBrains Mono',monospace;color:#5ee7f7;">READ ONLY</div>
     </div>
   </div>
@@ -2267,10 +2415,10 @@ const DEFAULT_SUBJECTS = [
 let entries = [];
 let subjects = [...DEFAULT_SUBJECTS];
 let hiddenDefaults = [];
-let filterSubject = "ALL";
+let filterSubjects = new Set(); // empty = "All subjects"
 let showAllSubjectPills = false;
 const VISIBLE_SUBJECT_LIMIT = 5;
-let filterType = "ALL";
+let filterTypes = new Set(); // empty = "All types"
 let searchQ = "";
 let session = null;
 let archiveRole = "viewer"; // viewer | contributor | admin; enforced by Supabase too
@@ -2356,11 +2504,9 @@ const TYPE_ABBR = {
 
 async function loadActivityStats() {
   try {
-    const { data, error } = await sb
-      .from("archive_activity")
-      .select("preview_count,download_count")
-      .eq("id", true)
-      .single();
+    // The database function automatically starts a fresh activity period
+    // when the current period is older than one month.
+    const { data, error } = await sb.rpc("get_archive_activity");
 
     if (error) throw error;
 
@@ -2417,7 +2563,7 @@ function updateStorageUI() {
   }
 
   // Public/read-only visitors see global preview/download activity.
-  if (label) label.textContent = "Activity";
+  if (label) label.textContent = "Last month activity";
   if (activity) activity.style.display = "flex";
   value.style.display = "none";
   if (meta) meta.style.display = "none";
@@ -2660,10 +2806,10 @@ function renderSubjectFilters() {
   row.innerHTML = "";
 
   const allPill = document.createElement("span");
-  allPill.className = "pill" + (filterSubject === "ALL" ? " active" : "");
+  allPill.className = "pill" + (filterSubjects.size === 0 ? " active" : "");
   allPill.textContent = "All subjects";
   allPill.onclick = () => {
-    filterSubject = "ALL";
+    filterSubjects.clear();
     renderSubjectFilters();
     render();
   };
@@ -2678,13 +2824,17 @@ function renderSubjectFilters() {
 
   visibleSubjects.forEach(s => {
       const pill = document.createElement("span");
-      pill.className = "pill subject-pill" + (filterSubject === s.code ? " active" : "");
+      pill.className = "pill subject-pill" + (filterSubjects.has(s.code) ? " active" : "");
 
       const label = document.createElement("span");
       label.textContent = s.name;
       label.title = s.name;
       label.onclick = () => {
-        filterSubject = s.code;
+        if (filterSubjects.has(s.code)) {
+          filterSubjects.delete(s.code);
+        } else {
+          filterSubjects.add(s.code);
+        }
         renderSubjectFilters();
         render();
       };
@@ -2962,7 +3112,7 @@ async function removeSubject(code) {
     if (error) throw error;
 
     subjects = subjects.filter(s => s.id !== subject.id);
-    if (filterSubject === code) filterSubject = "ALL";
+    filterSubjects.delete(code);
 
     renderSubjectFilters();
     renderSubjectOptions();
@@ -2980,13 +3130,28 @@ async function removeSubject(code) {
 function renderTypeFilters() {
   const row = document.getElementById("typeFilterRow");
   row.innerHTML = "";
-  const types = ["ALL", "Previous Year Question", "Mid-Term Question", "Notes", "Books", "Others"];
+  const types = ["Previous Year Question", "Mid-Term Question", "Notes", "Books", "Others"];
+
+  const allPill = document.createElement("span");
+  allPill.className = "pill" + (filterTypes.size === 0 ? " active" : "");
+  allPill.textContent = "All types";
+  allPill.onclick = () => { filterTypes.clear(); renderTypeFilters(); render(); };
+  row.appendChild(allPill);
+
   types.forEach(t => {
     const pill = document.createElement("span");
-    const active = filterType === t;
+    const active = filterTypes.has(t);
     pill.className = "pill" + (active ? " active" : "");
-    pill.textContent = t === "ALL" ? "All types" : t;
-    pill.onclick = () => { filterType = t; renderTypeFilters(); render(); };
+    pill.textContent = t;
+    pill.onclick = () => {
+      if (filterTypes.has(t)) {
+        filterTypes.delete(t);
+      } else {
+        filterTypes.add(t);
+      }
+      renderTypeFilters();
+      render();
+    };
     row.appendChild(pill);
   });
 }
@@ -3044,8 +3209,8 @@ function setupCardTilt() {
 
 function filteredEntries() {
   return entries.filter(e => {
-    if (filterSubject !== "ALL" && e.subject !== filterSubject) return false;
-    if (filterType !== "ALL" && e.type !== filterType) return false;
+    if (filterSubjects.size > 0 && !filterSubjects.has(e.subject)) return false;
+    if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
     if (searchQ) {
       const meta = subjectMeta(e.subject);
       const hay = `${e.title} ${e.filename} ${e.year || ""} ${meta.name} ${e.type}`.toLowerCase();
@@ -3053,6 +3218,101 @@ function filteredEntries() {
     }
     return true;
   });
+}
+
+// Order entries within a subject: Books, then Notes, then Previous Year
+// Question / Mid-Term Question grouped together and sorted newest year
+// first, then anything else last.
+const TYPE_ORDER = {
+  "Books": 0,
+  "Notes": 1,
+  "Previous Year Question": 2,
+  "Mid-Term Question": 2,
+};
+
+function sortEntriesForDisplay(list) {
+  return [...list].sort((a, b) => {
+    const ta = TYPE_ORDER[a.type] ?? 3;
+    const tb = TYPE_ORDER[b.type] ?? 3;
+    if (ta !== tb) return ta - tb;
+    if (ta === 2) {
+      const ya = parseInt(a.year, 10) || 0;
+      const yb = parseInt(b.year, 10) || 0;
+      if (ya !== yb) return yb - ya; // newest year first
+    }
+    return 0;
+  });
+}
+
+function buildCard(entry) {
+  const meta = subjectMeta(entry.subject);
+  const canDelete =
+    archiveRole === "admin" ||
+    (archiveRole === "contributor" && entry.contributorDeletable === true);
+  const card = document.createElement("div");
+  card.className = "card";
+  card.dataset.tilt = "true";
+  card.innerHTML = `
+    <div class="stamp">${escapeHtml(meta.name)}</div>
+    <div class="card-title">${escapeHtml(entry.title)}</div>
+    <div class="card-meta-row">
+      <span class="card-type">${escapeHtml(entry.type)}</span>
+      ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
+    </div>
+    <div class="card-file-row">
+      <span class="card-filename" title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</span>
+      <span class="card-size">${formatSize(entry.size)}</span>
+    </div>
+    <div class="card-actions">
+      <button class="action-btn pv-btn">⊙ Preview</button>
+      <button class="action-btn dl-btn">⬇ Download</button>
+      ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}">🗑</button>` : ""}
+    </div>
+  `;
+  card.querySelector(".pv-btn").onclick = () => previewEntry(entry);
+  card.querySelector(".dl-btn").onclick = () => downloadEntry(entry, card.querySelector(".dl-btn"));
+  const delBtn = card.querySelector(".del-btn");
+  if (delBtn) delBtn.onclick = () => deleteEntry(entry, delBtn);
+  return card;
+}
+
+function cardsPerView(track) {
+  const w = track.clientWidth;
+  if (w <= 0) return 1;
+  const first = track.querySelector(".card");
+  if (!first) return 1;
+  const cardWidth = first.getBoundingClientRect().width + 15;
+  return Math.max(1, Math.round(w / cardWidth));
+}
+
+function wireSubjectCarousel(wrap) {
+  const track = wrap.querySelector(".subject-track");
+  const prev = wrap.querySelector(".subject-nav-prev");
+  const next = wrap.querySelector(".subject-nav-next");
+
+  function refreshNav() {
+    const overflow = track.scrollWidth - track.clientWidth > 4;
+    if (!overflow) {
+      prev.classList.remove("show");
+      next.classList.remove("show");
+      return;
+    }
+    prev.classList.toggle("show", track.scrollLeft > 4);
+    next.classList.toggle("show", track.scrollLeft < track.scrollWidth - track.clientWidth - 4);
+  }
+
+  function scrollByPage(dir) {
+    const perView = cardsPerView(track);
+    const first = track.querySelector(".card");
+    const step = first ? (first.getBoundingClientRect().width + 15) * perView : track.clientWidth;
+    track.scrollBy({ left: dir * step, behavior: "smooth" });
+  }
+
+  prev.onclick = () => scrollByPage(-1);
+  next.onclick = () => scrollByPage(1);
+  track.addEventListener("scroll", refreshNav, { passive: true });
+  window.addEventListener("resize", refreshNav);
+  refreshNav();
 }
 
 function render() {
@@ -3080,38 +3340,50 @@ function render() {
     return;
   }
   empty.style.display = "none";
+
+  // Group entries by subject, in subject order, then append any subject
+  // codes present in the data but missing from the subjects list.
+  const bySubject = new Map();
   list.forEach(entry => {
-    const meta = subjectMeta(entry.subject);
-    const canDelete =
-      archiveRole === "admin" ||
-      (archiveRole === "contributor" && entry.contributorDeletable === true);
-    const card = document.createElement("div");
-    card.className = "card";
-    card.dataset.tilt = "true";
-    card.innerHTML = `
-      <div class="stamp">${escapeHtml(meta.name)}</div>
-      <div class="card-title">${escapeHtml(entry.title)}</div>
-      <div class="card-meta-row">
-        <span class="card-type">${escapeHtml(entry.type)}</span>
-        ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
-      </div>
-      <div class="card-file-row">
-        <span class="card-filename" title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</span>
-        <span class="card-size">${formatSize(entry.size)}</span>
-      </div>
-      <div class="card-actions">
-        <button class="action-btn pv-btn">⊙ Preview</button>
-        <button class="action-btn dl-btn">⬇ Download</button>
-        ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}">🗑</button>` : ""}
-      </div>
-    `;
-    card.querySelector(".pv-btn").onclick = () => previewEntry(entry);
-    card.querySelector(".dl-btn").onclick = () => downloadEntry(entry, card.querySelector(".dl-btn"));
-    const delBtn = card.querySelector(".del-btn");
-    if (delBtn) delBtn.onclick = () => deleteEntry(entry, delBtn);
-    grid.appendChild(card);
+    const code = entry.subject || "__none__";
+    if (!bySubject.has(code)) bySubject.set(code, []);
+    bySubject.get(code).push(entry);
   });
 
+  const orderedCodes = [
+    ...subjects.map(s => s.code).filter(code => bySubject.has(code)),
+    ...[...bySubject.keys()].filter(code => !subjects.some(s => s.code === code)),
+  ];
+
+  const wraps = [];
+  orderedCodes.forEach(code => {
+    const groupEntries = bySubject.get(code);
+    const meta = subjectMeta(code === "__none__" ? undefined : code);
+
+    const row = document.createElement("div");
+    row.className = "subject-row";
+    row.innerHTML = `
+      <div class="subject-row-head">
+        <div class="subject-row-title">
+          ${escapeHtml(meta.name)}
+          <span class="subject-row-count">${groupEntries.length} ${groupEntries.length === 1 ? "entry" : "entries"}</span>
+        </div>
+      </div>
+      <div class="subject-carousel">
+        <div class="subject-track"></div>
+        <div class="subject-nav-row">
+          <button type="button" class="subject-nav subject-nav-prev" aria-label="Scroll left">‹</button>
+          <button type="button" class="subject-nav subject-nav-next" aria-label="Scroll right">›</button>
+        </div>
+      </div>
+    `;
+    const track = row.querySelector(".subject-track");
+    sortEntriesForDisplay(groupEntries).forEach(entry => track.appendChild(buildCard(entry)));
+    grid.appendChild(row);
+    wraps.push(row.querySelector(".subject-carousel"));
+  });
+
+  wraps.forEach(wireSubjectCarousel);
   setupCardTilt();
 }
 
@@ -3145,16 +3417,18 @@ async function previewEntry(entry) {
    * an iframe. For PDFs, use the Worker URL directly instead of first
    * downloading the PDF into a blob.
    *
-   * On phones/tablets we open the direct PDF URL in the browser's
-   * native PDF viewer. This is much more reliable on iOS Safari and
-   * Android Chrome.
+   * iOS Safari's iframe PDF rendering is unreliable, so on iPhone/iPad
+   * we open the direct PDF URL in the browser's native PDF viewer
+   * instead. Every other mobile browser (Android Chrome, Samsung
+   * Internet, Brave, etc.) is Chromium-based and renders PDFs fine in
+   * an iframe — routing those through window.open() instead triggers
+   * an OS-level "Open with…" download prompt rather than an in-app
+   * preview, which is why Samsung Internet was breaking.
    */
   if (mime === "application/pdf") {
-    const isMobile =
-      window.matchMedia("(max-width: 700px)").matches ||
-      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
 
-    if (isMobile) {
+    if (isIOS) {
       const popup = window.open(pdfUrl, "_blank");
 
       body.innerHTML = `
@@ -3188,7 +3462,8 @@ async function previewEntry(entry) {
       return;
     }
 
-    // Desktop: direct PDF URL in the iframe. No blob URL is used.
+    // Everyone else (desktop and Android mobile browsers alike):
+    // direct PDF URL in the iframe. No blob URL is used.
     body.innerHTML = `
       <iframe
         title="PDF preview"
