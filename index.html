@@ -5,6 +5,18 @@
   try {
     if (localStorage.getItem("statArchiveTheme") === "light") {
       document.documentElement.setAttribute("data-theme", "light");
+      // The CSS rules target body[data-theme="light"], but <body> doesn't
+      // exist yet this early in <head>. Watch for it and apply immediately
+      // once it's created, instead of waiting for setupThemeButtons() to
+      // run near the end of the page — that gap caused a dark-theme flash
+      // (FOUC) on every load even when light mode was saved.
+      const obs = new MutationObserver(() => {
+        if (document.body) {
+          document.body.setAttribute("data-theme", "light");
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.documentElement, { childList: true });
     }
   } catch(e) {}
 </script>
@@ -12,9 +24,7 @@
 <meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0" />
 <title>Stat Archive — M.Sc Statistics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
@@ -231,7 +241,7 @@ body{
   .authbar .status{display:flex;align-items:center;gap:9px;color:var(--muted);font:500 11px 'JetBrains Mono',monospace}
   .authbar .status .dot{width:7px;height:7px;border-radius:50%}
   .authbar .status .dot.on{background:var(--green);box-shadow:0 0 9px var(--green)}
-  .authbar .status .dot.off{background:var(--green);box-shadow:0 0 9px var(--green)}
+  .authbar .status .dot.off{background:var(--muted-2);box-shadow:none}
   .authbar button{
     border:1px solid var(--line-strong);background:rgba(255,255,255,.025);
     color:#d7deea;border-radius:9px;padding:7px 13px;
@@ -256,9 +266,28 @@ body{
   }
   #searchInput::placeholder{color:#5e697b}
   #searchInput:focus{border-color:rgba(94,231,247,.55);box-shadow:0 0 0 4px rgba(94,231,247,.07)}
+  #searchInput::-webkit-search-decoration,
+  #searchInput::-webkit-search-cancel-button,
+  #searchInput::-webkit-search-results-button,
+  #searchInput::-webkit-search-results-decoration{display:none}
   .search-clear{position:absolute;right:11px;top:10px;background:transparent;border:0;color:#6b7688;cursor:pointer;padding:5px}
 
   .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+  /* Keep all subject filters, including Others, on one horizontal line. */
+  #subjectFilterRow{
+    flex-wrap:nowrap;
+    gap:5px;
+    overflow:hidden;
+    padding-bottom:2px;
+  }
+  #subjectFilterRow.show-all-subjects{
+    flex-wrap:wrap;
+    overflow:visible;
+  }
+  #subjectFilterRow .pill{
+    flex:0 0 auto;
+    padding:7px 9px;
+  }
   #typeFilterRow{display:flex!important;}
   .pill{
     display:inline-flex;align-items:center;
@@ -274,6 +303,7 @@ body{
     box-shadow:0 5px 18px rgba(94,231,247,.16);
   }
   .pill-dashed{border-style:dashed;color:#687487}
+  .subject-pill > button:not(.subject-delete){background:none;border:0;color:inherit;font:inherit;letter-spacing:inherit;padding:0;margin:0;cursor:pointer}
 
   .add-subject-form{display:none;align-items:center;margin:0}
   .add-subject-form input{
@@ -294,6 +324,10 @@ body{
   }
   .new-btn:hover{transform:translateY(-1px);box-shadow:0 12px 30px rgba(94,231,247,.2)}
   .new-btn:disabled{opacity:.38;cursor:not-allowed;transform:none;box-shadow:none}
+  .archive-action-row{display:flex;align-items:center;gap:10px;margin-top:2px;align-self:flex-start;flex-wrap:wrap}
+  .archive-action-row .new-btn{margin-top:0}
+  .latest-btn{padding:11px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel-solid);color:var(--text);font:800 11px 'JetBrains Mono',monospace;cursor:pointer;transition:.18s ease}
+  .latest-btn:hover,.latest-btn.active{transform:translateY(-1px);border-color:rgba(94,231,247,.5);box-shadow:0 8px 24px rgba(94,231,247,.12)}
 
   .error-banner{
     margin:0 auto 16px;display:none;align-items:center;
@@ -313,6 +347,7 @@ body{
   }
 
   .subject-row{max-width:1120px;margin:0 auto;width:100%}
+  .card{contain:layout paint style}
   .subject-row-head{
     display:flex;align-items:baseline;justify-content:space-between;gap:10px;
     margin:0 0 12px;padding:0 2px;
@@ -330,6 +365,11 @@ body{
     display:flex;gap:15px;overflow-x:auto;scroll-behavior:smooth;
     scroll-snap-type:x mandatory;padding:2px 2px 6px;margin:-2px -2px -6px;
     -ms-overflow-style:none;scrollbar-width:none;
+    /* Scoped here (not on .subject-row) so the containment this implies
+       only clips the track's own descendants (the cards) — not the nav
+       buttons, which are siblings of .subject-track inside
+       .subject-carousel and are positioned to float outside the track. */
+    content-visibility:auto;contain-intrinsic-size:320px 210px;
   }
   .subject-track::-webkit-scrollbar{display:none}
   .subject-track .card{
@@ -362,11 +402,50 @@ body{
        so the nav row drops below the track as a small button pair
        instead of floating on top of the card content. */
     .subject-nav-row{
-      position:static;display:flex;justify-content:flex-end;gap:10px;
-      margin-top:10px;pointer-events:auto;
+      position:static;display:flex;justify-content:center;align-items:center;gap:10px;
+      width:100%;margin-top:10px;pointer-events:auto;
     }
     .subject-nav{
       position:static;transform:none;width:34px;height:34px;font-size:14px;
+    }
+  }
+
+
+  /* Latest Entries is a denser combined feed: show more cards at once. */
+  .subject-row[data-subject-code="__latest__"] .subject-track .card{
+    flex-basis:calc((100% - 4*12px)/5);
+  }
+  .subject-row[data-subject-code="__latest__"] .subject-track{
+    gap:12px;
+  }
+  .subject-row[data-subject-code="__latest__"] .subject-nav-next{
+    right:18px;
+    transform:translate(50%,-50%);
+  }
+  .subject-row[data-subject-code="__latest__"] .subject-nav-prev{
+    left:18px;
+    transform:translate(-50%,-50%);
+  }
+
+  @media(max-width:1199px){
+    .subject-row[data-subject-code="__latest__"] .subject-track .card{
+      flex-basis:calc((100% - 3*12px)/4);
+    }
+  }
+  @media(max-width:899px){
+    .subject-row[data-subject-code="__latest__"] .subject-track .card{
+      flex-basis:calc((100% - 2*12px)/3);
+    }
+  }
+  @media(max-width:700px){
+    .subject-row[data-subject-code="__latest__"] .subject-track .card{
+      flex-basis:100%;
+    }
+    .subject-row[data-subject-code="__latest__"] .subject-nav-prev,
+    .subject-row[data-subject-code="__latest__"] .subject-nav-next{
+      left:auto;
+      right:auto;
+      transform:none;
     }
   }
 
@@ -406,7 +485,16 @@ body{
   }
   .card-filename{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
   .card-size{margin-left:8px;flex-shrink:0;color:#566174}
-  .card-actions{display:flex;justify-content:space-between;align-items:center;gap:5px}
+  .card-actions{
+    display:flex;justify-content:space-between;align-items:center;gap:5px;
+    border-top:1px solid var(--line);
+    padding-top:10px;
+  }
+  html[data-authenticated="false"] .edit-btn,
+  html[data-authenticated="false"] .del-btn{
+    display:none !important;
+  }
+
   .action-btn{
     display:flex;align-items:center;gap:5px;background:transparent;border:0;
     color:#aeb8c7;font-size:11.5px;font-weight:600;cursor:pointer;padding:5px;
@@ -461,6 +549,18 @@ body{
 .pdf-open-new-tab-top{margin:0;width:100%;flex:0 0 auto;position:relative;z-index:3}
   .preview-fallback{text-align:center;padding:42px 20px;color:#8793a6;font-size:13px}
 
+  /* Keep the original bottom "Open PDF in new tab" action visible while only the PDF pages scroll. */
+  .preview-card.pdf-preview-active{
+    height:88vh;max-height:88vh;overflow:hidden;
+    display:flex;flex-direction:column;box-sizing:border-box
+  }
+  .preview-card.pdf-preview-active .form-header{flex:0 0 auto}
+  .preview-card.pdf-preview-active .preview-body{flex:1 1 auto;min-height:0;overflow:hidden;display:flex}
+  .preview-card.pdf-preview-active .pdf-preview-shell{height:100%;width:100%;min-height:0}
+  .preview-card.pdf-preview-active .pdf-canvas-wrap{flex:1 1 auto;min-height:0;height:auto;max-height:none}
+  .preview-card.pdf-preview-active .pdf-open-new-tab-bottom{flex:0 0 auto;margin-top:0;padding-top:8px;position:static;background:none}
+  .preview-card.pdf-preview-active .pdf-open-new-tab-bottom .pdf-open-new-tab-btn{min-height:48px}
+
   /* ===== Mobile-friendly PDF preview ===== */
   .pdf-preview-shell{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
   .pdf-preview-toolbar{
@@ -474,6 +574,13 @@ body{
     flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
   }
   .pdf-toolbar-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .pdf-zoom-controls{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+  .pdf-zoom-level{min-width:48px;text-align:center;font:700 10px 'JetBrains Mono',monospace;color:var(--muted)}
+  .image-preview-shell{display:flex;flex-direction:column;gap:10px;height:100%;min-height:0}
+  .image-preview-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:0 0 auto}
+  .image-preview-wrap{flex:1 1 auto;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#dfe2e5;padding:12px;display:flex;align-items:flex-start;justify-content:center;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .image-preview-wrap img{display:block;max-width:none;width:auto;height:auto;transform-origin:top center;flex:0 0 auto}
+  .image-zoom-level{min-width:48px;text-align:center;font:700 10px 'JetBrains Mono',monospace;color:var(--muted)}
   .pdf-page-btn{
     width:34px;height:32px;padding:0;border:1px solid var(--line-strong);
     border-radius:8px;background:transparent;color:var(--text);cursor:pointer;
@@ -524,7 +631,7 @@ body{
   @media(max-width:700px){
     .overlay{padding:8px;align-items:flex-start;overflow:hidden}
     .preview-card{
-      width:100%;max-width:none;height:calc(100dvh - 16px);max-height:none;
+      width:100%;max-width:none;height:calc(100vh - 16px);height:calc(100dvh - 16px);max-height:none;
       padding:15px;border-radius:14px;margin-top:8px;overflow:hidden;
       display:flex;flex-direction:column;box-sizing:border-box;
     }
@@ -722,9 +829,13 @@ body{
     box-shadow:0 0 0 5px rgba(241,139,105,.13);
   }
 
-  body[data-theme="light"] .authbar .status .dot{
-    background:#d96f5f;
-    box-shadow:0 0 0 5px rgba(241,139,105,.13);
+  body[data-theme="light"] .authbar .status .dot.on{
+    background:#347d73;
+    box-shadow:0 0 0 4px rgba(52,125,115,.18);
+  }
+  body[data-theme="light"] .authbar .status .dot.off{
+    background:#a95542;
+    box-shadow:none;
   }
 
   body[data-theme="light"] .curve-live{
@@ -1170,13 +1281,6 @@ body{
     animation:darkSpark .58s cubic-bezier(.2,.8,.2,1) forwards;
   }
 
-  @keyframes spark{
-    to{
-      transform:translate(var(--dx),var(--dy)) scale(0);
-      opacity:0;
-    }
-  }
-
   @keyframes darkSpark{
     0%{
       transform:translate(0,0) scale(1);
@@ -1290,7 +1394,7 @@ body{
   }
 
 
-  /* Keep title-less question cards vertically aligned with Books/Notes cards.
+  /* Keep title-less question cards vertically aligned with Book/Notes cards.
      The normal title occupies 43px + 9px bottom margin = 52px, so use
      the same height on the question metadata row and enlarge its label
      to make the otherwise empty title area useful. */
@@ -1343,6 +1447,7 @@ body{
 }
 .gaussian-curve{
   fill:none;
+  transform:translateY(-10px);
   stroke:var(--cyan,#5ee7f7);
   stroke-width:3;
   stroke-linecap:round;
@@ -1432,7 +1537,7 @@ body{
   font:600 6px 'JetBrains Mono',monospace;
   letter-spacing:.11em;
 }
-.note-one{left:38%;top:86px}
+.note-one{left:50%;top:86px;transform:translateX(-50%)}
 
 
 body[data-theme="light"] .hero-probability{
@@ -1787,6 +1892,10 @@ body[data-theme="light"] .axis-mid{color:#347d73}
       .card{padding:16px 16px 14px}
     }
   </style>
+<style id="edit-button-light-theme-fix">
+  body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
+  body[data-theme="light"] .action-btn.edit-btn:hover{color:#d96f5f;}
+</style>
 
 <style id="uniform-entry-card-height-fix">
 /* Keep every entry card the same visual height by preventing long titles
@@ -1833,6 +1942,69 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   visibility:visible;
   transform:translateY(0);
 }
+@media (pointer: coarse) {
+  #entry-full-title-tooltip { display: none !important; }
+}
+
+  /* ===== Auth status indicator fix =====
+     Read-only has no visible status dot.
+     Dark theme keeps the original green signed-in indicator;
+     Light theme uses a red signed-in indicator. */
+  .authbar .status .dot.off{
+    background:transparent !important;
+    box-shadow:none !important;
+  }
+  body[data-theme="light"] .authbar .status .dot.on{
+    background:#d96f5f !important;
+    box-shadow:0 0 0 4px rgba(217,111,95,.14) !important;
+  }
+</style>
+
+
+<style id="toolbar-and-card-alignment-fix">
+/* Keep PDF navigation on the left and push Download + Print to the far right. */
+.pdf-toolbar-actions{margin-left:auto}
+
+/* Equal-height cards already stretch within each subject row; make their
+   content a vertical stack so the action buttons share the same baseline. */
+.subject-track .card{display:flex;flex-direction:column}
+.subject-track .card-actions{margin-top:auto}
+</style>
+
+<style id="hero-fluid-desktop-layout">
+/* Fluid desktop hero: text and graph expand/contract with the available monitor width. */
+@media (min-width:1200px){
+  .header,
+  body[data-theme="light"] .header{
+    height:clamp(250px, 18vw, 310px);
+    min-height:250px;
+    padding:26px clamp(28px,3vw,52px);
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) clamp(400px, 32vw, 620px);
+    gap:clamp(28px, 4vw, 80px);
+    align-items:center;
+    overflow:hidden;
+    box-sizing:border-box;
+  }
+
+  .hero-copy{
+    width:auto;
+    min-width:0;
+    max-width:min(52vw, 790px);
+    flex:none;
+  }
+
+  .hero-probability{
+    position:relative;
+    right:auto;
+    top:auto;
+    transform:none;
+    width:100%;
+    height:clamp(210px, 15vw, 270px);
+    min-width:0;
+    margin:0;
+  }
+}
 </style>
 
 </head>
@@ -1859,14 +2031,12 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 
       <svg class="probability-svg" viewBox="0 0 520 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
         <line class="dot-baseline" x1="18" y1="258" x2="502" y2="258"/>
-        <line class="mean-line" x1="260" y1="40" x2="260" y2="270"/>
+        <line class="mean-line" x1="260" y1="40" x2="260" y2="258"/>
         <path class="gaussian-curve" d="M 18.00,257.42 C 19.68,257.36 24.72,257.22 28.08,257.08 C 31.44,256.94 34.81,256.78 38.17,256.57 C 41.53,256.36 44.89,256.12 48.25,255.82 C 51.61,255.51 54.97,255.17 58.33,254.73 C 61.69,254.30 65.06,253.82 68.42,253.21 C 71.78,252.61 75.14,251.94 78.50,251.12 C 81.86,250.30 85.22,249.39 88.58,248.30 C 91.94,247.22 95.31,246.01 98.67,244.60 C 102.03,243.19 105.39,241.62 108.75,239.84 C 112.11,238.05 115.47,236.08 118.83,233.86 C 122.19,231.64 125.56,229.22 128.92,226.54 C 132.28,223.87 135.64,220.95 139.00,217.80 C 142.36,214.65 145.72,211.25 149.08,207.63 C 152.44,204.02 155.81,200.15 159.17,196.11 C 162.53,192.08 165.89,187.81 169.25,183.44 C 172.61,179.07 175.97,174.49 179.33,169.91 C 182.69,165.33 186.06,160.59 189.42,155.95 C 192.78,151.31 196.14,146.59 199.50,142.08 C 202.86,137.57 206.22,133.06 209.58,128.87 C 212.94,124.69 216.31,120.62 219.67,116.96 C 223.03,113.30 226.39,109.87 229.75,106.94 C 233.11,104.00 236.47,101.40 239.83,99.35 C 243.19,97.29 246.56,95.67 249.92,94.61 C 253.28,93.55 256.64,93.00 260.00,93.00 C 263.36,93.00 266.72,93.55 270.08,94.61 C 273.44,95.67 276.81,97.29 280.17,99.35 C 283.53,101.40 286.89,104.00 290.25,106.94 C 293.61,109.87 296.97,113.30 300.33,116.96 C 303.69,120.62 307.06,124.69 310.42,128.87 C 313.78,133.06 317.14,137.57 320.50,142.08 C 323.86,146.59 327.22,151.31 330.58,155.95 C 333.94,160.59 337.31,165.33 340.67,169.91 C 344.03,174.49 347.39,179.07 350.75,183.44 C 354.11,187.81 357.47,192.08 360.83,196.11 C 364.19,200.15 367.56,204.02 370.92,207.63 C 374.28,211.25 377.64,214.65 381.00,217.80 C 384.36,220.95 387.72,223.87 391.08,226.54 C 394.44,229.22 397.81,231.64 401.17,233.86 C 404.53,236.08 407.89,238.05 411.25,239.84 C 414.61,241.62 417.97,243.19 421.33,244.60 C 424.69,246.01 428.06,247.22 431.42,248.30 C 434.78,249.39 438.14,250.30 441.50,251.12 C 444.86,251.94 448.22,252.61 451.58,253.21 C 454.94,253.82 458.31,254.30 461.67,254.73 C 465.03,255.17 468.39,255.51 471.75,255.82 C 475.11,256.12 478.47,256.36 481.83,256.57 C 485.19,256.78 488.56,256.94 491.92,257.08 C 495.28,257.22 500.32,257.36 502.00,257.42"/>
         <circle class="data-dot" cx="82" cy="150" r="3.1" style="--fall:108px;--delay:0.41s"/><circle class="data-dot" cx="132" cy="116" r="3.1" style="--fall:142px;--delay:0.64s"/><circle class="data-dot" cx="188" cy="88" r="3.1" style="--fall:170px;--delay:0.89s"/><circle class="data-dot" cx="236" cy="128" r="3.1" style="--fall:130px;--delay:1.11s"/><circle class="data-dot" cx="304" cy="105" r="3.1" style="--fall:153px;--delay:1.42s"/><circle class="data-dot" cx="356" cy="143" r="3.1" style="--fall:115px;--delay:1.66s"/><circle class="data-dot" cx="422" cy="92" r="3.1" style="--fall:166px;--delay:1.96s"/><circle class="data-dot" cx="465" cy="122" r="3.1" style="--fall:136px;--delay:2.15s"/>
       </svg>
 
-      <div class="axis-label axis-left">LOW</div>
       <div class="axis-label axis-mid">μ</div>
-      <div class="axis-label axis-right">HIGH</div>
 
       <div class="formula-chip">
         <strong>f(x)</strong>
@@ -1928,14 +2098,17 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   </div>
 
   <div class="toolbar">
-    <div class="search-row">
+    <form class="search-row" onsubmit="event.preventDefault(); document.getElementById('searchInput').blur();">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7382" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="searchInput" type="text" placeholder="Search by title, filename, year, or subject…" />
+      <input id="searchInput" type="search" placeholder="Search by title, filename, year, or subject…" />
       <button type="button" class="search-clear" id="searchClear" style="display: none;" aria-label="Clear search" title="Clear search">✕</button>
-    </div>
+    </form>
     <div class="filter-row" id="subjectFilterRow"></div>
     <div class="filter-row" id="typeFilterRow"></div>
-    <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry">+ File a new entry</button>
+    <div class="archive-action-row">
+      <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry">+ File a new entry</button>
+      <button class="latest-btn" id="latestEntriesBtn" type="button" style="display:none">↕ Latest entries</button>
+    </div>
     <div id="permissionHint" style="font:500 10px 'JetBrains Mono',monospace;color:#596578;margin-top:-4px;">
       Contributors can delete only the 3 newest entries. Older entries require Admin permission.
     </div>
@@ -1951,7 +2124,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   <form class="form-card login-card" id="loginForm">
     <div class="form-header">
       <span class="form-title">Sign in</span>
-      <button type="button" class="close-btn" id="closeLoginBtn">✕</button>
+      <button type="button" class="close-btn" id="closeLoginBtn" aria-label="Close sign in">✕</button>
     </div>
     <label>Sign in as</label>
     <select id="loginRoleSelect" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel-solid);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;margin-bottom:12px;">
@@ -1970,7 +2143,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   <div class="form-card" id="contributorDisclaimerCard" style="max-width:460px;">
     <div class="form-header">
       <span class="form-title">Before you start filing</span>
-      <button type="button" class="close-btn" id="closeContributorDisclaimerBtn">✕</button>
+      <button type="button" class="close-btn" id="closeContributorDisclaimerBtn" aria-label="Close notice">✕</button>
     </div>
     <ul style="margin:4px 0 16px;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.75;">
       <li>You can add new subjects and edit their names.</li>
@@ -1989,41 +2162,75 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 
     <div class="form-header">
       <span class="form-title">File a new entry</span>
-      <button type="button" class="close-btn" id="closeFormBtn">✕</button>
+      <button type="button" class="close-btn" id="closeFormBtn" aria-label="Close form">✕</button>
     </div>
     <div class="form-row">
       <div>
-        <label>Subject</label>
-        <select id="subjectSelect"></select>
+        <label for="subjectSelect">Subject</label>
+        <select id="subjectSelect" name="subject"></select>
       </div>
       <div>
-        <label>Type</label>
-        <select id="typeSelect">
+        <label for="typeSelect">Type</label>
+        <select id="typeSelect" name="type">
           <option>Previous Year Question</option>
           <option>Mid-Term Question</option>
           <option>Notes</option>
-          <option>Books</option>
+          <option>Book</option>
           <option>Others</option>
         </select>
       </div>
     </div>
     <div id="titleField">
-      <label id="titleLabel">Title (required)</label>
-      <input type="text" id="titleInput" placeholder="Name of the book" />
+      <label id="titleLabel" for="titleInput">Title (required)</label>
+      <input type="text" id="titleInput" name="title" placeholder="Name of the book" />
     </div>
     <div id="subtitleField">
-      <label id="subtitleLabel">Subtitle (optional)</label>
-      <input type="text" id="subtitleInput" placeholder="e.g. Chapter 3 — Estimation methods" />
+      <label id="subtitleLabel" for="subtitleInput">Subtitle (optional)</label>
+      <input type="text" id="subtitleInput" name="subtitle" placeholder="e.g. Chapter 3 — Estimation methods" />
     </div>
     <div id="yearField">
-      <label id="yearLabel">Year (required)</label>
-      <input type="text" id="yearInput" placeholder="e.g. 2026" />
+      <label id="yearLabel" for="yearInput">Year (required)</label>
+      <input type="text" id="yearInput" name="year" placeholder="e.g. 2026" />
     </div>
-    <label>File</label>
-    <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
-    <div class="hint" id="fileSizeHint">Previous Year Question &amp; Mid-Term Question: up to 1 MB. Notes &amp; Books: up to 20 MB. Others: up to 10 MB.</div>
+    <label for="fileInput">File</label>
+    <input type="file" id="fileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
+    <div class="hint" id="fileSizeHint">Previous Year Question &amp; Mid-Term Question: up to 1 MB. Notes &amp; Book: up to 20 MB. Others: up to 10 MB.</div>
     <div class="error-banner" id="formErrorBanner" style="margin-top:12px;"></div>
     <button type="submit" class="submit-btn" id="submitBtn">Add to archive</button>
+  </form>
+</div>
+
+<div class="overlay" id="editEntryOverlay">
+  <form class="form-card" id="editEntryForm">
+    <div class="form-header">
+      <span class="form-title">Edit entry</span>
+      <button type="button" class="close-btn" id="closeEditEntryBtn" aria-label="Close edit form">✕</button>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="editTypeSelect">Type</label>
+        <select id="editTypeSelect" name="type">
+          <option>Previous Year Question</option>
+          <option>Mid-Term Question</option>
+          <option>Notes</option>
+          <option>Book</option>
+          <option>Others</option>
+        </select>
+      </div>
+      <div id="editYearField">
+        <label for="editYearInput">Year</label>
+        <input type="text" id="editYearInput" name="year" placeholder="e.g. 2026" />
+      </div>
+    </div>
+    <div id="editTitleField">
+      <label for="editTitleInput">Name / title</label>
+      <input type="text" id="editTitleInput" name="title" placeholder="Entry name" />
+    </div>
+    <label for="editFileInput">Replace file (optional)</label>
+    <input type="file" id="editFileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
+    <div class="hint" id="editFileHint">Leave empty to keep the current file.</div>
+    <div class="error-banner" id="editEntryErrorBanner" style="margin-top:12px;"></div>
+    <button type="submit" class="submit-btn" id="editEntrySubmitBtn">Save changes</button>
   </form>
 </div>
 
@@ -2031,7 +2238,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   <div class="preview-card">
     <div class="form-header">
       <span class="form-title" id="previewTitle">Preview</span>
-      <button type="button" class="close-btn" id="closePreviewBtn">✕</button>
+      <button type="button" class="close-btn" id="closePreviewBtn" aria-label="Close preview">✕</button>
     </div>
     <div class="preview-body" id="previewBody"></div>
   </div>
@@ -2102,7 +2309,7 @@ const TYPE_MAX_BYTES = {
   "Previous Year Question": 1 * 1024 * 1024,
   "Mid-Term Question": 1 * 1024 * 1024,
   "Notes": 20 * 1024 * 1024,
-  "Books": 20 * 1024 * 1024,
+  "Book": 20 * 1024 * 1024,
   "Others": 10 * 1024 * 1024,
 };
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -2123,12 +2330,14 @@ let entries = [];
 let subjects = [...DEFAULT_SUBJECTS];
 let hiddenDefaults = [];
 let filterSubjects = new Set(); // empty = "All subjects"
+let latestEntriesMode = false; // Admin/Contributor: newest uploads in one combined row
 let showAllSubjectPills = false;
-const VISIBLE_SUBJECT_LIMIT = 5;
+const VISIBLE_SUBJECT_LIMIT = 7;
 let filterTypes = new Set(); // empty = "All types"
 let searchQ = "";
 let session = null;
 let archiveRole = "viewer"; // viewer | contributor | admin; enforced by Supabase too
+let signingOut = false; // prevents auth refresh races from restoring stale privileges during sign-out
 // Tracks the "current" preview request. previewEntry() captures the token
 // after bumping it; any async step that finishes once the token no longer
 // matches (i.e. the preview was closed or a newer preview was opened)
@@ -2138,6 +2347,13 @@ let currentPreviewToken = 0;
 // .destroy() on it and free its memory instead of leaving rendering tasks
 // running after the preview is closed.
 let activePdfDoc = null;
+// Tracks the object URL of an in-progress or displayed image preview so
+// closePreview() can revoke it even if the image hasn't finished loading
+// yet (otherwise closing early orphans the Blob URL).
+let activeObjectUrl = null;
+// Lets closePreview() abort an in-flight preview fetch instead of letting
+// a large file keep downloading in the background after the user left.
+let previewAbortController = null;
 let justSignedIn = false; // true only right after the login form is submitted — used to
                            // distinguish a real sign-in from Supabase restoring a session
                            // from storage on page load (which also fires "SIGNED_IN").
@@ -2168,6 +2384,7 @@ function isLoginExpired() {
 
 function scheduleAutoSignOut() {
   if (autoSignOutTimer) clearTimeout(autoSignOutTimer);
+  if (!session) return; // Abort for read-only users
   const at = Number(localStorage.getItem(LOGIN_AT_KEY)) || Date.now();
   const remaining = SESSION_MAX_AGE_MS - (Date.now() - at);
   if (remaining <= 0) {
@@ -2182,8 +2399,13 @@ function scheduleAutoSignOut() {
 async function autoSignOut() {
   clearLoginTime();
   if (session) {
-    await sb.auth.signOut();
-    showError("You've been signed out after 24 hours. Please sign in again.");
+    try { await sb.auth.signOut(); }
+    catch (err) { console.warn("Network failed, clearing local session.", err); }
+    finally {
+      session = null;
+      showError("You've been signed out after 24 hours. Please sign in again.");
+      updateAuthUI();
+    }
   }
 }
 
@@ -2213,7 +2435,7 @@ function formatSize(bytes) {
 // Short labels for the type-breakdown chips (keeps the card compact).
 const TYPE_ABBR = {
   "Notes": "Notes",
-  "Books": "Books",
+  "Book": "Book",
   "Previous Year Question": "PYQ",
   "Mid-Term Question": "Mid-Term",
   "Others": "Others"
@@ -2291,19 +2513,27 @@ function updateStorageUI() {
   // after an actual preview/download via incrementActivity().
 }
 
-function subjectMeta(code) {
-  return subjects.find(s => s.code === code) ||
-         subjects.find(s => s.code === "MISC") ||
-         { name: "Unknown Subject", code: "MISC" };
+function subjectMeta(codeOrId) {
+  if (!codeOrId) return { name: "Other", code: "MISC" };
+  return (
+    subjects.find(s => s.code === codeOrId || s.id === codeOrId) ||
+    subjects.find(s => s.code === "MISC") ||
+    { name: "Other", code: "MISC" }
+  );
 }
 
 function updateAuthUI() {
+  // Never let a stale role survive without a live session.
+  if (!session) archiveRole = "viewer";
   const dot = document.getElementById("authDot");
   const access = document.getElementById("summaryAccess");
   const label = document.getElementById("authLabel");
   const authBtn = document.getElementById("authBtn");
   const openFormBtn = document.getElementById("openFormBtn");
+  const latestEntriesBtn = document.getElementById("latestEntriesBtn");
   const permissionHint = document.getElementById("permissionHint");
+
+  document.documentElement.dataset.authenticated = session ? "true" : "false";
 
   if (session) {
     dot.className = "dot on";
@@ -2323,6 +2553,11 @@ function updateAuthUI() {
     authBtn.textContent = "Sign out";
     openFormBtn.disabled = archiveRole === "viewer";
     openFormBtn.title = archiveRole === "viewer" ? "This account cannot upload" : "";
+    const canUseLatestEntries = archiveRole === "admin" || archiveRole === "contributor";
+    if (latestEntriesBtn) {
+      latestEntriesBtn.style.display = canUseLatestEntries ? "inline-flex" : "none";
+      latestEntriesBtn.classList.toggle("active", latestEntriesMode);
+    }
 
     // Keep the contributor interface clean: no permission-rules text below
     // the “File a new entry” button.
@@ -2337,6 +2572,11 @@ function updateAuthUI() {
     authBtn.textContent = "Sign in";
     openFormBtn.disabled = true;
     openFormBtn.title = "Sign in to file a new entry";
+    latestEntriesMode = false;
+    if (latestEntriesBtn) {
+      latestEntriesBtn.style.display = "none";
+      latestEntriesBtn.classList.remove("active");
+    }
     if (permissionHint) {
       permissionHint.textContent = "";
       permissionHint.style.display = "none";
@@ -2344,6 +2584,28 @@ function updateAuthUI() {
   }
 
   updateStorageUI();
+}
+
+function applySignedOutUI() {
+  // Do not rebuild thousands of cards just to remove privileged controls.
+  // Remove them directly so sign-out stays responsive even on large archives.
+  document.querySelectorAll("#grid .edit-btn, #grid .del-btn, .subject-edit, .subject-delete")
+    .forEach(el => el.remove());
+
+  const latestBtn = document.getElementById("latestEntriesBtn");
+  if (latestBtn) {
+    latestBtn.style.display = "none";
+    latestBtn.classList.remove("active");
+  }
+
+  const addSubject = document.getElementById("addSubjectForm");
+  if (addSubject) addSubject.remove();
+
+  const addSubjectButton = document.querySelector("#subjectFilterRow .pill-dashed");
+  if (addSubjectButton) addSubjectButton.remove();
+
+  latestEntriesMode = false;
+  document.documentElement.dataset.authenticated = "false";
 }
 
 async function getArchiveRole() {
@@ -2458,11 +2720,16 @@ async function loadSubjectsFromWorker() {
   }
 
   if (dbSubjects.length > 0) {
+    // When the database/Worker already has a real subject list, use that list
+    // as the source of truth. Do not merge missing legacy DEFAULT_SUBJECTS back
+    // into the UI, otherwise a deleted/non-existent fallback subject can appear
+    // with no database id and later fail with "Subject record not found".
     subjects = dbSubjects.sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     );
   } else {
-    subjects = [...DEFAULT_SUBJECTS].sort((a, b) => 
+    // DEFAULT_SUBJECTS is only an offline/empty-database fallback.
+    subjects = [...DEFAULT_SUBJECTS].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     );
   }
@@ -2518,6 +2785,12 @@ async function init() {
 // load, doubling the startup requests.
 let isInitialLoad = true;
 sb.auth.onAuthStateChange(async (event, s) => {
+  // During a manual sign-out, TOKEN_REFRESHED can arrive before Supabase
+  // emits SIGNED_OUT. Ignore that stale session instead of restoring Edit/Delete.
+  if (signingOut && event !== "SIGNED_OUT") {
+    return;
+  }
+
   session = s;
 
   if (event === "INITIAL_SESSION" || isInitialLoad) {
@@ -2534,25 +2807,42 @@ sb.auth.onAuthStateChange(async (event, s) => {
   }
 
   if (event === "SIGNED_OUT") {
+    // The manual sign-out path already removed privileged controls. For an
+    // automatic/external sign-out, do the same lightweight cleanup here.
     clearLoginTime();
+    session = null;
+    archiveRole = "viewer";
+    latestEntriesMode = false;
+    applySignedOutUI();
+    updateAuthUI();
+    if (!signingOut) render();
+    signingOut = false;
+    return;
   }
 
-  await getArchiveRole();
-  updateAuthUI();
-  entries = await loadEntries();
-  await loadSubjectsFromWorker();
-  renderSubjectFilters();
-  renderTypeFilters();
-  renderSubjectOptions();
-  render();
-  if (event === "SIGNED_IN" && archiveRole === "contributor" && justSignedIn) {
-    document.getElementById("contributorDisclaimerOverlay").style.display = "flex";
+  try {
+    await getArchiveRole();
+    updateAuthUI();
+    entries = await loadEntries();
+    await loadSubjectsFromWorker();
+    renderSubjectFilters();
+    renderTypeFilters();
+    renderSubjectOptions();
+    render();
+    if (event === "SIGNED_IN" && archiveRole === "contributor" && justSignedIn) {
+      document.getElementById("contributorDisclaimerOverlay").style.display = "flex";
+    }
+  } catch (err) {
+    console.error("Auth state update failed:", err);
+    showError("Network error while syncing your account. Please refresh.");
+  } finally {
+    justSignedIn = false;
   }
-  justSignedIn = false;
 });
 
 function codeFromName(name, existingCodes) {
-  const base = name.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 5) || "SUBJ";
+  let base = name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
+  if (!base) base = "SUBJ";
   let code = base, i = 1;
   while (existingCodes.includes(code)) { code = base.slice(0, 4) + i; i++; }
   return code;
@@ -2562,31 +2852,42 @@ function renderSubjectFilters() {
   const row = document.getElementById("subjectFilterRow");
   row.innerHTML = "";
 
-  const allPill = document.createElement("span");
-  allPill.className = "pill" + (filterSubjects.size === 0 ? " active" : "");
+  const allPill = document.createElement("button");
+  allPill.type = "button";
+  allPill.className = "pill" + (!latestEntriesMode && filterSubjects.size === 0 ? " active" : "");
   allPill.textContent = "All subjects";
   allPill.onclick = () => {
+    latestEntriesMode = false;
     filterSubjects.clear();
     renderSubjectFilters();
     render();
   };
   row.appendChild(allPill);
 
+
+  // Keep the special "Other" subject at the very end when all subjects are shown.
   const sortedSubjects = [...subjects]
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      const aIsOther = a.code === "MISC" || a.name.trim().toLowerCase() === "other";
+      const bIsOther = b.code === "MISC" || b.name.trim().toLowerCase() === "other";
+      if (aIsOther && !bIsOther) return 1;
+      if (!aIsOther && bIsOther) return -1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
 
   // Active filters bypass the visible-count limit so filtering by a
   // subject that's currently hidden under "Others" doesn't make its pill
   // (and the fact that it's still filtering) disappear on "Show less".
-  const visibleSubjects = showAllSubjectPills
-    ? sortedSubjects
-    : sortedSubjects.filter((s, index) => index < VISIBLE_SUBJECT_LIMIT || filterSubjects.has(s.code));
+  // Render all subjects first. In the compact state, the row below automatically
+  // keeps only as many as fit on the current monitor and moves the rest into Others.
+  const visibleSubjects = sortedSubjects;
 
   visibleSubjects.forEach(s => {
       const pill = document.createElement("span");
       pill.className = "pill subject-pill" + (filterSubjects.has(s.code) ? " active" : "");
 
-      const label = document.createElement("span");
+      const label = document.createElement("button");
+      label.type = "button";
       label.textContent = s.name;
       label.title = s.name;
       label.onclick = () => {
@@ -2603,12 +2904,13 @@ function renderSubjectFilters() {
       // Contributor: edit ONLY subjects created by this contributor.
       // Admin: edit any subject and delete any subject.
       const canEdit =
+        !!session && (
         archiveRole === "admin" ||
         (
           archiveRole === "contributor" &&
           session &&
           s.created_by === session.user.id
-        );
+        ));
 
       if (canEdit) {
         const editBtn = document.createElement("button");
@@ -2624,7 +2926,7 @@ function renderSubjectFilters() {
         pill.appendChild(editBtn);
       }
 
-      if (archiveRole === "admin") {
+      if (session && archiveRole === "admin") {
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "subject-delete";
@@ -2644,28 +2946,23 @@ function renderSubjectFilters() {
       row.appendChild(pill);
     });
 
-  if (sortedSubjects.length > VISIBLE_SUBJECT_LIMIT) {
-    const othersPill = document.createElement("span");
-    othersPill.className = "pill";
-    othersPill.textContent = showAllSubjectPills
-      ? "Show less"
-      : `Others (${sortedSubjects.length - VISIBLE_SUBJECT_LIMIT})`;
-    othersPill.onclick = () => {
-      showAllSubjectPills = !showAllSubjectPills;
-      renderSubjectFilters();
-    };
-    row.appendChild(othersPill);
-  }
+  const othersPill = document.createElement("button");
+  othersPill.type = "button";
+  othersPill.className = "pill";
+  othersPill.textContent = showAllSubjectPills ? "Show less" : "Others";
+  othersPill.onclick = () => {
+    showAllSubjectPills = !showAllSubjectPills;
+    renderSubjectFilters();
+  };
+  row.appendChild(othersPill);
 
-  const addPill = document.createElement("span");
+  // Only contributors and admins can see the + Subject control.
+  if (archiveRole === "contributor" || archiveRole === "admin") {
+  const addPill = document.createElement("button");
+  addPill.type = "button";
   addPill.className = "pill pill-dashed";
   addPill.textContent = "+ Subject";
   addPill.onclick = () => {
-    if (!session || archiveRole === "viewer") {
-      showError("Sign in with an archive account to add a new subject.");
-      return;
-    }
-
     const form = document.getElementById("addSubjectForm");
     if (form) {
       form.remove();
@@ -2697,6 +2994,12 @@ function renderSubjectFilters() {
         return;
       }
 
+      const nameLower = name.toLowerCase();
+      if (subjects.some(s => s.name.toLowerCase() === nameLower)) {
+        showError("A subject with this name already exists.");
+        return;
+      }
+
       button.disabled = true;
       button.textContent = "…";
       showError("");
@@ -2716,11 +3019,48 @@ function renderSubjectFilters() {
       }
     };
 
+    // Allow users to back out of the form via Escape or by clicking away,
+    // instead of it being stuck open with no way to close it.
+    const cancelForm = () => {
+      if (document.body.contains(f)) {
+        filterSubjects.delete("");
+        renderSubjectFilters();
+      }
+    };
+    f.querySelector("input").addEventListener("keydown", (e) => { if (e.key === "Escape") cancelForm(); });
+    f.querySelector("input").addEventListener("blur", () => setTimeout(cancelForm, 150));
+
     row.appendChild(f);
     f.querySelector("input").focus();
   };
 
   row.appendChild(addPill);
+  }
+
+  // Use the actual available row width instead of a fixed subject limit.
+  // In compact mode, hide subjects from the end until Others fits on the same line.
+  row.classList.toggle("show-all-subjects", showAllSubjectPills);
+  if (!showAllSubjectPills) {
+    const subjectPills = Array.from(row.querySelectorAll(".subject-pill"));
+    let hiddenCount = 0;
+
+    // Temporarily keep the Others button compact while measuring.
+    othersPill.style.display = "inline-flex";
+    for (let i = subjectPills.length - 1; i >= 0 && row.scrollWidth > row.clientWidth; i--) {
+      // Never hide a currently active filter.
+      if (subjectPills[i].classList.contains("active")) continue;
+      subjectPills[i].style.display = "none";
+      hiddenCount++;
+    }
+
+    if (hiddenCount > 0) {
+      othersPill.textContent = `Others (${hiddenCount})`;
+    } else {
+      othersPill.style.display = "none";
+    }
+  } else {
+    othersPill.textContent = "Show less";
+  }
 }
 
 async function createSubject(name) {
@@ -2792,6 +3132,12 @@ async function renameSubject(subject) {
 
   if (name === subject.name) return;
 
+  const nameLower = name.toLowerCase();
+  if (subjects.some(s => s.id !== subject.id && s.name.toLowerCase() === nameLower)) {
+    showError("A subject with this name already exists.");
+    return;
+  }
+
   showError("");
 
   try {
@@ -2850,18 +3196,25 @@ async function removeSubject(code) {
 
   try {
     const subject = subjects.find(s => s.code === code);
-    if (!subject?.id) {
+    if (!subject) {
       throw new Error("Subject record not found.");
     }
 
-    const { error } = await sb
-      .from("subjects")
-      .delete()
-      .eq("id", subject.id);
+    // Real database subjects have an id and must be removed from Supabase.
+    // A legacy fallback subject has no id, so there is no database record to
+    // delete; remove it from the current list instead. Because real database
+    // data is now the source of truth when available, it will not reappear on
+    // the next reload.
+    if (subject.id) {
+      const { error } = await sb
+        .from("subjects")
+        .delete()
+        .eq("id", subject.id);
 
-    if (error) throw error;
+      if (error) throw error;
+    }
 
-    subjects = subjects.filter(s => s.id !== subject.id);
+    subjects = subjects.filter(s => s.code !== code);
     filterSubjects.delete(code);
 
     renderSubjectFilters();
@@ -2880,16 +3233,18 @@ async function removeSubject(code) {
 function renderTypeFilters() {
   const row = document.getElementById("typeFilterRow");
   row.innerHTML = "";
-  const types = ["Previous Year Question", "Mid-Term Question", "Notes", "Books", "Others"];
+  const types = ["Previous Year Question", "Mid-Term Question", "Notes", "Book", "Others"];
 
-  const allPill = document.createElement("span");
+  const allPill = document.createElement("button");
+  allPill.type = "button";
   allPill.className = "pill" + (filterTypes.size === 0 ? " active" : "");
   allPill.textContent = "All types";
   allPill.onclick = () => { filterTypes.clear(); renderTypeFilters(); render(); };
   row.appendChild(allPill);
 
   types.forEach(t => {
-    const pill = document.createElement("span");
+    const pill = document.createElement("button");
+    pill.type = "button";
     const active = filterTypes.has(t);
     pill.className = "pill" + (active ? " active" : "");
     pill.textContent = t;
@@ -2920,7 +3275,14 @@ function renderSubjectOptions() {
 
   [...subjects]
     .filter(s => s.id || s.builtin)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+    .sort((a, b) => {
+      // Keep the special "Others" subject at the bottom of the filing dropdown.
+      const aIsOther = a.name.trim().toLowerCase() === "other" || a.name.trim().toLowerCase() === "others";
+      const bIsOther = b.name.trim().toLowerCase() === "other" || b.name.trim().toLowerCase() === "others";
+      if (aIsOther && !bIsOther) return 1;
+      if (!aIsOther && bIsOther) return -1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    })
     .forEach(s => {
       const opt = document.createElement("option");
       opt.value = s.id || s.code;
@@ -2936,73 +3298,104 @@ function renderSubjectOptions() {
 
 
 function setupCardTilt() {
-  if (window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-  document.querySelectorAll(".card[data-tilt]").forEach(card => {
-    if (card.dataset.tiltReady === "1") return;
-    card.dataset.tiltReady = "1";
-
-    card.addEventListener("pointermove", (e) => {
-      const rect = card.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width - 0.5;
-      const y = (e.clientY - rect.top) / rect.height - 0.5;
-      card.style.transform =
-        `perspective(900px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateY(-3px)`;
-    });
-
-    card.addEventListener("pointerleave", () => {
-      card.style.transform = "";
-    });
-  });
+  // Disabled for performance: thousands of cards do not need individual
+  // pointermove listeners. CSS hover supplies the lightweight interaction.
 }
 
 function filteredEntries() {
   return entries.filter(e => {
-    if (filterSubjects.size > 0 && !filterSubjects.has(e.subject)) return false;
+    if (!latestEntriesMode && filterSubjects.size > 0 && !filterSubjects.has(e.subject)) return false;
     if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
     if (searchQ) {
       const meta = subjectMeta(e.subject);
       const hay = `${e.title} ${e.filename} ${e.year || ""} ${meta.name} ${e.type}`.toLowerCase();
-      if (!hay.includes(searchQ)) return false;
+      const terms = searchQ.split(/\s+/).filter(Boolean);
+      if (!terms.every(term => hay.includes(term))) return false;
     }
     return true;
   });
 }
 
-// Order entries within a subject: Books, then Notes, then Previous Year
-// Question / Mid-Term Question grouped together and sorted newest year
-// first, then anything else last.
+// Entries are always filed in this exact order inside each subject/row:
+// Book -> Notes -> latest-year Mid-Term -> latest-year Previous Year ->
+// next-year Mid-Term -> next-year Previous Year -> ... -> Others.
+// Normalize backend/legacy type names before sorting. The upload API uses
+// "Books" while the UI uses "Book", which previously caused Notes to appear
+// before Books because "Books" was not present in TYPE_ORDER.
+function canonicalEntryType(type) {
+  const t = String(type || "").trim().toLowerCase();
+  if (t === "book" || t === "books") return "Book";
+  if (t === "note" || t === "notes") return "Notes";
+  if (t === "mid-term question" || t === "mid term question" || t === "midterm question") return "Mid-Term Question";
+  if (t === "previous year question" || t === "previous-year question" || t === "previous year questions") return "Previous Year Question";
+  return "Others";
+}
+
 const TYPE_ORDER = {
-  "Books": 0,
+  "Book": 0,
   "Notes": 1,
-  "Previous Year Question": 2,
   "Mid-Term Question": 2,
+  "Previous Year Question": 2,
   "Others": 3
 };
 
+const QUESTION_TYPE_ORDER = {
+  "Mid-Term Question": 0,
+  "Previous Year Question": 1
+};
+
+function entryYear(entry) {
+  // Prefer the database year. If it is missing/invalid, recover a year from
+  // the title or filename so old records still sort correctly.
+  const sources = [entry.year, entry.title, entry.filename];
+  for (const source of sources) {
+    const text = String(source || "");
+    const match = text.match(/(?:19|20)\d{2}/);
+    if (match) return Number(match[0]);
+  }
+  return -Infinity;
+}
+
 function sortEntriesForDisplay(list) {
   return [...list].sort((a, b) => {
-    const ta = TYPE_ORDER[a.type] ?? 3;
-    const tb = TYPE_ORDER[b.type] ?? 3;
+    const typeA = canonicalEntryType(a.type);
+    const typeB = canonicalEntryType(b.type);
+    const ta = TYPE_ORDER[typeA] ?? 3;
+    const tb = TYPE_ORDER[typeB] ?? 3;
+
+    // Book first, then Notes, regardless of upload date.
     if (ta !== tb) return ta - tb;
+
+    // For question papers, sort by year first (newest to oldest), then
+    // Mid-Term before Previous Year for the same year.
     if (ta === 2) {
-      const ya = parseInt(a.year, 10) || 0;
-      const yb = parseInt(b.year, 10) || 0;
-      if (ya !== yb) return yb - ya; // newest year first
+      const ya = entryYear(a);
+      const yb = entryYear(b);
+      if (ya !== yb) return yb - ya;
+
+      const qa = QUESTION_TYPE_ORDER[typeA] ?? 99;
+      const qb = QUESTION_TYPE_ORDER[typeB] ?? 99;
+      if (qa !== qb) return qa - qb;
     }
-    return 0;
+
+    const titleA = String(a.title || a.filename || "").toLowerCase();
+    const titleB = String(b.title || b.filename || "").toLowerCase();
+    return titleA.localeCompare(titleB);
   });
 }
 
 function buildCard(entry) {
   const meta = subjectMeta(entry.subject);
   const canDelete =
-    archiveRole === "admin" ||
-    (archiveRole === "contributor" && entry.contributorDeletable === true);
+    !!session && (
+      archiveRole === "admin" ||
+      (archiveRole === "contributor" && entry.contributorDeletable === true)
+    );
+  const canEdit = canEditEntry(entry);
   const card = document.createElement("div");
   card.className = "card";
   card.dataset.tilt = "true";
+  card.dataset.id = entry.id;
   const questionWithoutTitle =
     entry.type === "Mid-Term Question" || entry.type === "Previous Year Question";
 
@@ -3012,7 +3405,7 @@ function buildCard(entry) {
   let displayTitle = entry.title || "";
   if (entry.type === "Notes") {
     if (displayTitle === notesBaseTitle) {
-      displayTitle = "";
+      displayTitle = "Notes";
     } else if (displayTitle.startsWith(`${notesBaseTitle}: `)) {
       displayTitle = displayTitle.slice(notesBaseTitle.length + 2).trim();
     }
@@ -3028,20 +3421,16 @@ function buildCard(entry) {
       <span class="card-type">${escapeHtml(entry.type)}</span>
       ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
     </div>
-    <div class="card-file-row">
-      <span class="card-filename" title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</span>
-      <span class="card-size">${formatSize(entry.size)}</span>
-    </div>
     <div class="card-actions">
       <button class="action-btn pv-btn">⊙ Preview</button>
       <button class="action-btn dl-btn">⬇ Download</button>
-      ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}">🗑</button>` : ""}
+      ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
+      ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}">🗑</button>` : ""}
     </div>
   `;
-  card.querySelector(".pv-btn").onclick = () => previewEntry(entry);
-  card.querySelector(".dl-btn").onclick = () => downloadEntry(entry, card.querySelector(".dl-btn"));
-  const delBtn = card.querySelector(".del-btn");
-  if (delBtn) delBtn.onclick = () => deleteEntry(entry, delBtn);
+  // Action buttons are wired via a single delegated listener on #grid
+  // (see setup below) instead of per-card onclick handlers, which used to
+  // attach thousands of listeners to the DOM as more entries were rendered.
   return card;
 }
 
@@ -3093,10 +3482,51 @@ function wireSubjectCarousel(wrap) {
   // Attaching one every time render() runs (i.e. on every keystroke while
   // searching) used to pile up hundreds of duplicate listeners and could
   // freeze the tab on resize.
-  refreshCarouselNav(wrap);
+  //
+  // Fix: don't check overflow synchronously here. .subject-track uses
+  // content-visibility:auto, and right after the row is inserted the
+  // browser hasn't yet decided whether it intersects the viewport — until
+  // it does, scrollWidth/clientWidth can reflect the contain-intrinsic-size
+  // placeholder instead of the real card layout, so the overflow check
+  // silently comes back false and the arrow never gets its "show" class.
+  // A double rAF waits for that first real layout/paint before measuring.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => refreshCarouselNav(wrap));
+  });
+}
+
+// Remember each subject carousel position when a render is triggered by an action
+// such as deleting an entry. This prevents the row from jumping back to the
+// first card after every deletion.
+let pendingCarouselPositions = null;
+
+function captureCarouselPositions() {
+  const positions = new Map();
+  document.querySelectorAll(".subject-row[data-subject-code]").forEach(row => {
+    const track = row.querySelector(".subject-track");
+    if (track) positions.set(row.dataset.subjectCode, track.scrollLeft);
+  });
+  return positions;
+}
+
+function restoreCarouselPositions(positions) {
+  if (!positions || !positions.size) return;
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".subject-row[data-subject-code]").forEach(row => {
+      const saved = positions.get(row.dataset.subjectCode);
+      const track = row.querySelector(".subject-track");
+      if (track && Number.isFinite(saved)) {
+        const max = Math.max(0, track.scrollWidth - track.clientWidth);
+        track.scrollLeft = Math.min(saved, max);
+        refreshCarouselNav(row.querySelector(".subject-carousel"));
+      }
+    });
+  });
 }
 
 function render() {
+  const carouselPositions = pendingCarouselPositions;
+  pendingCarouselPositions = null;
   const grid = document.getElementById("grid");
   const summaryEntries = document.getElementById("summaryEntries");
   const summarySubjects = document.getElementById("summarySubjects");
@@ -3115,26 +3545,42 @@ function render() {
   grid.innerHTML = "";
   if (list.length === 0) {
     empty.style.display = "flex";
-    empty.innerHTML = entries.length === 0
-      ? `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:#F2F4F8;">Nothing filed yet.</p><p style="margin:8px 0 0;font-size:13.5px;color:#8A93A6;">Sign in to file the first question paper or note.</p>`
-      : `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:#F2F4F8;">No entries match these filters.</p><p style="margin:8px 0 0;font-size:13.5px;color:#8A93A6;">Try a different subject or type.</p>`;
+    if (entries.length === 0) {
+      const promptText = session && archiveRole !== "viewer"
+        ? "Click '+ File a new entry' above to get started."
+        : "Sign in to file the first question paper or note.";
+      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:#F2F4F8;">Nothing filed yet.</p><p style="margin:8px 0 0;font-size:13.5px;color:#8A93A6;">${promptText}</p>`;
+    } else {
+      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:#F2F4F8;">No entries match these filters.</p><p style="margin:8px 0 0;font-size:13.5px;color:#8A93A6;">Try a different subject or type.</p>`;
+    }
     return;
   }
   empty.style.display = "none";
 
-  // Group entries by subject, in subject order, then append any subject
-  // codes present in the data but missing from the subjects list.
+  // Normal view groups entries by subject. Latest Entries (available to
+  // Contributors/Admins) combines every subject into one row and orders by
+  // uploadedAt, newest first.
   const bySubject = new Map();
-  list.forEach(entry => {
-    const code = entry.subject || "__none__";
-    if (!bySubject.has(code)) bySubject.set(code, []);
-    bySubject.get(code).push(entry);
-  });
+  if (latestEntriesMode) {
+    // Keep the Entries section in the same filing order even in
+    // "Latest entries" mode: Book, Notes, then question papers by
+    // newest year, with Mid-Term before Previous Year for each year.
+    bySubject.set("__latest__", sortEntriesForDisplay(list));
+  } else {
+    list.forEach(entry => {
+      const isKnown = subjects.some(s => s.code === entry.subject);
+      const code = isKnown ? entry.subject : "__none__";
+      if (!bySubject.has(code)) bySubject.set(code, []);
+      bySubject.get(code).push(entry);
+    });
+  }
 
-  const orderedCodes = [
-    ...subjects.map(s => s.code).filter(code => bySubject.has(code)),
-    ...[...bySubject.keys()].filter(code => !subjects.some(s => s.code === code)),
-  ];
+  const orderedCodes = latestEntriesMode
+    ? ["__latest__"]
+    : [
+        ...subjects.map(s => s.code).filter(code => bySubject.has(code)),
+        ...(bySubject.has("__none__") ? ["__none__"] : [])
+      ];
 
   const wraps = [];
   orderedCodes.forEach(code => {
@@ -3143,10 +3589,11 @@ function render() {
 
     const row = document.createElement("div");
     row.className = "subject-row";
+    row.dataset.subjectCode = code;
     row.innerHTML = `
       <div class="subject-row-head">
         <div class="subject-row-title">
-          ${escapeHtml(meta.name)}
+          ${code === "__latest__" ? "Latest entries" : escapeHtml(meta.name)}
           <span class="subject-row-count">${groupEntries.length} ${groupEntries.length === 1 ? "entry" : "entries"}</span>
         </div>
       </div>
@@ -3159,12 +3606,14 @@ function render() {
       </div>
     `;
     const track = row.querySelector(".subject-track");
-    sortEntriesForDisplay(groupEntries).forEach(entry => track.appendChild(buildCard(entry)));
+    const displayEntries = code === "__latest__" ? groupEntries : sortEntriesForDisplay(groupEntries);
+    displayEntries.forEach(entry => track.appendChild(buildCard(entry)));
     grid.appendChild(row);
     wraps.push(row.querySelector(".subject-carousel"));
   });
 
   wraps.forEach(wireSubjectCarousel);
+  restoreCarouselPositions(carouselPositions);
   setupCardTilt();
 }
 
@@ -3173,7 +3622,8 @@ function escapeHtml(s) {
 }
 
 function guessMime(filename, fallback) {
-  const ext = (filename.split(".").pop() || "").toLowerCase();
+  const parts = (filename || "").split(".");
+  const ext = parts.length > 1 ? parts.pop().toLowerCase() : "";
   const map = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
   return map[ext] || fallback || "application/octet-stream";
 }
@@ -3192,8 +3642,10 @@ async function openPdfInNewTab(pdfUrl) {
   const popup = window.open("about:blank", "_blank");
 
   if (!popup) {
-    // Popup was blocked. The direct URL is still available as a fallback.
-    window.location.href = pdfUrl;
+    // Popup was blocked. Navigating window.location away would wipe all
+    // in-memory SPA state (filters, open forms, etc.), so just inform the
+    // user instead of forcing a full-page navigation.
+    alert("Popup blocked. Please allow popups for this site, or use the Download button instead.");
     return;
   }
 
@@ -3223,9 +3675,10 @@ async function openPdfInNewTab(pdfUrl) {
 
     popup.location.replace(blobUrl);
 
-    // Keep the object URL alive long enough for the new tab's PDF viewer
-    // to load it. Then release it.
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10 * 60 * 1000);
+    // Do not revoke the object URL on a timer: a 10-minute expiry killed
+    // the PDF out from under students who kept a study tab open longer
+    // than that. The blob URL is released naturally when the tab closes
+    // or reloads (or the browser reclaims it), so no revoke here.
   } catch (err) {
     console.error("Could not open PDF in new tab:", err);
     try {
@@ -3341,6 +3794,7 @@ async function previewEntry(entry) {
   const mime = guessMime(entry.filename, "");
 
   if (mime === "application/pdf") {
+    document.querySelector("#previewOverlay .preview-card")?.classList.add("pdf-preview-active");
     try {
       const response = await fetch(fileUrl);
       if (!response.ok) throw new Error("Could not load the PDF.");
@@ -3374,8 +3828,13 @@ async function previewEntry(entry) {
               <span class="pdf-page-info" id="pdfPageInfo">Page 1 / ${pdf.numPages}</span>
               <button type="button" class="pdf-page-btn" id="pdfNextBtn" aria-label="Next page">›</button>
             </div>
-            <span class="pdf-toolbar-filename">${escapeHtml(entry.filename)}</span>
             <div class="pdf-toolbar-actions">
+              <div class="pdf-zoom-controls" aria-label="Zoom controls">
+                <button type="button" class="pdf-page-btn" id="pdfZoomOutBtn" aria-label="Zoom out" title="Zoom out">−</button>
+                <span class="pdf-zoom-level" id="pdfZoomLevel">100%</span>
+                <button type="button" class="pdf-page-btn" id="pdfZoomInBtn" aria-label="Zoom in" title="Zoom in">+</button>
+                <button type="button" class="pdf-page-btn" id="pdfZoomResetBtn" aria-label="Reset zoom" title="Reset zoom">1:1</button>
+              </div>
               <button type="button" class="pdf-page-btn" id="pdfDownloadBtn" aria-label="Download" title="Download">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
               </button>
@@ -3387,8 +3846,8 @@ async function previewEntry(entry) {
           <div class="pdf-canvas-wrap" id="pdfCanvasWrap" aria-label="Scrollable PDF preview">
             <div class="pdf-pages" id="pdfPages"></div>
           </div>
-          <div class="preview-pdf-actions pdf-open-new-tab-bottom">
-            <button type="button" class="submit-btn pdf-open-new-tab-btn">↗ Open PDF in new tab</button>
+          <div class="pdf-open-new-tab-bottom">
+            <button type="button" class="submit-btn pdf-open-new-tab-btn">↗ Open PDF</button>
           </div>
         </div>`;
 
@@ -3409,12 +3868,27 @@ async function previewEntry(entry) {
       if (downloadBtn) {
         downloadBtn.onclick = () => downloadEntry(entry, downloadBtn);
       }
+      const zoomOutBtn = document.getElementById("pdfZoomOutBtn");
+      const zoomInBtn = document.getElementById("pdfZoomInBtn");
+      const zoomResetBtn = document.getElementById("pdfZoomResetBtn");
+      const zoomLevel = document.getElementById("pdfZoomLevel");
+      let zoomFactor = 1;
+      const ZOOM_MIN = 0.5;
+      const ZOOM_MAX = 3;
+      const ZOOM_STEP = 0.25;
+      function updateZoomControls() {
+        if (zoomLevel) zoomLevel.textContent = `${Math.round(zoomFactor * 100)}%`;
+        if (zoomOutBtn) zoomOutBtn.disabled = zoomFactor <= ZOOM_MIN;
+        if (zoomInBtn) zoomInBtn.disabled = zoomFactor >= ZOOM_MAX;
+      }
       let currentPage = 1;
       let pageElements = [];
       let pageMeta = [];
       let resizeTimer = null;
       let rendering = false;
       const UNLOAD_DISTANCE = 6; // pages further than this from the current page get their canvas freed
+      let loadObserver = null;
+      let observer = null;
 
       function updateControls() {
         pageInfo.textContent = `Page ${currentPage} / ${pdf.numPages}`;
@@ -3441,8 +3915,9 @@ async function previewEntry(entry) {
           // page 1's dimensions. If an individual page turns out to differ,
           // renderPage() corrects that page's box once it actually renders.
           const firstPage = await pdf.getPage(1);
+          if (!pagesHost.isConnected) return; // Prevent detached rendering
           const firstBase = firstPage.getViewport({ scale: 1 });
-          const placeholderScale = Math.min(1.8, availableWidth / firstBase.width);
+          const placeholderScale = Math.min(3, (availableWidth / firstBase.width) * zoomFactor);
           const placeholderW = Math.floor(firstBase.width * placeholderScale);
           const placeholderH = Math.floor(firstBase.height * placeholderScale);
 
@@ -3472,7 +3947,7 @@ async function previewEntry(entry) {
           const page = await pdf.getPage(meta.num);
           const availableWidth = Math.max(220, canvasWrap.clientWidth - 26);
           const baseViewport = page.getViewport({ scale: 1 });
-          const scale = Math.min(1.8, availableWidth / baseViewport.width);
+          const scale = Math.min(3, (availableWidth / baseViewport.width) * zoomFactor);
           const viewport = page.getViewport({ scale });
           const outputScale = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -3501,6 +3976,12 @@ async function previewEntry(entry) {
           meta.canvas = canvas;
           meta.rendered = true;
         } catch (err) {
+          if (err?.name === "RenderingCancelledException") {
+            // Expected during normal memory sweeping (unloadPage() cancels
+            // in-flight renders); not a real error.
+            meta.rendering = false;
+            return;
+          }
           console.error(`Could not render PDF page ${meta.num}:`, err);
           meta.rendering = false;
         } finally {
@@ -3511,7 +3992,6 @@ async function previewEntry(entry) {
       // Frees a rendered page's canvas memory and swaps it back to an empty
       // placeholder of the same size, so scroll position doesn't jump.
       function unloadPage(meta) {
-        if (!meta.rendered) return;
         if (meta.renderTask) {
           try { meta.renderTask.cancel(); } catch (e) {}
           meta.renderTask = null;
@@ -3524,6 +4004,7 @@ async function previewEntry(entry) {
         meta.container.classList.add("pdf-page-placeholder");
         meta.canvas = null;
         meta.rendered = false;
+        meta.rendering = false;
       }
 
       // Keeps memory bounded on long documents: only pages within
@@ -3536,6 +4017,22 @@ async function previewEntry(entry) {
         }
       }
 
+      async function applyZoom(nextZoom) {
+        const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nextZoom));
+        if (Math.abs(clamped - zoomFactor) < 0.001) return;
+        zoomFactor = clamped;
+        updateZoomControls();
+        const keepPage = currentPage;
+        loadObserver?.disconnect();
+        observer?.disconnect();
+        await renderAllPages();
+        pageElements.forEach(el => {
+          loadObserver.observe(el);
+          observer.observe(el);
+        });
+        setTimeout(() => goToPage(Math.min(keepPage, pageElements.length)), 0);
+      }
+
       function goToPage(num) {
         const meta = pageMeta[num - 1];
         if (!meta) return;
@@ -3545,13 +4042,18 @@ async function previewEntry(entry) {
         meta.container.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
+      updateZoomControls();
+      if (zoomOutBtn) zoomOutBtn.onclick = () => applyZoom(zoomFactor - ZOOM_STEP);
+      if (zoomInBtn) zoomInBtn.onclick = () => applyZoom(zoomFactor + ZOOM_STEP);
+      if (zoomResetBtn) zoomResetBtn.onclick = () => applyZoom(1);
+
       prevBtn.onclick = () => goToPage(Math.max(1, currentPage - 1));
       nextBtn.onclick = () => goToPage(Math.min(pageElements.length, currentPage + 1));
 
       // Lazily paints pages once they scroll near the viewport, instead of
       // rendering the whole document up front. rootMargin gives a generous
       // preload buffer above/below so pages are ready just before they're seen.
-      const loadObserver = new IntersectionObserver((entries) => {
+      loadObserver = new IntersectionObserver((entries) => {
         for (const item of entries) {
           if (!item.isIntersecting) continue;
           const meta = pageMeta[Number(item.target.dataset.page) - 1];
@@ -3561,7 +4063,7 @@ async function previewEntry(entry) {
 
       // Tracks which page is centered for the toolbar indicator, and triggers
       // freeing far-away pages so long PDFs don't keep growing memory use.
-      const observer = new IntersectionObserver((entries) => {
+      observer = new IntersectionObserver((entries) => {
         let best = null;
         for (const item of entries) {
           if (!item.isIntersecting) continue;
@@ -3574,15 +4076,41 @@ async function previewEntry(entry) {
         }
       }, { root: canvasWrap, threshold: [0.15, 0.4, 0.65, 0.9] });
 
+      const onPdfKeydown = (event) => {
+        if (!document.getElementById("previewOverlay")?.contains(body)) return;
+        if (!(event.ctrlKey || event.metaKey)) return;
+        if (event.key === "+" || event.key === "=") { event.preventDefault(); applyZoom(zoomFactor + ZOOM_STEP); }
+        else if (event.key === "-") { event.preventDefault(); applyZoom(zoomFactor - ZOOM_STEP); }
+        else if (event.key === "0") { event.preventDefault(); applyZoom(1); }
+      };
+      document.addEventListener("keydown", onPdfKeydown);
+      body._pdfKeydownHandler = onPdfKeydown;
+
+      // Mouse-wheel zoom inside the PDF preview.
+      // Ctrl/Cmd + wheel follows the normal browser zoom gesture without
+      // interfering with ordinary vertical/horizontal PDF scrolling.
+      const onPdfWheel = (event) => {
+        if (!document.getElementById("previewOverlay")?.contains(body)) return;
+        if (!(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        applyZoom(zoomFactor + direction * ZOOM_STEP);
+      };
+      canvasWrap.addEventListener("wheel", onPdfWheel, { passive: false });
+      body._pdfWheelHandler = onPdfWheel;
+
       await renderAllPages();
       pageElements.forEach(el => {
         loadObserver.observe(el);
         observer.observe(el);
       });
 
+      let lastWidth = canvasWrap.clientWidth;
       const onResize = () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(async () => {
+        if (canvasWrap.clientWidth === lastWidth) return; // Ignore vertical-only resizing (mobile URL bar)
+        lastWidth = canvasWrap.clientWidth;
+        clearTimeout(body._pdfResizeTimer);
+        body._pdfResizeTimer = setTimeout(async () => {
           const keepPage = currentPage;
           loadObserver.disconnect();
           observer.disconnect();
@@ -3609,7 +4137,8 @@ async function previewEntry(entry) {
             <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download</button>
           </div>
         </div>`;
-      document.getElementById("fallbackDlBtn").onclick = () => downloadEntry(entry);
+      const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+      if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
       const openNewTabBtn = body.querySelector(".pdf-open-new-tab-btn");
       if (openNewTabBtn) {
         openNewTabBtn.onclick = () => openPdfInNewTab(fileUrl);
@@ -3618,21 +4147,62 @@ async function previewEntry(entry) {
     return;
   }
 
+  if (previewAbortController) previewAbortController.abort();
+  previewAbortController = new AbortController();
+
   try {
-    const response = await fetch(fileUrl);
+    const response = await fetch(fileUrl, { signal: previewAbortController.signal });
     if (!response.ok) throw new Error("Could not load a preview for this file.");
     const blob = await response.blob();
+    if (token !== currentPreviewToken) return; // closed while downloading
     const actualMime = guessMime(entry.filename, blob.type);
     const url = URL.createObjectURL(blob);
 
     if (actualMime.startsWith("image/")) {
-      body.innerHTML = "";
+      body.innerHTML = `
+        <div class="image-preview-shell">
+          <div class="image-preview-toolbar" aria-label="Image zoom controls">
+            <button type="button" class="pdf-page-btn" id="imageZoomOutBtn" aria-label="Zoom out" title="Zoom out">−</button>
+            <span class="image-zoom-level" id="imageZoomLevel">100%</span>
+            <button type="button" class="pdf-page-btn" id="imageZoomInBtn" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" class="pdf-page-btn" id="imageZoomResetBtn" aria-label="Reset zoom" title="Reset zoom">1:1</button>
+          </div>
+          <div class="image-preview-wrap" id="imagePreviewWrap"></div>
+        </div>`;
       const img = document.createElement("img");
       img.src = url;
       img.alt = entry.title || entry.filename || "Preview";
-      body.appendChild(img);
-      img.onload = () => setTimeout(() => URL.revokeObjectURL(url), 1000);
-      img.onerror = () => URL.revokeObjectURL(url);
+      document.getElementById("imagePreviewWrap").appendChild(img);
+      let imageZoom = 1;
+      const imageZoomLevel = document.getElementById("imageZoomLevel");
+      const imageZoomOut = document.getElementById("imageZoomOutBtn");
+      const imageZoomIn = document.getElementById("imageZoomInBtn");
+      const imageZoomReset = document.getElementById("imageZoomResetBtn");
+      const updateImageZoom = () => {
+        img.style.transform = `scale(${imageZoom})`;
+        if (imageZoomLevel) imageZoomLevel.textContent = `${Math.round(imageZoom * 100)}%`;
+        if (imageZoomOut) imageZoomOut.disabled = imageZoom <= 0.5;
+        if (imageZoomIn) imageZoomIn.disabled = imageZoom >= 3;
+      };
+      const setImageZoom = (value) => { imageZoom = Math.max(0.5, Math.min(3, value)); updateImageZoom(); };
+      imageZoomOut.onclick = () => setImageZoom(imageZoom - 0.25);
+      imageZoomIn.onclick = () => setImageZoom(imageZoom + 0.25);
+
+      // Mouse-wheel zoom for image previews.
+      const imagePreviewWrap = document.getElementById("imagePreviewWrap");
+      const onImageWheel = (event) => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        setImageZoom(imageZoom + direction * 0.25);
+      };
+      imagePreviewWrap.addEventListener("wheel", onImageWheel, { passive: false });
+      body._imageWheelHandler = onImageWheel;
+      imageZoomReset.onclick = () => setImageZoom(1);
+      updateImageZoom();
+      activeObjectUrl = url;
+      img.onload = () => { URL.revokeObjectURL(url); if (activeObjectUrl === url) activeObjectUrl = null; };
+      img.onerror = () => { URL.revokeObjectURL(url); if (activeObjectUrl === url) activeObjectUrl = null; };
     } else {
       URL.revokeObjectURL(url);
       body.innerHTML = `
@@ -3640,15 +4210,18 @@ async function previewEntry(entry) {
           Preview isn't supported for this file type yet.<br/>
           <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download instead</button>
         </div>`;
-      document.getElementById("fallbackDlBtn").onclick = () => downloadEntry(entry);
+      const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+      if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
     }
-  } catch {
+  } catch (err) {
+    if (err?.name === "AbortError") return; // preview was closed; nothing to show
     body.innerHTML = `
       <div class="preview-fallback">
         Couldn't load a preview for this file.<br/>
         <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download instead</button>
       </div>`;
-    document.getElementById("fallbackDlBtn").onclick = () => downloadEntry(entry);
+    const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+      if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
   }
 }
 async function downloadEntry(entry, btn) {
@@ -3692,6 +4265,130 @@ async function downloadEntry(entry, btn) {
   }
 }
 
+let editingEntryId = null;
+
+function showEditEntryError(msg) {
+  const el = document.getElementById("editEntryErrorBanner");
+  el.textContent = msg;
+  el.style.display = msg ? "flex" : "none";
+}
+
+function updateEditEntryFields() {
+  const type = document.getElementById("editTypeSelect").value;
+  const yearField = document.getElementById("editYearField");
+  const titleField = document.getElementById("editTitleField");
+  yearField.style.display = YEAR_REQUIRED_TYPES.includes(type) ? "block" : "none";
+  // Question cards do not display a title, but keeping the existing title is
+  // useful if the type is later changed back, so the field remains editable.
+  titleField.style.display = "block";
+  document.getElementById("editFileHint").textContent =
+    `Leave empty to keep the current file. New ${type} files must be under ${formatSize(maxBytesForType(type))}.`;
+}
+
+function canEditEntry(entry) {
+  // Never expose or allow entry editing without an active signed-in session.
+  // archiveRole can briefly remain stale while Supabase finishes SIGNED_OUT.
+  if (!session) return false;
+  return archiveRole === "admin" ||
+    (archiveRole === "contributor" && entry && entry.contributorDeletable === true);
+}
+
+function openEditEntry(entry) {
+  if (!(session && canEditEntry(entry))) {
+    showError("Contributors can edit only the 3 newest entries. Older entries require Admin permission.");
+    return;
+  }
+  editingEntryId = entry.id;
+  showEditEntryError("");
+  document.getElementById("editEntryForm").reset();
+  document.getElementById("editTypeSelect").value = entry.type || "Notes";
+  document.getElementById("editTitleInput").value = entry.title || "";
+  document.getElementById("editYearInput").value = entry.year || "";
+  updateEditEntryFields();
+  document.getElementById("editEntryOverlay").style.display = "flex";
+  document.body.classList.add("no-scroll");
+}
+
+function closeEditEntry() {
+  document.getElementById("editEntryOverlay").style.display = "none";
+  document.body.classList.remove("no-scroll");
+  document.getElementById("editEntryForm").reset();
+  editingEntryId = null;
+  showEditEntryError("");
+}
+
+document.getElementById("closeEditEntryBtn").onclick = closeEditEntry;
+document.getElementById("editEntryOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "editEntryOverlay") closeEditEntry();
+});
+document.getElementById("editTypeSelect").addEventListener("change", updateEditEntryFields);
+document.getElementById("editEntryForm").addEventListener("input", () => showEditEntryError(""));
+
+document.getElementById("editEntryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const entry = entries.find(item => String(item.id) === String(editingEntryId));
+  if (!(session && canEditEntry(entry))) {
+    showEditEntryError("Contributors can edit only the 3 newest entries. Older entries require Admin permission.");
+    return;
+  }
+  if (!entry) {
+    showEditEntryError("Entry not found. Refresh and try again.");
+    return;
+  }
+  const type = document.getElementById("editTypeSelect").value;
+  const title = document.getElementById("editTitleInput").value.trim();
+  const year = document.getElementById("editYearInput").value.trim();
+  const file = document.getElementById("editFileInput").files[0];
+
+  if ((type === "Others" || type === "Book") && !title) {
+    showEditEntryError(type === "Book" ? "Add a title for the book." : "Add a title describing the file.");
+    return;
+  }
+  if (YEAR_REQUIRED_TYPES.includes(type)) {
+    if (!/^\d{4}$/.test(year)) {
+      showEditEntryError("Enter a valid 4-digit year.");
+      return;
+    }
+  }
+  if (file) {
+    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
+    if (!allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      showEditEntryError("Invalid file type. Only PDF and standard image files are allowed.");
+      return;
+    }
+    if (file.size > maxBytesForType(type)) {
+      showEditEntryError(`That file is ${formatSize(file.size)}. ${type} files must be under ${formatSize(maxBytesForType(type))}.`);
+      return;
+    }
+  }
+
+  const btn = document.getElementById("editEntrySubmitBtn");
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+  showEditEntryError("");
+  try {
+    const form = new FormData();
+    form.append("title", title);
+    form.append("type", type);
+    form.append("year", year);
+    if (file) form.append("file", file);
+    await workerFetch(`/entries?id=${encodeURIComponent(entry.id)}`, {
+      method: "PATCH",
+      body: form
+    }, true);
+    pendingCarouselPositions = captureCarouselPositions();
+    entries = await loadEntries();
+    closeEditEntry();
+    render();
+  } catch (err) {
+    console.error(err);
+    showEditEntryError(err?.message || "Couldn't save changes.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save changes";
+  }
+});
+
 async function deleteEntry(entry, btn) {
   if (!session) {
     showError("Sign in to remove entries.");
@@ -3699,10 +4396,12 @@ async function deleteEntry(entry, btn) {
   }
 
   const allowedByUi =
-    archiveRole === "admin" ||
-    (
-      archiveRole === "contributor" &&
-      entry.contributorDeletable === true
+    !!session && (
+      archiveRole === "admin" ||
+      (
+        archiveRole === "contributor" &&
+        entry.contributorDeletable === true
+      )
     );
 
   if (!allowedByUi) {
@@ -3732,6 +4431,9 @@ async function deleteEntry(entry, btn) {
       true
     );
 
+    // Preserve the current horizontal position so deleting one card does not
+    // force you to slide back to the last card again.
+    pendingCarouselPositions = captureCarouselPositions();
     entries = entries.filter(e => e.id !== entry.id);
     render();
 
@@ -3762,9 +4464,38 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
   }, 250);
 });
 document.getElementById("searchClear").onclick = () => {
-  document.getElementById("searchInput").value = "";
-  searchQ = "";
+  clearTimeout(searchTimeout);
+  const input = document.getElementById("searchInput");
+  input.value = ""; searchQ = "";
   document.getElementById("searchClear").style.display = "none";
+  render(); input.focus();
+};
+
+// Fix: on browser back/forward navigation the input value can be restored
+// by the browser (bfcache) without an "input" event firing, leaving the
+// clear (✕) button hidden even though there's text in the field.
+document.getElementById("searchClear").style.display =
+  document.getElementById("searchInput").value.length ? "block" : "none";
+
+// Add event listener for grid actions using delegation (Fix: memory bloat).
+document.getElementById("grid").addEventListener("click", (e) => {
+  const btn = e.target.closest(".action-btn");
+  if (!btn) return;
+  const card = btn.closest(".card");
+  const entry = entries.find(ent => String(ent.id) === card.dataset.id);
+  if (!entry) return;
+  if (btn.classList.contains("pv-btn")) previewEntry(entry);
+  else if (btn.classList.contains("dl-btn")) downloadEntry(entry, btn);
+  else if (btn.classList.contains("edit-btn")) openEditEntry(entry);
+  else if (btn.classList.contains("del-btn")) deleteEntry(entry, btn);
+});
+
+document.getElementById("latestEntriesBtn").onclick = () => {
+  if (!(session && (archiveRole === "admin" || archiveRole === "contributor"))) return;
+  latestEntriesMode = !latestEntriesMode;
+  if (latestEntriesMode) filterSubjects.clear();
+  renderSubjectFilters();
+  updateAuthUI();
   render();
 };
 
@@ -3795,34 +4526,44 @@ function updateFileSizeHint() {
 
   const titleField = document.getElementById("titleField");
   const titleInput = document.getElementById("titleInput");
-  if (type === "Others" || type === "Books") {
+  if (type === "Others" || type === "Book") {
     titleField.style.display = "";
-    titleInput.placeholder = type === "Books" ? "Name of the book" : "Describe what this file is";
+    titleInput.placeholder = type === "Book" ? "Name of the book" : "Describe what this file is";
   } else {
     titleField.style.display = "none";
-    titleInput.value = "";
   }
 
   const subtitleField = document.getElementById("subtitleField");
-  const subtitleInput = document.getElementById("subtitleInput");
   if (type === "Notes") {
     subtitleField.style.display = "";
   } else {
     subtitleField.style.display = "none";
-    subtitleInput.value = "";
   }
 
   const yearField = document.getElementById("yearField");
-  const yearInput = document.getElementById("yearInput");
   if (YEAR_REQUIRED_TYPES.includes(type)) {
     yearField.style.display = "";
   } else {
     yearField.style.display = "none";
-    yearInput.value = "";
   }
 }
 document.getElementById("typeSelect").addEventListener("change", updateFileSizeHint);
 updateFileSizeHint();
+
+// Fix: give immediate feedback on oversized files instead of waiting until
+// the user hits submit.
+document.getElementById("fileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const selectedType = document.getElementById("typeSelect").value;
+  const typeLimit = maxBytesForType(selectedType);
+  if (file.size > typeLimit) {
+    showFormError(`File is too large (${formatSize(file.size)}). Limit for ${selectedType} is ${formatSize(typeLimit)}.`);
+    e.target.value = "";
+  } else {
+    showFormError("");
+  }
+});
 
 function closePreview() {
   currentPreviewToken++; // Invalidate any in-flight asynchronous loads
@@ -3832,10 +4573,24 @@ function closePreview() {
     activePdfDoc = null;
   }
 
+  if (activeObjectUrl) {
+    URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = null;
+  }
+
+  if (previewAbortController) {
+    previewAbortController.abort();
+    previewAbortController = null;
+  }
+
   const body = document.getElementById("previewBody");
   if (body?._pdfResizeHandler) {
     window.removeEventListener("resize", body._pdfResizeHandler);
     body._pdfResizeHandler = null;
+  }
+  if (body?._pdfResizeTimer) {
+    clearTimeout(body._pdfResizeTimer);
+    body._pdfResizeTimer = null;
   }
   if (body?._pdfObserver) {
     body._pdfObserver.disconnect();
@@ -3845,7 +4600,22 @@ function closePreview() {
     body._pdfLoadObserver.disconnect();
     body._pdfLoadObserver = null;
   }
+  if (body?._pdfKeydownHandler) {
+    document.removeEventListener("keydown", body._pdfKeydownHandler);
+    body._pdfKeydownHandler = null;
+  }
+  if (body?._pdfWheelHandler) {
+    const canvasWrap = document.getElementById("pdfCanvasWrap");
+    canvasWrap?.removeEventListener("wheel", body._pdfWheelHandler);
+    body._pdfWheelHandler = null;
+  }
+  if (body?._imageWheelHandler) {
+    const imagePreviewWrap = document.getElementById("imagePreviewWrap");
+    imagePreviewWrap?.removeEventListener("wheel", body._imageWheelHandler);
+    body._imageWheelHandler = null;
+  }
   document.getElementById("previewOverlay").style.display = "none";
+  document.querySelector("#previewOverlay .preview-card")?.classList.remove("pdf-preview-active");
   document.body.classList.remove("no-scroll");
   body.innerHTML = "";
 
@@ -3878,9 +4648,29 @@ document.getElementById("uploadForm").addEventListener("input", () => showFormEr
 
 document.getElementById("authBtn").onclick = async () => {
   if (session) {
-    await sb.auth.signOut();
+    const btn = document.getElementById("authBtn");
+
+    // Make the browser read-only immediately. Do not rebuild the archive grid;
+    // removing the few privileged controls is much cheaper on large archives.
+    signingOut = true;
+    session = null;
+    archiveRole = "viewer";
+    latestEntriesMode = false;
     clearLoginTime();
-    render();
+    applySignedOutUI();
+    updateAuthUI();
+
+    btn.disabled = true;
+    try {
+      await sb.auth.signOut();
+    } catch (err) {
+      console.warn("Network failed during manual sign out.", err);
+    } finally {
+      btn.disabled = false;
+      // If Supabase did not emit SIGNED_OUT for some reason, do not leave the
+      // race guard stuck forever. The UI is already safely signed out.
+      signingOut = false;
+    }
   } else {
     showLoginError("");
     document.getElementById("loginOverlay").style.display = "flex";
@@ -3949,6 +4739,14 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     return;
   }
 
+  const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
+  const isValidType = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+  if (!isValidType) {
+    showFormError("Invalid file type. Only PDF and standard image files are allowed.");
+    isUploading = false;
+    return;
+  }
+
   const selectedType = document.getElementById("typeSelect").value;
   const typeLimit = maxBytesForType(selectedType);
 
@@ -3968,9 +4766,9 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     return;
   }
 
-  if ((selectedType === "Others" || selectedType === "Books") && !document.getElementById("titleInput").value.trim()) {
+  if ((selectedType === "Others" || selectedType === "Book") && !document.getElementById("titleInput").value.trim()) {
     showFormError(
-      selectedType === "Books"
+      selectedType === "Book"
         ? "Add a title for the book."
         : "Add a title describing the file when Type is \"Others\"."
     );
@@ -4096,6 +4894,16 @@ window.addEventListener("resize", () => {
   document.querySelectorAll(".subject-carousel").forEach(refreshCarouselNav);
 });
 
+// Fonts swapping in after the initial paint can change card widths slightly,
+// which can flip a row from "no overflow" to "has overflow" (or back). Re-run
+// the same check once fonts are ready so an arrow that should appear isn't
+// stuck hidden until the next manual resize.
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    document.querySelectorAll(".subject-carousel").forEach(refreshCarouselNav);
+  }).catch(() => {});
+}
+
 /* Bootstraps the application data */
 init();
 
@@ -4182,26 +4990,19 @@ init();
     }
   },{passive:true});
 
-  function cursorLoop(){
-    const darkTheme =
-      document.body.getAttribute("data-theme") !== "light";
-    const follow = darkTheme ? .24 : .18;
-
-    rx+=(mx-rx)*follow;
-    ry+=(my-ry)*follow;
-
-    ring.style.left=rx+"px";
-    ring.style.top=ry+"px";
-
-    requestAnimationFrame(cursorLoop);
-  }
-
-  cursorLoop();
+  let cursorActive = false;
+  document.addEventListener("pointermove", e => {
+    if (!cursorActive) { cursorActive = true; }
+    dot.style.left=e.clientX+"px";
+    dot.style.top=e.clientY+"px";
+    ring.style.left=e.clientX+"px";
+    ring.style.top=e.clientY+"px";
+  }, {passive:true});
 
   document.addEventListener("pointerover",e=>{
     if(
       e.target.closest(
-        "button,.pill,.action-btn,a,input,select"
+        "button,.pill,.action-btn,a"
       )
     ){
       document.body.classList.add("cursor-hover");
@@ -4209,7 +5010,7 @@ init();
   });
 
   document.addEventListener("pointerout",e=>{
-    const btn = e.target.closest("button,.pill,.action-btn,a,input,select");
+    const btn = e.target.closest("button,.pill,.action-btn,a");
     if(btn && (!e.relatedTarget || !btn.contains(e.relatedTarget))){
       document.body.classList.remove("cursor-hover");
     }
@@ -4346,6 +5147,14 @@ init();
     applyTheme("light");
   });
 
+  // Fix: without this, changing the theme in one tab left other open tabs
+  // on the stale theme until they were manually refreshed.
+  window.addEventListener("storage", function(e){
+    if (e.key === "statArchiveTheme" && e.newValue) {
+      applyTheme(e.newValue);
+    }
+  });
+
   applyTheme(savedTheme);
 })();
 </script>
@@ -4395,6 +5204,7 @@ init();
 
   document.addEventListener("pointermove", function(e){
     if (!activeTitle || !tooltip) return;
+    if (!activeTitle.isConnected) { activeTitle = null; tooltip.classList.remove("show"); return; }
     const title = e.target.closest(".card-title[data-full-title]");
     if (title === activeTitle) positionTooltip(activeTitle);
   });
@@ -4435,5 +5245,53 @@ init();
 })();
 </script>
 
+
+<style id="subject-stamp-width-fix">
+/* Keep the subject label background only as wide as the subject name. */
+.card .stamp{
+  display:inline-flex !important;
+  width:auto !important;
+  max-width:max-content !important;
+  align-self:flex-start !important;
+  flex:0 0 auto !important;
+  box-sizing:border-box;
+}
+</style>
+
+
+<style id="desktop-full-width-fix">
+/* Use the available desktop viewport instead of keeping the archive inside
+   a fixed 1120px column. Mobile/tablet layout is intentionally untouched. */
+@media (min-width: 1200px){
+  .header,
+  .authbar,
+  .toolbar,
+  .error-banner,
+  .empty-state,
+  .grid,
+  .subject-row{
+    max-width:none !important;
+    width:100%;
+  }
+
+  #archiveSummary,
+  .archive-summary{
+    max-width:none !important;
+    width:100% !important;
+  }
+}
+</style>
+
+<style id="desktop-side-spacing-fix">
+/* Keep the full-width desktop layout while adding 10px more breathing room
+   on both sides of the monitor. Mobile and tablet spacing stays unchanged. */
+@media (min-width: 1200px){
+  .page{
+    padding-left:30px !important;
+    padding-right:30px !important;
+  }
+}
+</style>
 </body>
 </html>
+
