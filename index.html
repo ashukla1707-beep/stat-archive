@@ -2401,8 +2401,6 @@ function defaultSubjectsForLevel(level) {
 // Read synchronously (not inside a later DOMContentLoaded/IIFE) so that
 // init(), further down, already sees the right level on the very first
 // load instead of briefly fetching M.Sc data and swapping to B.Sc after.
-// The course level is part of the URL so B.Sc and M.Sc can be shared as
-// separate links. URL wins over the saved local preference.
 let currentLevel = "msc";
 try {
   const urlLevel = new URLSearchParams(window.location.search).get("level");
@@ -2957,8 +2955,6 @@ function setLevelUI(level) {
   const shareTitle = value === "bsc"
     ? "Stat Archive - B.Sc Statistics"
     : "Stat Archive - M.Sc Statistics";
-
-  // Update the browser/share title and keep the selected level in the URL.
   document.title = shareTitle;
   try {
     const url = new URL(window.location.href);
