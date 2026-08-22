@@ -2239,7 +2239,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     </div>
     <div id="subtitleField">
       <label id="subtitleLabel" for="subtitleInput">Subtitle (optional)</label>
-      <input type="text" id="subtitleInput" name="subtitle" placeholder="e.g. Chapter 3 — Estimation methods" />
+      <input type="text" id="subtitleInput" name="subtitle" placeholder="e.g. Estimation methods" />
     </div>
     <div id="yearField">
       <label id="yearLabel" for="yearInput">Year (required)</label>
@@ -3632,7 +3632,7 @@ function buildCard(entry) {
   let displayTitle = entry.title || "";
   if (entry.type === "Notes") {
     if (displayTitle === notesBaseTitle) {
-      displayTitle = "Lecture Notes";
+      displayTitle = "Notes";
     } else if (displayTitle.startsWith(`${notesBaseTitle}: `)) {
       displayTitle = displayTitle.slice(notesBaseTitle.length + 2).trim();
     }
