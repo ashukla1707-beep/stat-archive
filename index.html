@@ -2958,10 +2958,9 @@ function setLevelUI(level) {
     mscBtn.setAttribute("aria-pressed", value === "msc" ? "true" : "false");
     bscBtn.setAttribute("aria-pressed", value === "bsc" ? "true" : "false");
   }
-  const shareTitle = value === "bsc"
-    ? "Stat Archive - B.Sc Statistics"
-    : "Stat Archive - M.Sc Statistics";
-  document.title = shareTitle;
+  // Keep the shared/browser title neutral for both course levels.
+  // The B.Sc / M.Sc selection is still controlled by the level parameter.
+  document.title = "Stat Archive";
   try {
     const url = new URL(window.location.href);
     url.searchParams.set("level", value);
