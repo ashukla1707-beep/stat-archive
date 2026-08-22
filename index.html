@@ -22,7 +22,7 @@
 </script>
 <meta charset="UTF-8" />
 <meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0" />
-<title>Stat Archive </title>
+<title>Stat Archive — M.Sc Statistics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -2401,9 +2401,17 @@ function defaultSubjectsForLevel(level) {
 // Read synchronously (not inside a later DOMContentLoaded/IIFE) so that
 // init(), further down, already sees the right level on the very first
 // load instead of briefly fetching M.Sc data and swapping to B.Sc after.
+// The course level is part of the URL so B.Sc and M.Sc can be shared as
+// separate links. URL wins over the saved local preference.
 let currentLevel = "msc";
 try {
-  currentLevel = localStorage.getItem("statArchiveLevel") === "bsc" ? "bsc" : "msc";
+  const urlLevel = new URLSearchParams(window.location.search).get("level");
+  if (urlLevel === "bsc" || urlLevel === "msc") {
+    currentLevel = urlLevel;
+    localStorage.setItem("statArchiveLevel", urlLevel);
+  } else {
+    currentLevel = localStorage.getItem("statArchiveLevel") === "bsc" ? "bsc" : "msc";
+  }
 } catch (e) {}
 
 let entries = [];
@@ -2946,9 +2954,17 @@ function setLevelUI(level) {
     mscBtn.setAttribute("aria-pressed", value === "msc" ? "true" : "false");
     bscBtn.setAttribute("aria-pressed", value === "bsc" ? "true" : "false");
   }
-  document.title = value === "bsc"
-    ? "Stat Archive — B.Sc Statistics"
-    : "Stat Archive — M.Sc Statistics";
+  const shareTitle = value === "bsc"
+    ? "Stat Archive - B.Sc Statistics"
+    : "Stat Archive - M.Sc Statistics";
+
+  // Update the browser/share title and keep the selected level in the URL.
+  document.title = shareTitle;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("level", value);
+    window.history.replaceState({ level: value }, "", url.href);
+  } catch (e) {}
 }
 
 // Switches the whole app to the other level: signs out (each level has its
