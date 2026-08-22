@@ -29,10 +29,18 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Stat Archive">
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Loaded as a non-render-blocking preload, then swapped to a real
+     stylesheet once it arrives, so the page doesn't sit on a blank/white
+     screen waiting on the Google Fonts CSS round trip. font-display=swap
+     on the @font-face rules themselves still governs the FOIT/FOUT
+     behavior once this stylesheet is active. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"></noscript>
 <style>
+
   :root{
     --bg:#070a0f;
     --panel:rgba(15,20,29,.82);
@@ -423,6 +431,20 @@ body{
 
   @media(max-width:700px){
     .subject-track .card{flex-basis:100%}
+
+    /* Long subject names wrapping to 2+ lines on narrow screens used to
+       squeeze the "N entries" pill until its own text wrapped ("2" / "entries"
+       on separate lines), and baseline alignment left it looking oddly
+       positioned next to the wrapped title. Keep the pill on one line and
+       anchor it to the top of the title block instead. Desktop is untouched. */
+    .subject-row-title{
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+    .subject-row-count{
+      white-space:nowrap;
+      flex-shrink:0;
+    }
 
     /* Hide the mobile arrow controls only. Desktop keeps the original arrows. */
     .subject-nav-row{display:none!important}
@@ -2037,7 +2059,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 <style id="global-entry-title-tooltip">
 #entry-full-title-tooltip{
   position:fixed;
-  z-index:99999;
+  z-index:49;
   max-width:min(420px, calc(100vw - 24px));
   padding:9px 11px;
   border:1px solid var(--line-strong);
@@ -2249,7 +2271,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   </div>
 
   <div class="toolbar">
-    <form class="search-row" onsubmit="event.preventDefault(); document.getElementById('searchInput').blur();">
+    <form class="search-row" id="searchForm">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B7382" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input id="searchInput" type="search" placeholder="Search by title, filename, year, or subject…" />
       <button type="button" class="search-clear" id="searchClear" style="display: none;" aria-label="Clear search" title="Clear search">✕</button>
@@ -2369,12 +2391,12 @@ body[data-theme="light"] .axis-mid{color:#347d73}
         </select>
       </div>
       <div id="editYearField">
-        <label for="editYearInput">Year</label>
+        <label id="editYearLabel" for="editYearInput">Year</label>
         <input type="text" id="editYearInput" name="year" placeholder="e.g. 2026" />
       </div>
     </div>
     <div id="editTitleField">
-      <label for="editTitleInput">Name / title</label>
+      <label id="editTitleLabel" for="editTitleInput">Name / title</label>
       <input type="text" id="editTitleInput" name="title" placeholder="Entry name" />
     </div>
     <label for="editFileInput">Replace file (optional)</label>
@@ -2440,6 +2462,12 @@ function loadPdfJs() {
 }
 </script>
 
+<!-- Supabase JS client library. Required before supabase.createClient() below
+     — without this, that call throws "supabase is not defined" and the rest
+     of the script (including init(), which loads all entries/subjects)
+     never runs, leaving the page permanently blank/read-only. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 // ====== CONFIGURE THESE VALUES ======
 const SUPABASE_URL = "https://owjaazsilueottklxjug.supabase.co";
@@ -2478,11 +2506,11 @@ function maxBytesForType(type) {
 }
 
 const DEFAULT_SUBJECTS_MSC = [
-  { code: "STOC", name: "Stochastic Processes", builtin: true },
-  { code: "MVAR", name: "Multivariate Analysis", builtin: true },
-  { code: "MSTAT", name: "Mathematical Statistics", builtin: true },
-  { code: "ASTRO", name: "Astronomy & Astrophysics", builtin: true },
-  { code: "OFST", name: "Official Statistics (NIOS)", builtin: true },
+  { code: "AML", name: "Advanced Machine Learning", builtin: true },
+  { code: "APT", name: "Advanced Probability Theory", builtin: true },
+  { code: "AST", name: "Advanced Sampling Theory", builtin: true },
+  { code: "BDES", name: "Block Design", builtin: true },
+  { code: "ECON", name: "Econometrics", builtin: true },
   { code: "MISC", name: "Other", builtin: true },
 ];
 
@@ -2530,6 +2558,7 @@ let searchQ = "";
 let session = null;
 let archiveRole = "viewer"; // viewer | contributor | admin; enforced by Supabase too
 let signingOut = false; // prevents auth refresh races from restoring stale privileges during sign-out
+let isEditing = false; // prevents double-submit races on the edit-entry form
 // Tracks the "current" preview request. previewEntry() captures the token
 // after bumping it; any async step that finishes once the token no longer
 // matches (i.e. the preview was closed or a newer preview was opened)
@@ -2556,7 +2585,11 @@ const LOGIN_AT_KEY = "statArchiveLoginAt";
 let autoSignOutTimer = null;
 
 function markLoginTime() {
-  localStorage.setItem(LOGIN_AT_KEY, String(Date.now()));
+  try {
+    localStorage.setItem(LOGIN_AT_KEY, String(Date.now()));
+  } catch (err) {
+    console.error("Could not persist login time:", err);
+  }
 }
 
 function clearLoginTime() {
@@ -2705,13 +2738,28 @@ function updateStorageUI() {
   // after an actual preview/download via incrementActivity().
 }
 
+// Cached code/id -> subject lookup, rebuilt only when the `subjects` array
+// reference actually changes (it's reassigned, not mutated, everywhere in
+// this app). Avoids re-scanning the whole subjects list for every single
+// entry on every render() and every search keystroke.
+let subjectIndexCache = null;
+let subjectIndexCacheSource = null;
+function getSubjectIndex() {
+  if (subjectIndexCacheSource !== subjects) {
+    subjectIndexCache = new Map();
+    subjects.forEach(s => {
+      if (s.code) subjectIndexCache.set(s.code, s);
+      if (s.id) subjectIndexCache.set(s.id, s);
+    });
+    subjectIndexCacheSource = subjects;
+  }
+  return subjectIndexCache;
+}
+
 function subjectMeta(codeOrId) {
   if (!codeOrId) return { name: "Other", code: "MISC" };
-  return (
-    subjects.find(s => s.code === codeOrId || s.id === codeOrId) ||
-    subjects.find(s => s.code === "MISC") ||
-    { name: "Other", code: "MISC" }
-  );
+  const idx = getSubjectIndex();
+  return idx.get(codeOrId) || idx.get("MISC") || { name: "Other", code: "MISC" };
 }
 
 function updateAuthUI() {
@@ -2943,7 +2991,14 @@ async function loadSubjectsFromWorker() {
 
 async function init() {
   try {
-    const { data } = await sb.auth.getSession();
+    let data;
+    try {
+      ({ data } = await sb.auth.getSession());
+    } catch (authErr) {
+      console.error("getSession failed:", authErr);
+      archiveRole = "viewer";
+      data = null;
+    }
     // Optional chaining: if the Supabase client is unreachable it can
     // resolve with a null `data`, and `data.session` would throw.
     session = data?.session || null;
@@ -2968,8 +3023,11 @@ async function init() {
       loadActivityStats();
     }
 
-    entries = await loadEntries();
-    await loadSubjectsFromWorker();
+    const [loadedEntries] = await Promise.all([
+      loadEntries(),
+      loadSubjectsFromWorker()
+    ]);
+    entries = loadedEntries;
   } catch (err) {
     // If the Worker connection drops during startup, fail gracefully
     // instead of throwing an unhandled rejection and leaving a blank screen.
@@ -3037,6 +3095,7 @@ sb.auth.onAuthStateChange(async (event, s) => {
     render();
     if (event === "SIGNED_IN" && archiveRole === "contributor" && justSignedIn) {
       document.getElementById("contributorDisclaimerOverlay").style.display = "flex";
+      document.body.classList.add("no-scroll");
     }
   } catch (err) {
     console.error("Auth state update failed:", err);
@@ -3087,11 +3146,22 @@ async function switchLevel(level) {
   subjects = [...defaultSubjectsForLevel(value)];
   filterSubjects = new Set();
   entries = [];
+
+  // Clear lingering search state
+  const searchInput = document.getElementById("searchInput");
+  const searchClear = document.getElementById("searchClear");
+  if (searchInput) searchInput.value = "";
+  if (searchClear) searchClear.style.display = "none";
+  searchQ = "";
+
   render();
 
   try {
-    entries = await loadEntries();
-    await loadSubjectsFromWorker();
+    const [loadedEntries] = await Promise.all([
+      loadEntries(),
+      loadSubjectsFromWorker()
+    ]);
+    entries = loadedEntries;
   } catch (err) {
     console.error("Level switch load failed:", err);
     showError(`Could not load ${value === "bsc" ? "B.Sc" : "M.Sc"} data.`);
@@ -3132,6 +3202,7 @@ function renderSubjectFilters() {
     latestEntriesMode = false;
     filterSubjects.clear();
     renderSubjectFilters();
+    updateAuthUI();
     render();
   };
   row.appendChild(allPill);
@@ -3272,6 +3343,7 @@ function renderSubjectFilters() {
         return;
       }
 
+      isSubmitting = true;
       button.disabled = true;
       button.textContent = "…";
       showError("");
@@ -3288,12 +3360,16 @@ function renderSubjectFilters() {
         );
         button.disabled = false;
         button.textContent = "Add";
+      } finally {
+        isSubmitting = false;
       }
     };
 
     // Allow users to back out of the form via Escape or by clicking away,
     // instead of it being stuck open with no way to close it.
+    let isSubmitting = false;
     const cancelForm = () => {
+      if (isSubmitting) return;
       if (document.body.contains(f)) {
         filterSubjects.delete("");
         renderSubjectFilters();
@@ -3624,6 +3700,7 @@ function renderSubjectOptions() {
       opt.value = s.id || s.code;
       opt.dataset.code = s.code || "";
       opt.textContent = s.name;
+      if (!s.id) opt.disabled = true;
       sel.appendChild(opt);
     });
 
@@ -3639,14 +3716,14 @@ function setupCardTilt() {
 }
 
 function filteredEntries() {
+  const searchTerms = searchQ ? searchQ.split(/\s+/).filter(Boolean) : null;
   return entries.filter(e => {
     if (!latestEntriesMode && filterSubjects.size > 0 && !filterSubjects.has(e.subject)) return false;
     if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
-    if (searchQ) {
+    if (searchTerms) {
       const meta = subjectMeta(e.subject);
       const hay = `${e.title} ${e.filename} ${e.year || ""} ${meta.name} ${e.type}`.toLowerCase();
-      const terms = searchQ.split(/\s+/).filter(Boolean);
-      if (!terms.every(term => hay.includes(term))) return false;
+      if (!searchTerms.every(term => hay.includes(term))) return false;
     }
     return true;
   });
@@ -3804,6 +3881,7 @@ function wireSubjectCarousel(wrap) {
 
   function syncMobileRange() {
     if (!mobileRange || !track) return;
+    if (document.activeElement === mobileRange) return;
     const max = Math.max(0, track.scrollWidth - track.clientWidth);
     mobileRange.max = String(Math.max(1, Math.round(max)));
     mobileRange.value = String(Math.min(Math.max(0, Math.round(track.scrollLeft)), Math.max(1, Math.round(max))));
@@ -3825,6 +3903,14 @@ function wireSubjectCarousel(wrap) {
     mobileRange.oninput = () => {
       track.scrollLeft = Number(mobileRange.value) || 0;
     };
+    mobileRange.addEventListener("pointerdown", () => {
+      track.style.scrollBehavior = "auto";
+      track.style.scrollSnapType = "none";
+    });
+    mobileRange.addEventListener("pointerup", () => {
+      track.style.scrollBehavior = "";
+      track.style.scrollSnapType = "";
+    });
   }
 
   prev.onclick = () => scrollByPage(-1);
@@ -3871,19 +3957,22 @@ function captureCarouselPositions() {
 function restoreCarouselPositions(positions) {
   if (!positions || !positions.size) return;
   requestAnimationFrame(() => {
-    document.querySelectorAll(".subject-row[data-subject-code]").forEach(row => {
-      const saved = positions.get(row.dataset.subjectCode);
-      const track = row.querySelector(".subject-track");
-      if (track && Number.isFinite(saved)) {
-        const max = Math.max(0, track.scrollWidth - track.clientWidth);
-        track.scrollLeft = Math.min(saved, max);
-        refreshCarouselNav(row.querySelector(".subject-carousel"));
-      }
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".subject-row[data-subject-code]").forEach(row => {
+        const saved = positions.get(row.dataset.subjectCode);
+        const track = row.querySelector(".subject-track");
+        if (track && Number.isFinite(saved)) {
+          const max = Math.max(0, track.scrollWidth - track.clientWidth);
+          track.scrollLeft = Math.min(saved, max);
+          refreshCarouselNav(row.querySelector(".subject-carousel"));
+        }
+      });
     });
   });
 }
 
 function render() {
+  document.getElementById("entry-full-title-tooltip")?.classList.remove("show");
   const carouselPositions = pendingCarouselPositions;
   pendingCarouselPositions = null;
   const grid = document.getElementById("grid");
@@ -3908,9 +3997,9 @@ function render() {
       const promptText = session && archiveRole !== "viewer"
         ? "Click '+ File a new entry' above to get started."
         : "Sign in to file the first question paper or note.";
-      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:#F2F4F8;">Nothing filed yet.</p><p style="margin:8px 0 0;font-size:13.5px;color:#8A93A6;">${promptText}</p>`;
+      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--text);">Nothing filed yet.</p><p style="margin:8px 0 0;font-size:13.5px;color:var(--muted);">${promptText}</p>`;
     } else {
-      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:#F2F4F8;">No entries match these filters.</p><p style="margin:8px 0 0;font-size:13.5px;color:#8A93A6;">Try a different subject or type.</p>`;
+      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--text);">No entries match these filters.</p><p style="margin:8px 0 0;font-size:13.5px;color:var(--muted);">Try a different subject or type.</p>`;
     }
     return;
   }
@@ -3925,14 +4014,15 @@ function render() {
     bySubject.set(
       "__latest__",
       [...list].sort((a, b) => {
-        const da = new Date(a.uploadedAt || 0).getTime();
-        const db = new Date(b.uploadedAt || 0).getTime();
+        const da = new Date(a.uploadedAt).getTime() || 0;
+        const db = new Date(b.uploadedAt).getTime() || 0;
         return db - da; // newest upload first, no type priority
       })
     );
   } else {
+    const subjectIndex = getSubjectIndex();
     list.forEach(entry => {
-      const isKnown = subjects.some(s => s.code === entry.subject);
+      const isKnown = subjectIndex.has(entry.subject);
       const code = isKnown ? entry.subject : "__none__";
       if (!bySubject.has(code)) bySubject.set(code, []);
       bySubject.get(code).push(entry);
@@ -3965,6 +4055,7 @@ function render() {
     ? orderedCodes
     : orderedCodes.slice(0, VISIBLE_ENTRY_SUBJECT_LIMIT);
 
+  const gridFragment = document.createDocumentFragment();
   visibleCodes.forEach(code => {
     const groupEntries = bySubject.get(code);
     const meta = subjectMeta(code === "__none__" ? undefined : code);
@@ -3992,10 +4083,13 @@ function render() {
     `;
     const track = row.querySelector(".subject-track");
     const displayEntries = code === "__latest__" ? groupEntries : sortEntriesForDisplay(groupEntries);
-    displayEntries.forEach(entry => track.appendChild(buildCard(entry)));
-    grid.appendChild(row);
+    const trackFragment = document.createDocumentFragment();
+    displayEntries.forEach(entry => trackFragment.appendChild(buildCard(entry)));
+    track.appendChild(trackFragment);
+    gridFragment.appendChild(row);
     wraps.push(row.querySelector(".subject-carousel"));
   });
+  grid.appendChild(gridFragment);
 
   wraps.forEach(wireSubjectCarousel);
 
@@ -4018,8 +4112,9 @@ function render() {
   setupCardTilt();
 }
 
+const HTML_ESCAPE_MAP = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
 function escapeHtml(s) {
-  return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  return String(s || "").replace(/[&<>"']/g, c => HTML_ESCAPE_MAP[c]);
 }
 
 function guessMime(filename, fallback) {
@@ -4072,7 +4167,7 @@ async function openPdfInNewTab(pdfUrl) {
     // Force the browser-side MIME type to PDF. The server may send
     // application/octet-stream together with Content-Disposition: attachment.
     const pdfBlob = new Blob([blob], { type: "application/pdf" });
-    const blobUrl = URL.createObjectURL(pdfBlob);
+    const blobUrl = popup.URL.createObjectURL(pdfBlob);
 
     popup.location.replace(blobUrl);
 
@@ -4112,7 +4207,10 @@ function printPdfBlob(blob, btn, filename) {
     // "Print" multiple times rapidly loads the same PDF blob into memory
     // over and over and can crash the tab.
     const existing = document.getElementById("pdf-print-frame");
-    if (existing) existing.remove();
+    if (existing) {
+      URL.revokeObjectURL(existing.src);
+      existing.remove();
+    }
 
     const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
     const blobUrl = URL.createObjectURL(pdfBlob);
@@ -4178,7 +4276,7 @@ async function previewEntry(entry) {
   // this preview is open; closePreview() restores it.
   const viewportMeta = document.getElementById("viewportMeta");
   if (viewportMeta) {
-    viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0");
+    viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");
   }
 
   const overlay = document.getElementById("previewOverlay");
@@ -4426,12 +4524,16 @@ async function previewEntry(entry) {
         const keepPage = currentPage;
         loadObserver?.disconnect();
         observer?.disconnect();
-        await renderAllPages();
-        pageElements.forEach(el => {
-          loadObserver.observe(el);
-          observer.observe(el);
-        });
-        setTimeout(() => goToPage(Math.min(keepPage, pageElements.length)), 0);
+        if (body._pdfZoomTimer) clearTimeout(body._pdfZoomTimer);
+        body._pdfZoomTimer = setTimeout(async () => {
+          body._pdfZoomTimer = null;
+          await renderAllPages();
+          pageElements.forEach(el => {
+            loadObserver.observe(el);
+            observer.observe(el);
+          });
+          setTimeout(() => goToPage(Math.min(keepPage, pageElements.length)), 0);
+        }, 150);
       }
 
       function goToPage(num) {
@@ -4603,7 +4705,17 @@ async function previewEntry(entry) {
       updateImageZoom();
       activeObjectUrl = url;
       img.onload = () => { URL.revokeObjectURL(url); if (activeObjectUrl === url) activeObjectUrl = null; };
-      img.onerror = () => { URL.revokeObjectURL(url); if (activeObjectUrl === url) activeObjectUrl = null; };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (activeObjectUrl === url) activeObjectUrl = null;
+        body.innerHTML = `
+          <div class="preview-fallback">
+            Couldn't display this image.<br/>
+            <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download instead</button>
+          </div>`;
+        const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+        if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
+      };
     } else {
       URL.revokeObjectURL(url);
       body.innerHTML = `
@@ -4631,6 +4743,7 @@ async function downloadEntry(entry, btn) {
   if (btn) {
     btn.textContent = "…";
     btn.disabled = true;
+    document.body.classList.remove("cursor-hover");
   }
 
   showError("");
@@ -4655,7 +4768,7 @@ async function downloadEntry(entry, btn) {
     a.click();
     a.remove();
 
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (err) {
     showError(err?.message || "Couldn't download that file.");
   } finally {
@@ -4677,13 +4790,34 @@ function showEditEntryError(msg) {
 function updateEditEntryFields() {
   const type = document.getElementById("editTypeSelect").value;
   const yearField = document.getElementById("editYearField");
+  const yearLabel = document.getElementById("editYearLabel");
   const titleField = document.getElementById("editTitleField");
-  yearField.style.display = YEAR_REQUIRED_TYPES.includes(type) ? "block" : "none";
+  const titleLabel = document.getElementById("editTitleLabel");
+  const titleInput = document.getElementById("editTitleInput");
+  if (YEAR_VISIBLE_TYPES.includes(type)) {
+    yearField.style.display = "block";
+    if (yearLabel) {
+      yearLabel.textContent = YEAR_REQUIRED_TYPES.includes(type) ? "Year (required)" : "Year (optional)";
+    }
+  } else {
+    yearField.style.display = "none";
+  }
   // Question cards do not display a title, but keeping the existing title is
   // useful if the type is later changed back, so the field remains editable.
   titleField.style.display = "block";
+  titleLabel.textContent = "Name / title";
+  titleInput.placeholder = "Entry name";
+  if (type === "Notes") {
+    titleLabel.textContent = "Title (Preserve the 'Subject — Notes:' prefix)";
+    titleInput.placeholder = "e.g., Probability Theory — Notes: Module 1";
+  }
   document.getElementById("editFileHint").textContent =
     `Leave empty to keep the current file. New ${type} files must be under ${formatSize(maxBytesForType(type))}.`;
+
+  const fileInput = document.getElementById("editFileInput");
+  if (fileInput.files.length > 0 && fileInput.files[0].size > maxBytesForType(type)) {
+    fileInput.value = "";
+  }
 }
 
 function canEditEntry(entry) {
@@ -4702,7 +4836,7 @@ function openEditEntry(entry) {
   editingEntryId = entry.id;
   showEditEntryError("");
   document.getElementById("editEntryForm").reset();
-  document.getElementById("editTypeSelect").value = entry.type || "Notes";
+  document.getElementById("editTypeSelect").value = canonicalEntryType(entry.type);
   document.getElementById("editTitleInput").value = entry.title || "";
   document.getElementById("editYearInput").value = entry.year || "";
   updateEditEntryFields();
@@ -4711,6 +4845,7 @@ function openEditEntry(entry) {
 }
 
 function closeEditEntry() {
+  if (isEditing) return;
   document.getElementById("editEntryOverlay").style.display = "none";
   document.body.classList.remove("no-scroll");
   document.getElementById("editEntryForm").reset();
@@ -4725,8 +4860,26 @@ document.getElementById("editEntryOverlay").addEventListener("click", (e) => {
 document.getElementById("editTypeSelect").addEventListener("change", updateEditEntryFields);
 document.getElementById("editEntryForm").addEventListener("input", () => showEditEntryError(""));
 
+// Fix: give immediate feedback on oversized replacement files instead of
+// waiting until the user hits submit.
+document.getElementById("editFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const selectedType = document.getElementById("editTypeSelect").value;
+  const typeLimit = maxBytesForType(selectedType);
+  if (file.size > typeLimit) {
+    showEditEntryError(`That file is ${formatSize(file.size)}. ${selectedType} files must be under ${formatSize(typeLimit)}.`);
+    e.target.value = "";
+  } else {
+    showEditEntryError("");
+  }
+});
+
 document.getElementById("editEntryForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (isEditing) return;
+  isEditing = true;
+  try {
   const entry = entries.find(item => String(item.id) === String(editingEntryId));
   if (!(session && canEditEntry(entry))) {
     showEditEntryError("Contributors can edit only the 3 newest entries. Older entries require Admin permission.");
@@ -4738,7 +4891,7 @@ document.getElementById("editEntryForm").addEventListener("submit", async (e) =>
   }
   const type = document.getElementById("editTypeSelect").value;
   const title = document.getElementById("editTitleInput").value.trim();
-  const year = document.getElementById("editYearInput").value.trim();
+  let year = document.getElementById("editYearInput").value.trim();
   const file = document.getElementById("editFileInput").files[0];
 
   if ((type === "Others" || type === "Book") && !title) {
@@ -4750,6 +4903,9 @@ document.getElementById("editEntryForm").addEventListener("submit", async (e) =>
       showEditEntryError("Enter a valid 4-digit year.");
       return;
     }
+  } else if (YEAR_OPTIONAL_TYPES.includes(type) && year && !/^\d{4}$/.test(year)) {
+    showEditEntryError("Enter a valid 4-digit year, or leave the year blank.");
+    return;
   }
   if (file) {
     const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
@@ -4769,6 +4925,7 @@ document.getElementById("editEntryForm").addEventListener("submit", async (e) =>
   showEditEntryError("");
   try {
     const form = new FormData();
+    if (!YEAR_VISIBLE_TYPES.includes(type)) year = "";
     form.append("title", title);
     form.append("type", type);
     form.append("year", year);
@@ -4779,6 +4936,7 @@ document.getElementById("editEntryForm").addEventListener("submit", async (e) =>
     }, true);
     pendingCarouselPositions = captureCarouselPositions();
     entries = await loadEntries();
+    isEditing = false;
     closeEditEntry();
     render();
   } catch (err) {
@@ -4787,6 +4945,9 @@ document.getElementById("editEntryForm").addEventListener("submit", async (e) =>
   } finally {
     btn.disabled = false;
     btn.textContent = "Save changes";
+  }
+  } finally {
+    isEditing = false;
   }
 });
 
@@ -4823,6 +4984,7 @@ async function deleteEntry(entry, btn) {
   const original = btn.textContent;
   btn.textContent = "…";
   btn.disabled = true;
+  document.body.classList.remove("cursor-hover");
   showError("");
 
   try {
@@ -4851,7 +5013,7 @@ async function deleteEntry(entry, btn) {
 }
 
 let searchTimeout;
-document.getElementById("searchInput").addEventListener("input", (e) => {
+function handleSearchInputEvent(e) {
   // Moved out of the debounce below and based on the raw (un-trimmed) value:
   // previously, typing only spaces trimmed to "" and hid the ✕ button even
   // though the input still had text, and the button also used to only
@@ -4863,6 +5025,19 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
     searchQ = e.target.value.trim().toLowerCase();
     render();
   }, 250);
+}
+document.getElementById("searchInput").addEventListener("input", handleSearchInputEvent);
+// type="search" inputs fire a native "search" event (e.g. clicking the
+// built-in clear icon or pressing Escape) that does NOT also fire "input"
+// in some browsers, leaving searchQ and the ✕ button out of sync.
+document.getElementById("searchInput").addEventListener("search", handleSearchInputEvent);
+document.getElementById("searchForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("searchInput");
+  clearTimeout(searchTimeout);
+  searchQ = input.value.trim().toLowerCase();
+  input.blur();
+  render();
 });
 document.getElementById("searchClear").onclick = () => {
   clearTimeout(searchTimeout);
@@ -4907,6 +5082,7 @@ document.getElementById("openFormBtn").onclick = () => {
   document.body.classList.add("no-scroll");
 };
 function closeAndResetUploadForm() {
+  if (isUploading) return;
   document.getElementById("overlay").style.display = "none";
   document.body.classList.remove("no-scroll");
   showFormError("");
@@ -4919,6 +5095,8 @@ document.getElementById("overlay").addEventListener("click", (e) => {
 });
 
 const YEAR_REQUIRED_TYPES = ["Previous Year Question", "Mid-Term Question"];
+const YEAR_OPTIONAL_TYPES = ["Notes", "Others"];
+const YEAR_VISIBLE_TYPES = [...YEAR_REQUIRED_TYPES, ...YEAR_OPTIONAL_TYPES];
 
 function updateFileSizeHint() {
   const type = document.getElementById("typeSelect").value;
@@ -4942,10 +5120,26 @@ function updateFileSizeHint() {
   }
 
   const yearField = document.getElementById("yearField");
-  if (YEAR_REQUIRED_TYPES.includes(type)) {
+  const yearLabel = document.getElementById("yearLabel");
+  if (YEAR_VISIBLE_TYPES.includes(type)) {
     yearField.style.display = "";
+    if (yearLabel) {
+      yearLabel.textContent = YEAR_REQUIRED_TYPES.includes(type) ? "Year (required)" : "Year (optional)";
+    }
   } else {
     yearField.style.display = "none";
+  }
+
+  const fileInput = document.getElementById("fileInput");
+  if (fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const typeLimit = maxBytesForType(type);
+    if (file.size > typeLimit) {
+      showFormError(`Current file is too large (${formatSize(file.size)}). Limit for ${type} is ${formatSize(typeLimit)}.`);
+      fileInput.value = "";
+    } else {
+      showFormError("");
+    }
   }
 }
 document.getElementById("typeSelect").addEventListener("change", updateFileSizeHint);
@@ -4992,6 +5186,10 @@ function closePreview() {
   if (body?._pdfResizeTimer) {
     clearTimeout(body._pdfResizeTimer);
     body._pdfResizeTimer = null;
+  }
+  if (body?._pdfZoomTimer) {
+    clearTimeout(body._pdfZoomTimer);
+    body._pdfZoomTimer = null;
   }
   if (body?._pdfObserver) {
     body._pdfObserver.disconnect();
@@ -5075,17 +5273,18 @@ document.getElementById("authBtn").onclick = async () => {
   } else {
     showLoginError("");
     document.getElementById("loginOverlay").style.display = "flex";
+    document.body.classList.add("no-scroll");
     document.getElementById("passcodeInput").focus();
   }
 };
-document.getElementById("closeLoginBtn").onclick = () => { document.getElementById("loginOverlay").style.display = "none"; };
+document.getElementById("closeLoginBtn").onclick = () => { document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); };
 document.getElementById("loginOverlay").addEventListener("click", (e) => {
-  if (e.target.id === "loginOverlay") document.getElementById("loginOverlay").style.display = "none";
+  if (e.target.id === "loginOverlay") { document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
 });
-document.getElementById("closeContributorDisclaimerBtn").onclick = () => { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; };
-document.getElementById("ackContributorDisclaimerBtn").onclick = () => { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; };
+document.getElementById("closeContributorDisclaimerBtn").onclick = () => { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); };
+document.getElementById("ackContributorDisclaimerBtn").onclick = () => { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); };
 document.getElementById("contributorDisclaimerOverlay").addEventListener("click", (e) => {
-  if (e.target.id === "contributorDisclaimerOverlay") document.getElementById("contributorDisclaimerOverlay").style.display = "none";
+  if (e.target.id === "contributorDisclaimerOverlay") { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
 });
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -5104,6 +5303,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     markLoginTime();
     scheduleAutoSignOut();
     document.getElementById("loginOverlay").style.display = "none";
+    document.body.classList.remove("no-scroll");
     document.getElementById("passcodeInput").value = "";
     // No manual render() here: the global sb.auth.onAuthStateChange listener
     // fires right after sign-in, reloads fresh data, and calls render()
@@ -5191,6 +5391,12 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       isUploading = false;
       return;
     }
+  } else if (YEAR_OPTIONAL_TYPES.includes(selectedType) && yearVal && !/^\d{4}$/.test(yearVal)) {
+    // Year is optional for these types, but if something was typed it should
+    // still be a real year, not garbage that breaks chronological sorting.
+    showFormError("Enter a valid 4-digit year, or leave the year blank.");
+    isUploading = false;
+    return;
   }
 
   const submitBtn =
@@ -5247,9 +5453,13 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       document.getElementById("typeSelect").value
     );
 
+    let finalYear = document.getElementById("yearInput").value.trim();
+    if (!YEAR_VISIBLE_TYPES.includes(selectedType)) {
+      finalYear = "";
+    }
     form.append(
       "year",
-      document.getElementById("yearInput").value.trim()
+      finalYear
     );
 
     form.append(
@@ -5268,12 +5478,8 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
     entries = await loadEntries();
 
-    document
-      .getElementById("uploadForm")
-      .reset();
-
-    document.getElementById("overlay").style.display = "none";
-    document.body.classList.remove("no-scroll");
+    isUploading = false;
+    closeAndResetUploadForm();
 
     render();
 
@@ -5297,7 +5503,21 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 /* Single global resize listener for all subject carousels' arrow visibility,
    instead of one listener per carousel per render() call. */
 window.addEventListener("resize", () => {
-  document.querySelectorAll(".subject-carousel").forEach(refreshCarouselNav);
+  document.querySelectorAll(".subject-carousel").forEach(wrap => {
+    refreshCarouselNav(wrap);
+
+    // Recalculate mobile slider dimensions on device rotation
+    const track = wrap.querySelector(".subject-track");
+    const mobileRange = wrap.querySelector(".subject-mobile-scroll-range");
+    const mobileScrollbar = wrap.querySelector(".subject-mobile-scrollbar");
+
+    if (track && mobileRange) {
+      const max = Math.max(0, track.scrollWidth - track.clientWidth);
+      mobileRange.max = String(Math.max(1, Math.round(max)));
+      mobileRange.disabled = max <= 4;
+      if (mobileScrollbar) mobileScrollbar.classList.toggle("is-disabled", max <= 4);
+    }
+  });
 });
 
 // Fonts swapping in after the initial paint can change card widths slightly,
@@ -5476,9 +5696,24 @@ init();
    background element, it could trigger unrelated actions and corrupt UI
    state. This keeps Tab/Shift+Tab cycling within whichever modal is open. */
 (function setupFocusTrap(){
-  const overlayIds = ["loginOverlay", "contributorDisclaimerOverlay", "overlay", "previewOverlay"];
+  const overlayIds = ["loginOverlay", "contributorDisclaimerOverlay", "overlay", "previewOverlay", "editEntryOverlay"];
 
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const openOverlay = overlayIds
+        .map(id => document.getElementById(id))
+        .find(el => el && getComputedStyle(el).display !== "none");
+
+      if (openOverlay) {
+        if (openOverlay.id === "previewOverlay") closePreview();
+        else if (openOverlay.id === "loginOverlay") { document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
+        else if (openOverlay.id === "overlay") closeAndResetUploadForm();
+        else if (openOverlay.id === "editEntryOverlay") closeEditEntry();
+        else if (openOverlay.id === "contributorDisclaimerOverlay") { openOverlay.style.display = "none"; document.body.classList.remove("no-scroll"); }
+      }
+      return;
+    }
+
     if (e.key !== "Tab") return;
 
     const openOverlay = overlayIds
