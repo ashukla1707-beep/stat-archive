@@ -273,14 +273,29 @@ body{
   .search-clear{position:absolute;right:11px;top:10px;background:transparent;border:0;color:#6b7688;cursor:pointer;padding:5px}
 
   .filter-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
-  /* Keep all subject filters, including Others, on one horizontal line. */
+  /* Keep all subject filters, including Others, on one horizontal line
+     when possible. overflow-x is a scroll (not hidden) as a safety net --
+     even if the JS fit calculation is off by a few px, Others can always
+     be reached by scrolling instead of being clipped off invisibly. */
   #subjectFilterRow{
     flex-wrap:nowrap;
     gap:5px;
-    overflow:hidden;
+    overflow-x:auto;
+    overflow-y:hidden;
     padding-bottom:2px;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+    -webkit-overflow-scrolling:touch;
   }
+  #subjectFilterRow::-webkit-scrollbar{display:none}
   #subjectFilterRow.show-all-subjects{
+    flex-wrap:wrap;
+    overflow:visible;
+  }
+  /* Fallback for narrow screens: once the minimum-visible-subjects floor
+     is reached but the row still doesn't fit on one line, wrap instead
+     of relying on scroll to reach the rest. */
+  #subjectFilterRow.wrap-needed{
     flex-wrap:wrap;
     overflow:visible;
   }
@@ -1305,7 +1320,9 @@ body{
     top:20px!important;
     right:28px!important;
     z-index:40!important;
+  }
 
+  .theme-toggle{
     display:flex!important;
     align-items:center!important;
     gap:0!important;
@@ -1392,6 +1409,29 @@ body{
       font-size:12px!important;
     }
   }
+
+  /* ===== M.Sc / B.Sc toggle, inline in the eyebrow line ===== */
+  .eyebrow-level-toggle{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+  }
+  .eyebrow-level-option{
+    appearance:none;-webkit-appearance:none;
+    border:0;background:transparent;padding:0;margin:0;
+    font:inherit;letter-spacing:inherit;text-transform:inherit;
+    color:#5c6a7e;
+    cursor:pointer;
+    transition:color .15s ease;
+  }
+  .eyebrow-level-option:hover{color:#dbe7f5}
+  .eyebrow-level-option.active{color:var(--green)}
+  .eyebrow-level-sep{color:#3d4757}
+
+  body[data-theme="light"] .eyebrow-level-option{color:#9aa39a}
+  body[data-theme="light"] .eyebrow-level-option:hover{color:#31443d}
+  body[data-theme="light"] .eyebrow-level-option.active{color:#347d73}
+  body[data-theme="light"] .eyebrow-level-sep{color:#c3bfab}
 
 
   /* Keep title-less question cards vertically aligned with Book/Notes cards.
@@ -2016,7 +2056,14 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 <div class="page">
   <div class="header" id="statPulse">
     <div class="hero-copy">
-      <div class="eyebrow"><span class="dot"></span>For students of statistics</div>
+      <div class="eyebrow">
+        <span class="dot"></span>
+        <span>For</span>
+        <span class="eyebrow-level-toggle" role="group" aria-label="Course level selection">
+          <button type="button" class="eyebrow-level-option" id="levelMscBtn" data-level-choice="msc" aria-pressed="false">M.Sc</button><span class="eyebrow-level-sep" aria-hidden="true">/</span><button type="button" class="eyebrow-level-option" id="levelBscBtn" data-level-choice="bsc" aria-pressed="false">B.Sc</button>
+        </span>
+        <span>statistics students</span>
+      </div>
       <h1>Stat Archive</h1>
       <div class="hero-line">
         <span aria-hidden="true"></span>
@@ -2294,13 +2341,22 @@ function loadPdfJs() {
 const SUPABASE_URL = "https://owjaazsilueottklxjug.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_AiJVlfLg2zrT2S4Fv3Ha5Q_tL-SvZxH";
 const WORKER_URL = "https://stat-archive-api.lustats.workers.dev";
-// Separate Contributor and Admin accounts.
-// Create both users once in Supabase Dashboard -> Authentication -> Users -> Add user.
+// Separate Contributor and Admin accounts, one pair per course level.
+// Create all four users once in Supabase Dashboard -> Authentication -> Users -> Add user.
 // Then set RLS on storage.objects so only 'authenticated' can INSERT/UPDATE/DELETE,
 // while SELECT stays open to anon so browsing/preview/download need no login.
+// NOTE: the BSc accounts below are placeholder addresses/naming — create the
+// real Supabase Auth users with whatever emails you prefer, and update these
+// two lines to match before relying on the B.Sc login.
 const LOGIN_EMAILS = {
-  contributor: "archive@statarchive.local",
-  admin: "admin@statarchive.local"
+  msc: {
+    contributor: "archive@statarchive.local",
+    admin: "admin@statarchive.local"
+  },
+  bsc: {
+    contributor: "archive-bsc@statarchive.local",
+    admin: "admin-bsc@statarchive.local"
+  }
 };
 // =====================================
 
@@ -2317,7 +2373,7 @@ function maxBytesForType(type) {
   return TYPE_MAX_BYTES[type] || MAX_BYTES;
 }
 
-const DEFAULT_SUBJECTS = [
+const DEFAULT_SUBJECTS_MSC = [
   { code: "STOC", name: "Stochastic Processes", builtin: true },
   { code: "MVAR", name: "Multivariate Analysis", builtin: true },
   { code: "MSTAT", name: "Mathematical Statistics", builtin: true },
@@ -2326,8 +2382,32 @@ const DEFAULT_SUBJECTS = [
   { code: "MISC", name: "Other", builtin: true },
 ];
 
+// Placeholder starter list only — rename/replace these anytime from the
+// admin "+ Subject" control once B.Sc is live; they do not need to match
+// your actual paper names before you start using the toggle.
+const DEFAULT_SUBJECTS_BSC = [
+  { code: "DESC", name: "Descriptive Statistics", builtin: true },
+  { code: "PROB", name: "Probability Theory", builtin: true },
+  { code: "SAMP", name: "Sampling Theory", builtin: true },
+  { code: "SQC", name: "Statistical Quality Control", builtin: true },
+  { code: "OR", name: "Operations Research", builtin: true },
+  { code: "MISC", name: "Other", builtin: true },
+];
+
+function defaultSubjectsForLevel(level) {
+  return level === "bsc" ? DEFAULT_SUBJECTS_BSC : DEFAULT_SUBJECTS_MSC;
+}
+
+// Read synchronously (not inside a later DOMContentLoaded/IIFE) so that
+// init(), further down, already sees the right level on the very first
+// load instead of briefly fetching M.Sc data and swapping to B.Sc after.
+let currentLevel = "msc";
+try {
+  currentLevel = localStorage.getItem("statArchiveLevel") === "bsc" ? "bsc" : "msc";
+} catch (e) {}
+
 let entries = [];
-let subjects = [...DEFAULT_SUBJECTS];
+let subjects = [...defaultSubjectsForLevel(currentLevel)];
 let hiddenDefaults = [];
 let filterSubjects = new Set(); // empty = "All subjects"
 let latestEntriesMode = false; // Admin/Contributor: newest uploads in one combined row
@@ -2662,6 +2742,19 @@ async function workerFetch(path, options = {}, requireAuth = false) {
     if (contentType.includes("application/json")) {
       const body = await response.json().catch(() => null);
       if (body?.error) message = body.error;
+
+      // The Worker often attaches a raw Supabase/Postgres error under
+      // `details` (e.g. RLS policy denials, missing grants, FK violations)
+      // that was previously swallowed here. Append it (truncated) so the
+      // real cause is visible in the UI instead of just the generic
+      // wrapper message like "Supabase rejected the deletion."
+      if (body?.details) {
+        const detailText =
+          typeof body.details === "string"
+            ? body.details
+            : JSON.stringify(body.details);
+        message += ` — ${detailText.slice(0, 300)}`;
+      }
     } else {
       const text = await response.text().catch(() => "");
       if (text) message = text.slice(0, 300);
@@ -2676,7 +2769,7 @@ async function workerFetch(path, options = {}, requireAuth = false) {
 }
 
 async function loadEntries() {
-  const data = await workerFetch("/entries");
+  const data = await workerFetch(`/entries?level=${encodeURIComponent(currentLevel)}`);
   return Array.isArray(data?.entries)
     ? data.entries.map(mapDbEntry)
     : [];
@@ -2686,7 +2779,7 @@ async function loadSubjectsFromWorker() {
   // Public subject list comes from the Worker.
   // When signed in, also fetch created_by directly so the UI can show
   // the edit control only for subjects owned by the current contributor.
-  const data = await workerFetch("/subjects");
+  const data = await workerFetch(`/subjects?level=${encodeURIComponent(currentLevel)}`);
 
   let dbSubjects = Array.isArray(data?.subjects)
     ? data.subjects.map(s => ({
@@ -2703,6 +2796,7 @@ async function loadSubjectsFromWorker() {
       const { data: ownedRows, error } = await sb
         .from("subjects")
         .select("id,name,code,created_by")
+        .eq("level", currentLevel)
         .order("name", { ascending: true });
 
       if (!error && Array.isArray(ownedRows)) {
@@ -2728,8 +2822,8 @@ async function loadSubjectsFromWorker() {
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     );
   } else {
-    // DEFAULT_SUBJECTS is only an offline/empty-database fallback.
-    subjects = [...DEFAULT_SUBJECTS].sort((a, b) =>
+    // DEFAULT_SUBJECTS_MSC/BSC are only an offline/empty-database fallback.
+    subjects = [...defaultSubjectsForLevel(currentLevel)].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     );
   }
@@ -2769,7 +2863,7 @@ async function init() {
     // instead of throwing an unhandled rejection and leaving a blank screen.
     console.error("Init failed:", err);
     entries = entries || [];
-    subjects = subjects && subjects.length ? subjects : [...DEFAULT_SUBJECTS];
+    subjects = subjects && subjects.length ? subjects : [...defaultSubjectsForLevel(currentLevel)];
     showError("Could not connect to the archive.");
   }
 
@@ -2839,6 +2933,58 @@ sb.auth.onAuthStateChange(async (event, s) => {
     justSignedIn = false;
   }
 });
+
+// Updates the toggle buttons, page title, and hero eyebrow to match the
+// given level. Purely visual — does not touch data or the signed-in state.
+function setLevelUI(level) {
+  const value = level === "bsc" ? "bsc" : "msc";
+  const mscBtn = document.getElementById("levelMscBtn");
+  const bscBtn = document.getElementById("levelBscBtn");
+  if (mscBtn && bscBtn) {
+    mscBtn.classList.toggle("active", value === "msc");
+    bscBtn.classList.toggle("active", value === "bsc");
+    mscBtn.setAttribute("aria-pressed", value === "msc" ? "true" : "false");
+    bscBtn.setAttribute("aria-pressed", value === "bsc" ? "true" : "false");
+  }
+  document.title = value === "bsc"
+    ? "Stat Archive — B.Sc Statistics"
+    : "Stat Archive — M.Sc Statistics";
+}
+
+// Switches the whole app to the other level: signs out (each level has its
+// own contributor/admin accounts, so a session from one means nothing under
+// the other), swaps in that level's placeholder subjects immediately for a
+// snappy toggle, then reloads the real level-scoped entries/subjects.
+async function switchLevel(level) {
+  const value = level === "bsc" ? "bsc" : "msc";
+  if (value === currentLevel) return;
+
+  if (session) {
+    try { await sb.auth.signOut(); } catch (e) {}
+  }
+
+  currentLevel = value;
+  try { localStorage.setItem("statArchiveLevel", value); } catch (e) {}
+  setLevelUI(value);
+
+  subjects = [...defaultSubjectsForLevel(value)];
+  filterSubjects = new Set();
+  entries = [];
+  render();
+
+  try {
+    entries = await loadEntries();
+    await loadSubjectsFromWorker();
+  } catch (err) {
+    console.error("Level switch load failed:", err);
+    showError(`Could not load ${value === "bsc" ? "B.Sc" : "M.Sc"} data.`);
+  }
+
+  renderSubjectFilters();
+  renderTypeFilters();
+  renderSubjectOptions();
+  render();
+}
 
 function codeFromName(name, existingCodes) {
   let base = name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
@@ -3037,30 +3183,93 @@ function renderSubjectFilters() {
   row.appendChild(addPill);
   }
 
-  // Use the actual available row width instead of a fixed subject limit.
-  // In compact mode, hide subjects from the end until Others fits on the same line.
+  // Fit as many subjects as the available width actually allows -- more on
+  // a wide desktop screen, fewer on a narrow phone -- rather than a fixed
+  // count. MIN_VISIBLE_SUBJECTS is only a floor for narrow screens, never a
+  // cap: it guarantees a phone still shows a handful of real subjects
+  // instead of collapsing to just "All subjects" + "Others".
+  const MIN_VISIBLE_SUBJECTS = 5;
+
   row.classList.toggle("show-all-subjects", showAllSubjectPills);
+  row.classList.remove("wrap-needed");
+
   if (!showAllSubjectPills) {
     const subjectPills = Array.from(row.querySelectorAll(".subject-pill"));
-    let hiddenCount = 0;
 
-    // Temporarily keep the Others button compact while measuring.
+    // Reset to natural state so widths reflect true rendered size, not a
+    // stale hidden state left over from a previous computation.
+    subjectPills.forEach(p => { p.style.display = ""; });
     othersPill.style.display = "inline-flex";
-    for (let i = subjectPills.length - 1; i >= 0 && row.scrollWidth > row.clientWidth; i--) {
-      // Never hide a currently active filter.
-      if (subjectPills[i].classList.contains("active")) continue;
-      subjectPills[i].style.display = "none";
-      hiddenCount++;
-    }
+    othersPill.textContent = "Others";
 
-    if (hiddenCount > 0) {
-      othersPill.textContent = `Others (${hiddenCount})`;
-    } else {
+    const styles = getComputedStyle(row);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 5;
+    const available = row.clientWidth;
+    const allPillWidth = allPill.getBoundingClientRect().width;
+    const othersWidth = othersPill.getBoundingClientRect().width;
+    const pillWidths = subjectPills.map(p => p.getBoundingClientRect().width);
+
+    const totalWithoutOthers =
+      allPillWidth + pillWidths.reduce((sum, w) => sum + w + gap, 0);
+
+    if (totalWithoutOthers <= available) {
+      // Everything genuinely fits on one line -- no Others needed at all.
       othersPill.style.display = "none";
+    } else {
+      // Reserve room for the Others pill itself BEFORE deciding the
+      // cutoff, so it's never fitted "after the fact" and left clipped.
+      const budget = available - othersWidth - gap;
+      let used = allPillWidth;
+      let visibleCount = 0;
+      let hiddenCount = 0;
+
+      subjectPills.forEach((pill, i) => {
+        const isActive = pill.classList.contains("active");
+        const mustShow = isActive || visibleCount < MIN_VISIBLE_SUBJECTS;
+        const projected = used + gap + pillWidths[i];
+
+        if (mustShow || projected <= budget) {
+          pill.style.display = "";
+          used = projected;
+          visibleCount++;
+        } else {
+          pill.style.display = "none";
+          hiddenCount++;
+        }
+      });
+
+      othersPill.textContent = hiddenCount > 0 ? `Others (${hiddenCount})` : "Others";
+      othersPill.style.display = hiddenCount > 0 ? "inline-flex" : "none";
+
+      // If forcing the floor pushed total width past what's available
+      // (very narrow screen), wrap onto a second line rather than
+      // relying purely on horizontal scroll.
+      if (row.scrollWidth > row.clientWidth) {
+        row.classList.add("wrap-needed");
+      }
     }
   } else {
     othersPill.textContent = "Show less";
   }
+}
+
+// Recompute the subject-pill overflow whenever the viewport actually
+// changes width, and once webfonts finish loading. Previously this was
+// only calculated once at render time, so a resize (or a late webfont
+// swap shifting pill widths) could leave the fit calculation stale --
+// which is why "Others" could end up positioned past the edge of the
+// screen on desktop.
+let subjectFilterResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(subjectFilterResizeTimer);
+  subjectFilterResizeTimer = setTimeout(() => {
+    if (document.getElementById("subjectFilterRow")) renderSubjectFilters();
+  }, 150);
+});
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    if (document.getElementById("subjectFilterRow")) renderSubjectFilters();
+  });
 }
 
 async function createSubject(name) {
@@ -3078,7 +3287,8 @@ async function createSubject(name) {
     .insert({
       name,
       code,
-      created_by: session.user.id
+      created_by: session.user.id,
+      level: currentLevel
     })
     .select("id,name,code,created_by")
     .single();
@@ -3405,7 +3615,7 @@ function buildCard(entry) {
   let displayTitle = entry.title || "";
   if (entry.type === "Notes") {
     if (displayTitle === notesBaseTitle) {
-      displayTitle = "Notes";
+      displayTitle = "Lecture Notes";
     } else if (displayTitle.startsWith(`${notesBaseTitle}: `)) {
       displayTitle = displayTitle.slice(notesBaseTitle.length + 2).trim();
     }
@@ -3559,13 +3769,18 @@ function render() {
 
   // Normal view groups entries by subject. Latest Entries (available to
   // Contributors/Admins) combines every subject into one row and orders by
-  // uploadedAt, newest first.
+  // uploadedAt, newest first -- regardless of entry type (Book, Notes,
+  // Mid-Term, Previous Year all mix together purely by recency).
   const bySubject = new Map();
   if (latestEntriesMode) {
-    // Keep the Entries section in the same filing order even in
-    // "Latest entries" mode: Book, Notes, then question papers by
-    // newest year, with Mid-Term before Previous Year for each year.
-    bySubject.set("__latest__", sortEntriesForDisplay(list));
+    bySubject.set(
+      "__latest__",
+      [...list].sort((a, b) => {
+        const da = new Date(a.uploadedAt || 0).getTime();
+        const db = new Date(b.uploadedAt || 0).getTime();
+        return db - da; // newest upload first, no type priority
+      })
+    );
   } else {
     list.forEach(entry => {
       const isKnown = subjects.some(s => s.code === entry.subject);
@@ -4692,7 +4907,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   const passcode = document.getElementById("passcodeInput").value;
   if (!passcode) { showLoginError("Enter the passcode first."); return; }
   const roleChoice = document.getElementById("loginRoleSelect").value;
-  const loginEmail = LOGIN_EMAILS[roleChoice] || LOGIN_EMAILS.contributor;
+  const loginEmail = (LOGIN_EMAILS[currentLevel] || LOGIN_EMAILS.msc)[roleChoice] || (LOGIN_EMAILS[currentLevel] || LOGIN_EMAILS.msc).contributor;
   const btn = document.getElementById("loginSubmitBtn");
   btn.disabled = true;
   btn.textContent = "Signing in…";
@@ -4849,6 +5064,11 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     form.append(
       "year",
       document.getElementById("yearInput").value.trim()
+    );
+
+    form.append(
+      "level",
+      currentLevel
     );
 
     await workerFetch(
@@ -5157,6 +5377,33 @@ init();
 
   applyTheme(savedTheme);
 })();
+
+/* ===== Functional M.Sc / B.Sc level toggle ===== */
+(function setupLevelButtons(){
+  const mscBtn = document.getElementById("levelMscBtn");
+  const bscBtn = document.getElementById("levelBscBtn");
+
+  if (!mscBtn || !bscBtn) return;
+
+  // currentLevel was already read from localStorage at script load time
+  // (see its declaration near the top), so just sync the UI to it here.
+  setLevelUI(currentLevel);
+
+  mscBtn.addEventListener("click", function(){
+    switchLevel("msc");
+  });
+
+  bscBtn.addEventListener("click", function(){
+    switchLevel("bsc");
+  });
+
+  // Keep other open tabs in sync, same as the theme toggle does.
+  window.addEventListener("storage", function(e){
+    if (e.key === "statArchiveLevel" && e.newValue) {
+      switchLevel(e.newValue);
+    }
+  });
+})();
 </script>
 
 <script id="global-entry-title-tooltip-js">
@@ -5294,4 +5541,3 @@ init();
 </style>
 </body>
 </html>
-
