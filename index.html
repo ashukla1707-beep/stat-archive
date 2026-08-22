@@ -417,18 +417,87 @@ body{
   @media(max-width:899px){
     .subject-track .card{flex-basis:calc((100% - 15px)/2)}
   }
+  /* Mobile keeps the card carousel touch-scrollable, but uses a visible slider
+     instead of the two arrow buttons. Desktop navigation is unchanged. */
+  .subject-mobile-scrollbar{display:none}
+
   @media(max-width:700px){
     .subject-track .card{flex-basis:100%}
-    /* On mobile a full-width card would sit under the overlay arrows,
-       so the nav row drops below the track as a small button pair
-       instead of floating on top of the card content. */
-    .subject-nav-row{
-      position:static;display:flex;justify-content:center;align-items:center;gap:10px;
-      width:100%;margin-top:10px;pointer-events:auto;
+
+    /* Hide the mobile arrow controls only. Desktop keeps the original arrows. */
+    .subject-nav-row{display:none!important}
+
+    .subject-mobile-scrollbar{
+      display:block;
+      width:100%;
+      margin-top:10px;
+      padding:0 2px;
     }
-    .subject-nav{
-      position:static;transform:none;width:34px;height:34px;font-size:14px;
+    .subject-mobile-scrollbar.is-disabled{display:none}
+
+    .subject-mobile-scrollbar input[type="range"]{
+      display:block;
+      width:100%;
+      height:20px;
+      margin:0;
+      padding:0;
+      appearance:none;
+      -webkit-appearance:none;
+      background:transparent;
+      cursor:pointer;
+      touch-action:pan-x;
     }
+
+    .subject-mobile-scrollbar input[type="range"]::-webkit-slider-runnable-track{
+      height:5px;
+      border-radius:999px;
+      background:rgba(148,163,184,.22);
+    }
+    .subject-mobile-scrollbar input[type="range"]::-webkit-slider-thumb{
+      appearance:none;
+      -webkit-appearance:none;
+      width:38px;
+      height:10px;
+      margin-top:-2.5px;
+      border:0;
+      border-radius:999px;
+      background:var(--cyan);
+      box-shadow:0 2px 8px rgba(0,0,0,.16);
+    }
+
+    .subject-mobile-scrollbar input[type="range"]::-moz-range-track{
+      height:5px;
+      border-radius:999px;
+      background:rgba(148,163,184,.22);
+    }
+    .subject-mobile-scrollbar input[type="range"]::-moz-range-progress{
+      height:5px;
+      border-radius:999px;
+      background:var(--cyan);
+    }
+    .subject-mobile-scrollbar input[type="range"]::-moz-range-thumb{
+      width:38px;
+      height:10px;
+      border:0;
+      border-radius:999px;
+      background:var(--cyan);
+    }
+  }
+
+  body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-webkit-slider-runnable-track{
+    background:#ddd7e1;
+  }
+  body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-webkit-slider-thumb{
+    background:#4b365f;
+  }
+  body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-moz-range-track{
+    background:#ddd7e1;
+  }
+  body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-moz-range-progress{
+    background:#4b365f;
+  }
+  body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-moz-range-thumb{
+    background:#4b365f;
   }
 
 
@@ -617,7 +686,7 @@ body{
     overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;border:1px solid var(--line);border-radius:10px;
     background:#dfe2e5;padding:8px;
-    touch-action:pan-y pan-x;scroll-behavior:smooth
+    touch-action:pan-y pan-x pinch-zoom;scroll-behavior:smooth
   }
   .pdf-pages{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
   .pdf-page{
@@ -2053,6 +2122,35 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 }
 </style>
 
+
+<style id="entry-subject-more-button">
+  .entry-subject-more-wrap{display:flex;justify-content:center;margin:18px 0 6px;}
+  .entry-subject-more-btn{
+    border:1px solid rgba(148,163,184,.28);
+    background:rgba(148,163,184,.08);
+    color:#cbd5e1;
+    border-radius:10px;
+    padding:8px 16px;
+    font:600 12px 'JetBrains Mono',monospace;
+    cursor:pointer;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  .entry-subject-more-btn:hover{background:rgba(148,163,184,.15);border-color:rgba(148,163,184,.45);}
+
+  /* Make the More / Show less control clearly visible on the light theme. */
+  body[data-theme="light"] .entry-subject-more-btn{
+    background:#347d73;
+    border-color:#347d73;
+    color:#fff;
+    box-shadow:0 6px 16px rgba(52,125,115,.18);
+  }
+  body[data-theme="light"] .entry-subject-more-btn:hover{
+    background:#28685f;
+    border-color:#28685f;
+    color:#fff;
+    box-shadow:0 8px 20px rgba(52,125,115,.24);
+  }
+</style>
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -2424,7 +2522,9 @@ let hiddenDefaults = [];
 let filterSubjects = new Set(); // empty = "All subjects"
 let latestEntriesMode = false; // Admin/Contributor: newest uploads in one combined row
 let showAllSubjectPills = false;
+let showAllEntrySubjects = false;
 const VISIBLE_SUBJECT_LIMIT = 7;
+const VISIBLE_ENTRY_SUBJECT_LIMIT = 6;
 let filterTypes = new Set(); // empty = "All types"
 let searchQ = "";
 let session = null;
@@ -3004,10 +3104,19 @@ async function switchLevel(level) {
 }
 
 function codeFromName(name, existingCodes) {
-  let base = name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
+  const normalizedName = String(name || "").trim().toLowerCase();
+  // MISC is the legacy/reserved code used by the built-in "Other" subject.
+  // If an admin creates "Other" in a level whose database already reserves
+  // MISC, use OTHER instead so the insert does not fail on subjects_code_unique.
+  let base = normalizedName === "other"
+    ? "OTHER"
+    : String(name || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
   if (!base) base = "SUBJ";
   let code = base, i = 1;
-  while (existingCodes.includes(code)) { code = base.slice(0, 4) + i; i++; }
+  while (existingCodes.includes(code) || (normalizedName === "other" && code === "MISC")) {
+    code = base.slice(0, 4) + i;
+    i++;
+  }
   return code;
 }
 
@@ -3112,7 +3221,7 @@ function renderSubjectFilters() {
   const othersPill = document.createElement("button");
   othersPill.type = "button";
   othersPill.className = "pill";
-  othersPill.textContent = showAllSubjectPills ? "Show less" : "Others";
+  othersPill.textContent = showAllSubjectPills ? "Show less" : "More";
   othersPill.onclick = () => {
     showAllSubjectPills = !showAllSubjectPills;
     renderSubjectFilters();
@@ -3217,7 +3326,7 @@ function renderSubjectFilters() {
     // stale hidden state left over from a previous computation.
     subjectPills.forEach(p => { p.style.display = ""; });
     othersPill.style.display = "inline-flex";
-    othersPill.textContent = "Others";
+    othersPill.textContent = "More";
 
     const styles = getComputedStyle(row);
     const gap = parseFloat(styles.columnGap || styles.gap) || 5;
@@ -3230,10 +3339,10 @@ function renderSubjectFilters() {
       allPillWidth + pillWidths.reduce((sum, w) => sum + w + gap, 0);
 
     if (totalWithoutOthers <= available) {
-      // Everything genuinely fits on one line -- no Others needed at all.
+      // Everything genuinely fits on one line -- no More button needed at all.
       othersPill.style.display = "none";
     } else {
-      // Reserve room for the Others pill itself BEFORE deciding the
+      // Reserve room for the More pill itself BEFORE deciding the
       // cutoff, so it's never fitted "after the fact" and left clipped.
       const budget = available - othersWidth - gap;
       let used = allPillWidth;
@@ -3255,7 +3364,7 @@ function renderSubjectFilters() {
         }
       });
 
-      othersPill.textContent = hiddenCount > 0 ? `Others (${hiddenCount})` : "Others";
+      othersPill.textContent = "More";
       othersPill.style.display = hiddenCount > 0 ? "inline-flex" : "none";
 
       // If forcing the floor pushed total width past what's available
@@ -3690,6 +3799,17 @@ function wireSubjectCarousel(wrap) {
   const track = wrap.querySelector(".subject-track");
   const prev = wrap.querySelector(".subject-nav-prev");
   const next = wrap.querySelector(".subject-nav-next");
+  const mobileRange = wrap.querySelector(".subject-mobile-scroll-range");
+  const mobileScrollbar = wrap.querySelector(".subject-mobile-scrollbar");
+
+  function syncMobileRange() {
+    if (!mobileRange || !track) return;
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
+    mobileRange.max = String(Math.max(1, Math.round(max)));
+    mobileRange.value = String(Math.min(Math.max(0, Math.round(track.scrollLeft)), Math.max(1, Math.round(max))));
+    mobileRange.disabled = max <= 4;
+    if (mobileScrollbar) mobileScrollbar.classList.toggle("is-disabled", max <= 4);
+  }
 
   function scrollByPage(dir) {
     const perView = cardsPerView(track);
@@ -3701,9 +3821,18 @@ function wireSubjectCarousel(wrap) {
     track.scrollBy({ left: dir * step });
   }
 
+  if (mobileRange) {
+    mobileRange.oninput = () => {
+      track.scrollLeft = Number(mobileRange.value) || 0;
+    };
+  }
+
   prev.onclick = () => scrollByPage(-1);
   next.onclick = () => scrollByPage(1);
-  track.addEventListener("scroll", () => refreshCarouselNav(wrap), { passive: true });
+  track.addEventListener("scroll", () => {
+    refreshCarouselNav(wrap);
+    syncMobileRange();
+  }, { passive: true });
   // Note: no per-carousel window resize listener here anymore — see the
   // single global listener registered near the bottom of this script.
   // Attaching one every time render() runs (i.e. on every keystroke while
@@ -3718,7 +3847,10 @@ function wireSubjectCarousel(wrap) {
   // silently comes back false and the arrow never gets its "show" class.
   // A double rAF waits for that first real layout/paint before measuring.
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => refreshCarouselNav(wrap));
+    requestAnimationFrame(() => {
+      refreshCarouselNav(wrap);
+      syncMobileRange();
+    });
   });
 }
 
@@ -3807,15 +3939,33 @@ function render() {
     });
   }
 
+  // Entries section: show subjects alphabetically by subject name, with the
+  // special Other/OTHERS subject always at the very end. This ordering is
+  // shared by both desktop and mobile because both use the same render list.
   const orderedCodes = latestEntriesMode
     ? ["__latest__"]
     : [
-        ...subjects.map(s => s.code).filter(code => bySubject.has(code)),
+        ...subjects
+          .filter(s => bySubject.has(s.code))
+          .sort((a, b) => {
+            const aName = String(a.name || "").trim();
+            const bName = String(b.name || "").trim();
+            const aIsOther = a.code === "MISC" || /^(other|others)$/i.test(aName);
+            const bIsOther = b.code === "MISC" || /^(other|others)$/i.test(bName);
+            if (aIsOther && !bIsOther) return 1;
+            if (!aIsOther && bIsOther) return -1;
+            return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+          })
+          .map(s => s.code),
         ...(bySubject.has("__none__") ? ["__none__"] : [])
       ];
 
   const wraps = [];
-  orderedCodes.forEach(code => {
+  const visibleCodes = latestEntriesMode || showAllEntrySubjects
+    ? orderedCodes
+    : orderedCodes.slice(0, VISIBLE_ENTRY_SUBJECT_LIMIT);
+
+  visibleCodes.forEach(code => {
     const groupEntries = bySubject.get(code);
     const meta = subjectMeta(code === "__none__" ? undefined : code);
 
@@ -3835,6 +3985,9 @@ function render() {
           <button type="button" class="subject-nav subject-nav-prev" aria-label="Scroll left">‹</button>
           <button type="button" class="subject-nav subject-nav-next" aria-label="Scroll right">›</button>
         </div>
+        <div class="subject-mobile-scrollbar" aria-hidden="true">
+          <input type="range" class="subject-mobile-scroll-range" min="0" max="0" value="0" step="1" tabindex="-1" aria-label="Slide entries">
+        </div>
       </div>
     `;
     const track = row.querySelector(".subject-track");
@@ -3845,6 +3998,22 @@ function render() {
   });
 
   wraps.forEach(wireSubjectCarousel);
+
+  if (!latestEntriesMode && orderedCodes.length > VISIBLE_ENTRY_SUBJECT_LIMIT) {
+    const moreWrap = document.createElement("div");
+    moreWrap.className = "entry-subject-more-wrap";
+    const moreBtn = document.createElement("button");
+    moreBtn.type = "button";
+    moreBtn.className = "entry-subject-more-btn";
+    moreBtn.textContent = showAllEntrySubjects ? "Show less" : "More";
+    moreBtn.onclick = () => {
+      showAllEntrySubjects = !showAllEntrySubjects;
+      render();
+    };
+    moreWrap.appendChild(moreBtn);
+    grid.appendChild(moreWrap);
+  }
+
   restoreCarouselPositions(carouselPositions);
   setupCardTilt();
 }
@@ -4009,7 +4178,7 @@ async function previewEntry(entry) {
   // this preview is open; closePreview() restores it.
   const viewportMeta = document.getElementById("viewportMeta");
   if (viewportMeta) {
-    viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no");
+    viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0");
   }
 
   const overlay = document.getElementById("previewOverlay");
