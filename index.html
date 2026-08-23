@@ -270,6 +270,16 @@ body{
   }
   .search-row{position:relative}
   .search-row svg{position:absolute;left:15px;top:14px}
+  .drive-toggle-btn{
+    display:inline-flex;align-items:center;gap:5px;
+    margin:8px 0 4px;padding:0;
+    border:none;background:none;
+    color:var(--cyan-2);font:600 11px 'JetBrains Mono',monospace;
+    text-decoration:underline;text-underline-offset:3px;
+    cursor:pointer;
+  }
+  .drive-toggle-btn:hover{color:var(--cyan)}
+  body[data-theme="light"] .drive-toggle-btn{color:#347d73}
   #searchInput{
     width:100%;padding:13px 42px 13px 42px;
     border:1px solid var(--line);border-radius:12px;
@@ -2368,6 +2378,16 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     <label for="fileInput">File</label>
     <input type="file" id="fileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
     <div class="hint" id="fileSizeHint">Previous Year Question &amp; Mid-Term Question: up to 1 MB. Notes &amp; Book: up to 20 MB. Others: up to 10 MB.</div>
+
+    <button type="button" id="driveToggleBtn" class="drive-toggle-btn">File larger than the limit? Add a Google Drive link instead ↗</button>
+
+    <div id="driveLinkField" style="display:none;">
+      <label for="driveLinkInput">Google Drive share link</label>
+      <input type="url" id="driveLinkInput" name="drive_url" placeholder="https://drive.google.com/file/d/…/view" />
+      <div class="hint">Make sure link sharing is set to "Anyone with the link can view" before pasting it here.</div>
+      <button type="button" id="driveToggleOffBtn" class="drive-toggle-btn">↩ Upload a file instead</button>
+    </div>
+
     <div class="error-banner" id="formErrorBanner" style="margin-top:12px;"></div>
     <button type="submit" class="submit-btn" id="submitBtn">Add to archive</button>
   </form>
@@ -2873,7 +2893,11 @@ function mapDbEntry(e) {
     path: e.r2_key || "",
     size: Number(e.size || 0),
     uploadedAt: e.uploaded_at,
-    contributorDeletable: Boolean(e.contributor_deletable)
+    contributorDeletable: Boolean(e.contributor_deletable),
+    // Large files (>20MB) are hosted on Google Drive instead of R2 — the
+    // Worker/DB return a drive_url for these instead of an r2_key. When
+    // present, cards link out to Drive instead of hitting /file.
+    driveUrl: e.drive_url || null
   };
 }
 
@@ -3812,31 +3836,38 @@ function buildCard(entry) {
   const questionWithoutTitle =
     entry.type === "Mid-Term Question" || entry.type === "Previous Year Question";
 
-  // Notes are stored as "Subject — Notes" until a subtitle is entered.
-  // Do not show that automatic placeholder on the card.
+  // Notes are stored as "Subject — Notes" (or "Subject — Notes: Subtitle").
+  // Showing that as a separate bold card title duplicated the "Notes" type
+  // badge right below it. Instead, treat Notes like question papers (no
+  // separate title) and fold any subtitle into the type badge itself:
+  // "Notes" or "Notes - Subtitle".
+  const isNotes = entry.type === "Notes";
   const notesBaseTitle = `${meta.name} — Notes`;
-  let displayTitle = entry.title || "";
-  if (entry.type === "Notes") {
-    if (displayTitle === notesBaseTitle) {
-      displayTitle = "Notes";
-    } else if (displayTitle.startsWith(`${notesBaseTitle}: `)) {
-      displayTitle = displayTitle.slice(notesBaseTitle.length + 2).trim();
+  let notesSubtitle = "";
+  if (isNotes) {
+    const raw = entry.title || "";
+    if (raw.startsWith(`${notesBaseTitle}: `)) {
+      notesSubtitle = raw.slice(notesBaseTitle.length + 2).trim();
     }
   }
+  const displayTitle = isNotes ? "" : (entry.title || "");
+  const typeLabel = isNotes && notesSubtitle ? `Notes - ${notesSubtitle}` : entry.type;
 
-  const hideTitle = questionWithoutTitle || !displayTitle;
+  const hideTitle = questionWithoutTitle || isNotes || !displayTitle;
   if (hideTitle) card.classList.add("card-no-title");
 
   card.innerHTML = `
     <div class="stamp">${escapeHtml(meta.name)}</div>
     ${hideTitle ? "" : `<div class="card-title" title="${escapeHtml(displayTitle)}" data-full-title="${escapeHtml(displayTitle)}" tabindex="0">${escapeHtml(displayTitle)}</div>`}
     <div class="card-meta-row">
-      <span class="card-type">${escapeHtml(entry.type)}</span>
+      <span class="card-type">${escapeHtml(typeLabel)}</span>
       ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
     </div>
     <div class="card-actions">
-      <button class="action-btn pv-btn">⊙ Preview</button>
-      <button class="action-btn dl-btn">⬇ Download</button>
+      ${entry.driveUrl
+        ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
+        : `<button class="action-btn pv-btn">⊙ Preview</button><button class="action-btn dl-btn">⬇ Download</button>`
+      }
       ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
       ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}">🗑</button>` : ""}
     </div>
@@ -5062,6 +5093,10 @@ document.getElementById("grid").addEventListener("click", (e) => {
   if (!entry) return;
   if (btn.classList.contains("pv-btn")) previewEntry(entry);
   else if (btn.classList.contains("dl-btn")) downloadEntry(entry, btn);
+  else if (btn.classList.contains("drive-btn")) {
+    incrementActivity("preview");
+    window.open(entry.driveUrl, "_blank", "noopener");
+  }
   else if (btn.classList.contains("edit-btn")) openEditEntry(entry);
   else if (btn.classList.contains("del-btn")) deleteEntry(entry, btn);
 });
@@ -5088,6 +5123,22 @@ function closeAndResetUploadForm() {
   showFormError("");
   document.getElementById("uploadForm").reset();
   updateFileSizeHint();
+
+  // Also drop back to file-upload mode (Drive-link mode should not
+  // persist across separate "File a new entry" sessions).
+  if (typeof driveLinkMode !== "undefined") {
+    driveLinkMode = false;
+    const driveField = document.getElementById("driveLinkField");
+    const onBtn = document.getElementById("driveToggleBtn");
+    const fileInput = document.getElementById("fileInput");
+    const fileLabel = document.querySelector('label[for="fileInput"]');
+    const fileSizeHint = document.getElementById("fileSizeHint");
+    if (driveField) driveField.style.display = "none";
+    if (onBtn) onBtn.style.display = "inline-flex";
+    if (fileInput) fileInput.style.display = "";
+    if (fileLabel) fileLabel.style.display = "";
+    if (fileSizeHint) fileSizeHint.style.display = "";
+  }
 }
 document.getElementById("closeFormBtn").onclick = closeAndResetUploadForm;
 document.getElementById("overlay").addEventListener("click", (e) => {
@@ -5317,6 +5368,53 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   }
 });
 
+/* ===== Drive-link mode toggle for large files ===== */
+let driveLinkMode = false;
+
+(function setupDriveToggle(){
+  const onBtn = document.getElementById("driveToggleBtn");
+  const offBtn = document.getElementById("driveToggleOffBtn");
+  const driveField = document.getElementById("driveLinkField");
+  const fileInput = document.getElementById("fileInput");
+  const fileLabel = document.querySelector('label[for="fileInput"]');
+  const fileSizeHint = document.getElementById("fileSizeHint");
+
+  if (!onBtn || !offBtn || !driveField || !fileInput) return;
+
+  function setDriveMode(on) {
+    driveLinkMode = on;
+    driveField.style.display = on ? "block" : "none";
+    onBtn.style.display = on ? "none" : "inline-flex";
+
+    // Hide (rather than just disable) the file input/label/hint in Drive
+    // mode so the form doesn't look like it still wants a file too.
+    fileInput.style.display = on ? "none" : "";
+    if (fileLabel) fileLabel.style.display = on ? "none" : "";
+    if (fileSizeHint) fileSizeHint.style.display = on ? "none" : "";
+
+    if (on) {
+      fileInput.value = "";
+    } else {
+      document.getElementById("driveLinkInput").value = "";
+    }
+  }
+
+  onBtn.addEventListener("click", () => setDriveMode(true));
+  offBtn.addEventListener("click", () => setDriveMode(false));
+
+  // Reset to file-upload mode whenever the form is (re)opened.
+  document.getElementById("openFormBtn")?.addEventListener("click", () => setDriveMode(false));
+})();
+
+function isLikelyDriveLink(url) {
+  try {
+    const u = new URL(url);
+    return /(^|\.)drive\.google\.com$/.test(u.hostname) || /(^|\.)docs\.google\.com$/.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 let isUploading = false;
 document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -5333,30 +5431,44 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   }
 
   const file = document.getElementById("fileInput").files[0];
-
-  if (!file) {
-    showFormError("Choose a file to file into the archive.");
-    isUploading = false;
-    return;
-  }
-
-  const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
-  const isValidType = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-  if (!isValidType) {
-    showFormError("Invalid file type. Only PDF and standard image files are allowed.");
-    isUploading = false;
-    return;
-  }
-
+  const driveUrl = document.getElementById("driveLinkInput").value.trim();
   const selectedType = document.getElementById("typeSelect").value;
-  const typeLimit = maxBytesForType(selectedType);
 
-  if (file.size > typeLimit) {
-    showFormError(
-      `That file is ${formatSize(file.size)}. ${selectedType} files must be under ${formatSize(typeLimit)}.`
-    );
-    isUploading = false;
-    return;
+  if (driveLinkMode) {
+    if (!driveUrl) {
+      showFormError("Paste the Google Drive share link.");
+      isUploading = false;
+      return;
+    }
+    if (!isLikelyDriveLink(driveUrl)) {
+      showFormError("That doesn't look like a Google Drive link. Copy the \"Share\" link from Drive.");
+      isUploading = false;
+      return;
+    }
+  } else {
+    if (!file) {
+      showFormError("Choose a file to file into the archive.");
+      isUploading = false;
+      return;
+    }
+
+    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
+    const isValidType = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!isValidType) {
+      showFormError("Invalid file type. Only PDF and standard image files are allowed.");
+      isUploading = false;
+      return;
+    }
+
+    const typeLimit = maxBytesForType(selectedType);
+
+    if (file.size > typeLimit) {
+      showFormError(
+        `That file is ${formatSize(file.size)}. ${selectedType} files must be under ${formatSize(typeLimit)}. Use the Google Drive link option instead.`
+      );
+      isUploading = false;
+      return;
+    }
   }
 
   const selected = document.getElementById("subjectSelect").selectedOptions[0];
@@ -5417,10 +5529,11 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
     const form = new FormData();
 
-    form.append(
-      "file",
-      file
-    );
+    if (driveLinkMode) {
+      form.append("drive_url", driveUrl);
+    } else {
+      form.append("file", file);
+    }
 
     const subjectName = selected.textContent;
 
