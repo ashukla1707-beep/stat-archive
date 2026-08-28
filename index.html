@@ -7546,81 +7546,96 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
 
 
 
-<script id="mobile-hero-animation-replay-v2">
-(function(){
-  let mobileHeroAnimation = null;
 
-  function runMobileHeroAnimation(){
-    if (!window.matchMedia("(max-width: 700px)").matches) return;
+
+<script id="mobile-hero-animation-replay-v3">
+(function(){
+  let replayTimer = null;
+
+  function isPhoneLayout(){
+    return window.innerWidth <= 700 ||
+           window.matchMedia("(max-width: 700px)").matches;
+  }
+
+  function replayMobileHero(){
+    if (!isPhoneLayout()) return;
 
     const curve = document.querySelector(".gaussian-curve");
     if (!curve || typeof curve.getTotalLength !== "function") return;
 
     try {
-      if (mobileHeroAnimation) mobileHeroAnimation.cancel();
+      const length = Math.max(1, Math.ceil(curve.getTotalLength()));
 
-      const length = Math.ceil(curve.getTotalLength());
+      // Kill every competing CSS/keyframe animation first.
+      curve.style.setProperty("animation", "none", "important");
+      curve.style.setProperty("transition", "none", "important");
+      curve.style.setProperty("stroke-dasharray", `${length} ${length}`, "important");
+      curve.style.setProperty("stroke-dashoffset", String(length), "important");
+      curve.style.setProperty("opacity", "1", "important");
 
-      // Inline values deliberately override all desktop/reduced-motion rules.
-      curve.style.animation = "none";
-      curve.style.strokeDasharray = `${length} ${length}`;
-      curve.style.strokeDashoffset = String(length);
-      curve.style.opacity = "1";
+      // Force Android/Chrome to paint the fully-hidden stroke before starting.
+      void curve.getBoundingClientRect();
 
-      // Force the browser to paint the hidden-start state first.
-      curve.getBoundingClientRect();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          curve.style.setProperty(
+            "transition",
+            "stroke-dashoffset 2.25s cubic-bezier(.22,.61,.36,1)",
+            "important"
+          );
+          curve.style.setProperty("stroke-dashoffset", "0", "important");
+        });
+      });
 
-      mobileHeroAnimation = curve.animate(
-        [
-          { strokeDashoffset: String(length) },
-          { strokeDashoffset: "0" }
-        ],
-        {
-          duration: 2200,
-          easing: "cubic-bezier(.22,.61,.36,1)",
-          fill: "forwards"
-        }
-      );
+      // Replay dots independently using transitions too.
+      document.querySelectorAll(".data-dot").forEach((dot) => {
+        const cs = getComputedStyle(dot);
+        const fall = cs.getPropertyValue("--fall").trim() || "0px";
+        const delayText = cs.getPropertyValue("--delay").trim() || "0s";
 
-      mobileHeroAnimation.onfinish = () => {
-        curve.style.strokeDashoffset = "0";
-      };
+        dot.style.setProperty("animation", "none", "important");
+        dot.style.setProperty("transition", "none", "important");
+        dot.style.setProperty("transform", "translateY(0)", "important");
+        dot.style.setProperty("opacity", "0", "important");
 
-      // Replay the falling dots as well.
-      document.querySelectorAll(".data-dot").forEach((dot, i) => {
-        dot.style.animation = "none";
-        const fall = getComputedStyle(dot).getPropertyValue("--fall").trim() || "0px";
-        const delayText = getComputedStyle(dot).getPropertyValue("--delay").trim() || "0s";
-        const delay = delayText.endsWith("s") ? parseFloat(delayText) * 1000 : 0;
+        void dot.getBoundingClientRect();
 
-        dot.animate(
-          [
-            { transform: "translateY(0)", opacity: 0 },
-            { transform: `translateY(${fall})`, opacity: .95 }
-          ],
-          {
-            duration: 780,
-            delay,
-            easing: "cubic-bezier(.22,.61,.36,1)",
-            fill: "forwards"
-          }
-        );
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            dot.style.setProperty(
+              "transition",
+              `transform .78s cubic-bezier(.22,.61,.36,1) ${delayText}, opacity .18s ease ${delayText}`,
+              "important"
+            );
+            dot.style.setProperty("transform", `translateY(${fall})`, "important");
+            dot.style.setProperty("opacity", ".95", "important");
+          });
+        });
       });
     } catch (err) {
-      console.warn("Mobile hero animation could not start:", err);
+      console.warn("Hero animation failed:", err);
     }
   }
 
-  window.addEventListener("load", () => {
-    requestAnimationFrame(() => requestAnimationFrame(runMobileHeroAnimation));
-  }, {once:true});
+  function scheduleReplay(delay){
+    clearTimeout(replayTimer);
+    replayTimer = setTimeout(replayMobileHero, delay);
+  }
 
-  window.addEventListener("pageshow", () => {
-    setTimeout(runMobileHeroAnimation, 80);
+  // Initial browser/PWA launch.
+  if (document.readyState === "complete") scheduleReplay(80);
+  else window.addEventListener("load", () => scheduleReplay(80), {once:true});
+
+  // Android PWA/page restore.
+  window.addEventListener("pageshow", () => scheduleReplay(120));
+
+  // Android often finalizes viewport dimensions a moment after opening.
+  scheduleReplay(500);
+
+  // Replay if orientation/viewport mode changes into mobile.
+  window.addEventListener("resize", () => {
+    if (isPhoneLayout()) scheduleReplay(180);
   });
-
-  // Some Android PWAs finish viewport sizing after initial load.
-  setTimeout(runMobileHeroAnimation, 450);
 })();
 </script>
 
