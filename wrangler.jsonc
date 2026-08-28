@@ -4,6 +4,6 @@
   "compatibility_date": "2026-08-28",
   "assets": {
     "directory": ".",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "none"
   }
 }
