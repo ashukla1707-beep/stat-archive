@@ -2206,8 +2206,10 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   .offline-file-title{font-size:13px;font-weight:700;line-height:1.4;color:var(--text)}
   .offline-file-size{flex-shrink:0;font:600 9px 'JetBrains Mono',monospace;color:var(--muted)}
   .offline-file-meta{
-    margin-top:5px;color:var(--muted);font:500 9.5px 'JetBrains Mono',monospace;line-height:1.5
+    margin-top:6px;color:var(--muted);font:500 9.5px 'JetBrains Mono',monospace;line-height:1.45
   }
+  .offline-file-meta:empty{display:none}
+  .offline-file-saved{margin-top:4px!important}
   .offline-file-actions{
     display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)
   }
@@ -2267,6 +2269,11 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   }
   #offlineSearchInput:focus{border-color:rgba(94,231,247,.5);box-shadow:0 0 0 3px rgba(94,231,247,.06)}
   #offlineSearchInput::placeholder{color:var(--muted-2)}
+  .offline-filter-section{display:flex;flex-direction:column;gap:6px}
+  .offline-filter-label{
+    color:var(--muted);font:700 8.5px 'JetBrains Mono',monospace;
+    text-transform:uppercase;letter-spacing:.08em
+  }
   .offline-filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
   .offline-filter-row::-webkit-scrollbar{display:none}
   .offline-filter{
@@ -2348,6 +2355,14 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     height:158px !important;
   }
 }
+</style>
+
+
+<style id="offline-two-action-layout">
+  .offline-file-actions .offline-open-btn,
+  .offline-file-actions .offline-remove-btn{
+    flex:1 1 0 !important;
+  }
 </style>
 
 </head>
@@ -2512,16 +2527,20 @@ body[data-theme="light"] .axis-mid{color:#347d73}
         <div class="offline-vault-stat"><span>Stored</span><strong id="offlineStoredSize">0 B</strong></div>
       </div>
 
-      <div class="offline-library-stats">
-        <span>Available offline on this device</span>
-        <span id="offlineStorageInfo">Checking storage…</span>
-      </div>
-
       <div class="offline-vault-tools">
         <div class="offline-search-wrap">
           <input id="offlineSearchInput" type="search" autocomplete="off" placeholder="Search saved files, subjects, year…">
         </div>
-        <div class="offline-filter-row" id="offlineTypeFilters" aria-label="Offline file filters"></div>
+
+        <div class="offline-filter-section">
+          <div class="offline-filter-label">Subjects</div>
+          <div class="offline-filter-row" id="offlineSubjectFilters" aria-label="Offline subject filters"></div>
+        </div>
+
+        <div class="offline-filter-section">
+          <div class="offline-filter-label">Types</div>
+          <div class="offline-filter-row" id="offlineTypeFilters" aria-label="Offline file filters"></div>
+        </div>
       </div>
 
       <div class="offline-library-list" id="offlineLibraryList"></div>
@@ -5361,6 +5380,7 @@ function offlineRecordLabel(record) {
 }
 
 let offlineSearchTerm = "";
+let offlineSubjectFilter = "All";
 let offlineTypeFilter = "All";
 
 function offlinePinned(record) {
@@ -5375,6 +5395,28 @@ function offlineSavedDate(record) {
   } catch (_) {
     return "";
   }
+}
+
+function renderOfflineSubjectFilters(records) {
+  const wrap = document.getElementById("offlineSubjectFilters");
+  if (!wrap) return;
+
+  const subjects = [...new Set(
+    (records || [])
+      .map(r => String(r.subjectName || r.subject || "Other").trim())
+      .filter(Boolean)
+  )].sort((a,b) => a.localeCompare(b));
+
+  const options = ["All", ...subjects];
+  if (!options.includes(offlineSubjectFilter)) offlineSubjectFilter = "All";
+
+  wrap.innerHTML = options.map(subject => `
+    <button type="button"
+      class="offline-filter${offlineSubjectFilter === subject ? " active" : ""}"
+      data-offline-subject="${escapeHtml(subject)}">
+      ${escapeHtml(subject === "All" ? "All subjects" : subject)}
+    </button>
+  `).join("");
 }
 
 function renderOfflineTypeFilters(records) {
@@ -5396,6 +5438,27 @@ function renderOfflineTypeFilters(records) {
     <button type="button" class="offline-filter${offlineTypeFilter === type ? " active" : ""}"
       data-offline-filter="${escapeHtml(type)}">${escapeHtml(type === "All" ? "All types" : type)}</button>
   `).join("");
+}
+
+
+function offlineCompactMeta(record) {
+  const title = String(record?.title || "").toLowerCase();
+  const type = String(record?.type || "").trim();
+  const yearRaw = String(record?.year || "").trim();
+
+  const parts = [];
+
+  // Show the type only when it is not already written in the title.
+  if (type && !title.includes(type.toLowerCase())) {
+    parts.push(type);
+  }
+
+  // Only show a plausible 4-digit academic year.
+  if (/^(19|20)\d{2}$/.test(yearRaw)) {
+    parts.push(yearRaw);
+  }
+
+  return parts.join(" · ");
 }
 
 async function renderOfflineLibrary() {
@@ -5430,6 +5493,7 @@ async function renderOfflineLibrary() {
   const sizeEl = document.getElementById("offlineStoredSize");
   if (sizeEl) sizeEl.textContent = formatSize(totalBytes);
 
+  renderOfflineSubjectFilters(records);
   renderOfflineTypeFilters(records);
   if (clearBtn) clearBtn.style.display = records.length ? "inline-block" : "none";
 
@@ -5440,6 +5504,8 @@ async function renderOfflineLibrary() {
 
   const q = offlineSearchTerm.trim().toLowerCase();
   const visible = records.filter(record => {
+    const subjectName = String(record.subjectName || record.subject || "Other");
+    if (offlineSubjectFilter !== "All" && subjectName !== offlineSubjectFilter) return false;
     if (offlineTypeFilter !== "All" && String(record.type || "") !== offlineTypeFilter) return false;
     if (!q) return true;
     const haystack = [
@@ -5479,8 +5545,7 @@ async function renderOfflineLibrary() {
                   <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}</div>
                 </div>
                 <div class="offline-file-meta">
-                  ${escapeHtml([record.type, record.year].filter(Boolean).join(" · ") || "Saved file")}<br/>
-                  ${escapeHtml(record.filename || "file")}
+                  ${offlineCompactMeta(record) ? `${escapeHtml(offlineCompactMeta(record))}` : ""}
                   ${offlineSavedDate(record) ? `<span class="offline-file-saved">Saved ${escapeHtml(offlineSavedDate(record))}</span>` : ""}
                 </div>
               </div>
@@ -5488,7 +5553,6 @@ async function renderOfflineLibrary() {
             </div>
             <div class="offline-file-actions">
               <button type="button" class="offline-open-btn">⊙ Open offline</button>
-              <button type="button" class="offline-device-btn">⬇ Save to device</button>
               <button type="button" class="offline-remove-btn">Remove</button>
             </div>
           </div>
@@ -5591,19 +5655,6 @@ async function openOfflineFile(id) {
   a.href = url;
   a.target = "_blank";
   a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 600000);
-}
-
-async function saveOfflineFileToDevice(id) {
-  const record = await getOfflineFile(id);
-  if (!record?.blob) return;
-  const url = URL.createObjectURL(record.blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = record.filename || "file";
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -6932,7 +6983,26 @@ async function refreshArchiveSilently() {
 }
 setInterval(refreshArchiveSilently, 30000);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") refreshArchiveSilently();
+  if (document.visibilityState === "visible") {
+    refreshArchiveSilently();
+    loadActivityStats().catch(() => {});
+  }
+});
+
+// If the app was opened without internet and connectivity comes back,
+// refresh immediately instead of waiting for the 30-second background timer.
+window.addEventListener("online", () => {
+  refreshArchiveSilently();
+  loadActivityStats().catch(() => {});
+});
+
+// When an installed PWA/browser page is restored from the back-forward cache,
+// treat it like reopening the app and refresh its live data.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && navigator.onLine) {
+    refreshArchiveSilently();
+    loadActivityStats().catch(() => {});
+  }
 });
 
 
@@ -6949,7 +7019,6 @@ document.getElementById("offlineLibraryList")?.addEventListener("click", async (
   try {
     if (e.target.closest(".offline-pin-btn")) await toggleOfflinePin(id);
     else if (e.target.closest(".offline-open-btn")) await openOfflineFile(id);
-    else if (e.target.closest(".offline-device-btn")) await saveOfflineFileToDevice(id);
     else if (e.target.closest(".offline-remove-btn")) await removeOfflineFile(id);
   } catch (err) {
     showError(err?.message || "Offline file action failed.");
@@ -6958,6 +7027,12 @@ document.getElementById("offlineLibraryList")?.addEventListener("click", async (
 
 document.getElementById("offlineSearchInput")?.addEventListener("input", (e) => {
   offlineSearchTerm = e.target.value || "";
+  renderOfflineLibrary();
+});
+document.getElementById("offlineSubjectFilters")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-offline-subject]");
+  if (!btn) return;
+  offlineSubjectFilter = btn.dataset.offlineSubject || "All";
   renderOfflineLibrary();
 });
 document.getElementById("offlineTypeFilters")?.addEventListener("click", (e) => {
