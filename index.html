@@ -2242,6 +2242,68 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 </style>
 
 
+<style id="offline-library-vault-styles">
+  .offline-vault-summary{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px
+  }
+  .offline-vault-stat{
+    min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:11px;
+    background:rgba(255,255,255,.018)
+  }
+  .offline-vault-stat span{
+    display:block;margin-bottom:4px;color:var(--muted);
+    font:600 8.5px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em
+  }
+  .offline-vault-stat strong{font:700 14px 'JetBrains Mono',monospace;color:var(--text)}
+  .offline-vault-tools{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .offline-search-wrap{position:relative}
+  .offline-search-wrap:before{
+    content:"⌕";position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    color:var(--muted);font-size:18px;pointer-events:none
+  }
+  #offlineSearchInput{
+    width:100%;padding:11px 12px 11px 37px;border:1px solid var(--line);border-radius:10px;
+    background:rgba(255,255,255,.018);color:var(--text);outline:none;font:500 12px 'Inter',sans-serif
+  }
+  #offlineSearchInput:focus{border-color:rgba(94,231,247,.5);box-shadow:0 0 0 3px rgba(94,231,247,.06)}
+  #offlineSearchInput::placeholder{color:var(--muted-2)}
+  .offline-filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .offline-filter-row::-webkit-scrollbar{display:none}
+  .offline-filter{
+    flex:0 0 auto;padding:6px 9px;border:1px solid var(--line);border-radius:999px;
+    background:transparent;color:var(--muted);font:600 9px 'JetBrains Mono',monospace;cursor:pointer
+  }
+  .offline-filter.active{border-color:transparent;background:var(--cyan);color:#061016}
+  .offline-subject-group{margin-bottom:16px}
+  .offline-subject-head{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin:0 1px 8px;color:var(--text);font:700 10px 'JetBrains Mono',monospace
+  }
+  .offline-subject-head span:last-child{color:var(--muted);font-size:9px}
+  .offline-subject-files{display:flex;flex-direction:column;gap:8px}
+  .offline-file.is-pinned{border-color:rgba(94,231,247,.3);box-shadow:inset 3px 0 0 rgba(94,231,247,.7)}
+  .offline-file-title-row{display:flex;align-items:flex-start;gap:7px}
+  .offline-pin-btn{
+    flex:0 0 auto;border:0!important;background:transparent!important;padding:0!important;
+    color:var(--muted)!important;font-size:14px!important;line-height:1!important
+  }
+  .offline-pin-btn.is-pinned{color:var(--cyan)!important}
+  .offline-file-saved{
+    display:block;margin-top:3px;color:var(--muted-2);font:500 8.5px 'JetBrains Mono',monospace
+  }
+  .offline-no-results{
+    padding:24px 14px;text-align:center;border:1px dashed var(--line-strong);
+    border-radius:11px;color:var(--muted);font-size:12px
+  }
+  body[data-theme="light"] .offline-vault-stat,
+  body[data-theme="light"] #offlineSearchInput{background:rgba(52,125,115,.035)}
+  @media(max-width:700px){
+    .offline-vault-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .offline-vault-stat{padding:9px 8px}
+    .offline-vault-stat strong{font-size:12px}
+  }
+</style>
+
 <style id="offline-library-pwa-only">
   /* Offline Library is intentionally PWA-only.
      It stays hidden in ordinary browser tabs and appears only when
@@ -2258,6 +2320,41 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   html.stat-archive-pwa .offline-btn{
     display:flex !important;
   }
+</style>
+
+
+<style id="mobile-compact-distribution-graph">
+@media (max-width:700px){
+  .hero-probability{
+    height:205px !important;
+    margin-top:16px !important;
+    overflow:hidden !important;
+  }
+  .probability-svg{
+    top:31px !important;
+    left:4px !important;
+    right:4px !important;
+    width:calc(100% - 8px) !important;
+    height:166px !important;
+    aspect-ratio:auto !important;
+  }
+  .curve-title{top:10px !important}
+  .formula-chip{top:8px !important}
+  .axis-label{bottom:5px !important}
+}
+@media (max-width:430px){
+  .hero-probability{
+    height:195px !important;
+    margin-top:14px !important;
+  }
+  .probability-svg{
+    top:29px !important;
+    left:3px !important;
+    right:3px !important;
+    width:calc(100% - 6px) !important;
+    height:158px !important;
+  }
+}
 </style>
 
 </head>
@@ -2360,7 +2457,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     </div>
     <div class="admin-storage" id="adminStorageCard" style="padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:rgba(15,20,29,.55);">
       <div class="storage-label" style="display:flex;align-items:center;gap:6px;font:600 9px 'JetBrains Mono',monospace;color:#687487;text-transform:uppercase;letter-spacing:.08em;">
-        <span id="summaryStorageLabel">Last month activity</span><span class="storage-pulse"></span>
+        <span id="summaryStorageLabel">Activity</span><span class="storage-pulse"></span>
       </div>
       <div id="summaryActivity" style="display:flex;align-items:center;gap:16px;margin-top:7px;">
         <div>
@@ -2391,7 +2488,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     <div class="filter-row" id="subjectFilterRow"></div>
     <div class="filter-row" id="typeFilterRow"></div>
     <div class="archive-action-row">
-      <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry">+ File a new entry</button>
+      <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry" style="display:none">+ File a new entry</button>
       <button class="latest-btn" id="latestEntriesBtn" type="button" style="display:none">↕ Latest entries</button>
       <button class="latest-btn" id="offlineLibraryBtn" type="button">⇩ Offline library <span class="offline-library-count" id="offlineLibraryCount">0</span></button>
     </div>
@@ -2414,11 +2511,26 @@ body[data-theme="light"] .axis-mid{color:#347d73}
       <button type="button" class="close-btn" id="closeOfflineLibraryBtn" aria-label="Close offline library">✕</button>
     </div>
     <div class="offline-library-scroll">
-      <p class="offline-library-intro">Files saved here are stored inside Stat Archive on this device, so you can open them without internet.</p>
+      <p class="offline-library-intro">Your study vault. Saved files stay on this device and can be opened without internet.</p>
+
+      <div class="offline-vault-summary">
+        <div class="offline-vault-stat"><span>Files</span><strong id="offlineSavedCount">0</strong></div>
+        <div class="offline-vault-stat"><span>Subjects</span><strong id="offlineSubjectCount">0</strong></div>
+        <div class="offline-vault-stat"><span>Stored</span><strong id="offlineStoredSize">0 B</strong></div>
+      </div>
+
       <div class="offline-library-stats">
-        <span><strong id="offlineSavedCount">0</strong> files saved offline</span>
+        <span>Available offline on this device</span>
         <span id="offlineStorageInfo">Checking storage…</span>
       </div>
+
+      <div class="offline-vault-tools">
+        <div class="offline-search-wrap">
+          <input id="offlineSearchInput" type="search" autocomplete="off" placeholder="Search saved files, subjects, year…">
+        </div>
+        <div class="offline-filter-row" id="offlineTypeFilters" aria-label="Offline file filters"></div>
+      </div>
+
       <div class="offline-library-list" id="offlineLibraryList"></div>
       <button type="button" class="offline-clear-btn" id="clearOfflineLibraryBtn" style="display:none">Remove all offline files</button>
     </div>
@@ -2853,8 +2965,8 @@ const TYPE_ABBR = {
 
 async function loadActivityStats() {
   try {
-    // The database function automatically starts a fresh activity period
-    // when the current period is older than one month.
+    // Activity totals are loaded from Supabase. For true all-time totals,
+    // the get_archive_activity RPC must not reset its counters by month.
     const { data, error } = await sb.rpc("get_archive_activity");
 
     if (error) throw error;
@@ -2907,7 +3019,7 @@ function updateStorageUI() {
   }
 
   // Public/read-only visitors see global preview/download activity.
-  if (label) label.textContent = "Last month activity";
+  if (label) label.textContent = "Activity";
   if (activity) activity.style.display = "flex";
   value.style.display = "none";
   if (meta) meta.style.display = "none";
@@ -2972,8 +3084,10 @@ function updateAuthUI() {
         : "Signed in - Upload permission only";
 
     authBtn.textContent = "Sign out";
-    openFormBtn.disabled = archiveRole === "viewer";
-    openFormBtn.title = archiveRole === "viewer" ? "This account cannot upload" : "";
+    const canFileEntry = archiveRole === "admin" || archiveRole === "contributor";
+    openFormBtn.disabled = !canFileEntry;
+    openFormBtn.style.display = canFileEntry ? "inline-flex" : "none";
+    openFormBtn.title = canFileEntry ? "" : "This account cannot upload";
     const canUseLatestEntries = archiveRole === "admin" || archiveRole === "contributor";
     if (latestEntriesBtn) {
       latestEntriesBtn.style.display = canUseLatestEntries ? "inline-flex" : "none";
@@ -2992,6 +3106,7 @@ function updateAuthUI() {
     label.textContent = "Read-only — sign in to file or remove entries";
     authBtn.textContent = "Sign in";
     openFormBtn.disabled = true;
+    openFormBtn.style.display = "none";
     openFormBtn.title = "Sign in to file a new entry";
     latestEntriesMode = false;
     if (latestEntriesBtn) {
@@ -3012,6 +3127,12 @@ function applySignedOutUI() {
   // Remove them directly so sign-out stays responsive even on large archives.
   document.querySelectorAll("#grid .edit-btn, #grid .del-btn, .subject-edit, .subject-delete")
     .forEach(el => el.remove());
+
+  const formBtn = document.getElementById("openFormBtn");
+  if (formBtn) {
+    formBtn.disabled = true;
+    formBtn.style.display = "none";
+  }
 
   const latestBtn = document.getElementById("latestEntriesBtn");
   if (latestBtn) {
@@ -3594,12 +3715,12 @@ function renderSubjectFilters() {
   row.appendChild(addPill);
   }
 
-  // Fit as many subjects as the available width actually allows -- more on
-  // a wide desktop screen, fewer on a narrow phone -- rather than a fixed
-  // count. MIN_VISIBLE_SUBJECTS is only a floor for narrow screens, never a
-  // cap: it guarantees a phone still shows a handful of real subjects
-  // instead of collapsing to just "All subjects" + "Others".
-  const MIN_VISIBLE_SUBJECTS = 5;
+  // Desktop keeps the adaptive "fit as many as possible" behavior.
+  // Mobile is intentionally simpler: show at most 3 real subjects in the
+  // compact state, followed by the More button. This prevents 5 long subject
+  // pills from taking several lines on a phone.
+  const isMobileSubjectLayout = window.matchMedia("(max-width: 700px)").matches;
+  const DESKTOP_MIN_VISIBLE_SUBJECTS = 5;
 
   row.classList.toggle("show-all-subjects", showAllSubjectPills);
   row.classList.remove("wrap-needed");
@@ -3607,56 +3728,116 @@ function renderSubjectFilters() {
   if (!showAllSubjectPills) {
     const subjectPills = Array.from(row.querySelectorAll(".subject-pill"));
 
-    // Reset to natural state so widths reflect true rendered size, not a
-    // stale hidden state left over from a previous computation.
+    // Reset to natural state before measuring.
     subjectPills.forEach(p => { p.style.display = ""; });
     othersPill.style.display = "inline-flex";
     othersPill.textContent = "More";
 
-    const styles = getComputedStyle(row);
-    const gap = parseFloat(styles.columnGap || styles.gap) || 5;
-    const available = row.clientWidth;
-    const allPillWidth = allPill.getBoundingClientRect().width;
-    const othersWidth = othersPill.getBoundingClientRect().width;
-    const pillWidths = subjectPills.map(p => p.getBoundingClientRect().width);
+    if (isMobileSubjectLayout) {
+      /* Mobile remains adaptive, but the compact state is capped at TWO
+         visual rows. We measure the actual rendered pill widths, so a wider
+         phone can show more subjects while a narrower phone shows fewer. */
+      const styles = getComputedStyle(row);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 5;
+      const available = Math.max(1, row.clientWidth);
+      const allWidth = allPill.getBoundingClientRect().width;
+      const moreWidth = othersPill.getBoundingClientRect().width;
+      const widths = subjectPills.map(p => p.getBoundingClientRect().width);
 
-    const totalWithoutOthers =
-      allPillWidth + pillWidths.reduce((sum, w) => sum + w + gap, 0);
+      // Hide everything first, then add pills only while they fit in the
+      // two-row packing model. "More" permanently reserves room on row 2.
+      subjectPills.forEach(p => { p.style.display = "none"; });
 
-    if (totalWithoutOthers <= available) {
-      // Everything genuinely fits on one line -- no More button needed at all.
-      othersPill.style.display = "none";
-    } else {
-      // Reserve room for the More pill itself BEFORE deciding the
-      // cutoff, so it's never fitted "after the fact" and left clipped.
-      const budget = available - othersWidth - gap;
-      let used = allPillWidth;
-      let visibleCount = 0;
-      let hiddenCount = 0;
+      let row1Used = allWidth;
+      let row2Used = moreWidth;
+      let hiddenCount = subjectPills.length;
+      let activePill = null;
 
-      subjectPills.forEach((pill, i) => {
-        const isActive = pill.classList.contains("active");
-        const mustShow = isActive || visibleCount < MIN_VISIBLE_SUBJECTS;
-        const projected = used + gap + pillWidths[i];
-
-        if (mustShow || projected <= budget) {
-          pill.style.display = "";
-          used = projected;
-          visibleCount++;
-        } else {
-          pill.style.display = "none";
-          hiddenCount++;
-        }
+      // Keep the active subject visible whenever possible.
+      subjectPills.forEach(p => {
+        if (p.classList.contains("active")) activePill = p;
       });
 
-      othersPill.textContent = "More";
-      othersPill.style.display = hiddenCount > 0 ? "inline-flex" : "none";
+      const tryPlace = (pill, width) => {
+        // Prefer filling row 1 first.
+        if (row1Used + gap + width <= available) {
+          pill.style.display = "";
+          row1Used += gap + width;
+          hiddenCount--;
+          return true;
+        }
+        // Then fill row 2, preserving space already occupied by More.
+        if (row2Used + gap + width <= available) {
+          pill.style.display = "";
+          row2Used += gap + width;
+          hiddenCount--;
+          return true;
+        }
+        return false;
+      };
 
-      // If forcing the floor pushed total width past what's available
-      // (very narrow screen), wrap onto a second line rather than
-      // relying purely on horizontal scroll.
-      if (row.scrollWidth > row.clientWidth) {
-        row.classList.add("wrap-needed");
+      // If a non-first active subject exists, reserve/show it first so the
+      // current selection never disappears behind More.
+      if (activePill) {
+        const ai = subjectPills.indexOf(activePill);
+        if (ai >= 0) tryPlace(activePill, widths[ai]);
+      }
+
+      subjectPills.forEach((pill, i) => {
+        if (pill === activePill) return;
+        tryPlace(pill, widths[i]);
+      });
+
+      // If every subject fitted in two rows, remove More and try once more
+      // using the newly freed second-row space.
+      if (hiddenCount === 0) {
+        othersPill.style.display = "none";
+      } else {
+        othersPill.style.display = "inline-flex";
+      }
+
+      // Natural flex wrapping is now safe because only pills that mathematically
+      // fit within two rows remain visible.
+      row.classList.add("wrap-needed");
+    } else {
+      const styles = getComputedStyle(row);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 5;
+      const available = row.clientWidth;
+      const allPillWidth = allPill.getBoundingClientRect().width;
+      const othersWidth = othersPill.getBoundingClientRect().width;
+      const pillWidths = subjectPills.map(p => p.getBoundingClientRect().width);
+
+      const totalWithoutOthers =
+        allPillWidth + pillWidths.reduce((sum, w) => sum + w + gap, 0);
+
+      if (totalWithoutOthers <= available) {
+        othersPill.style.display = "none";
+      } else {
+        const budget = available - othersWidth - gap;
+        let used = allPillWidth;
+        let visibleCount = 0;
+        let hiddenCount = 0;
+
+        subjectPills.forEach((pill, i) => {
+          const isActive = pill.classList.contains("active");
+          const mustShow = isActive || visibleCount < DESKTOP_MIN_VISIBLE_SUBJECTS;
+          const projected = used + gap + pillWidths[i];
+
+          if (mustShow || projected <= budget) {
+            pill.style.display = "";
+            used = projected;
+            visibleCount++;
+          } else {
+            pill.style.display = "none";
+            hiddenCount++;
+          }
+        });
+
+        othersPill.style.display = hiddenCount > 0 ? "inline-flex" : "none";
+
+        if (row.scrollWidth > row.clientWidth) {
+          row.classList.add("wrap-needed");
+        }
       }
     }
   } else {
@@ -5186,6 +5367,36 @@ function offlineRecordLabel(record) {
   return [subject, record.type, record.year].filter(Boolean).join(" · ");
 }
 
+let offlineSearchTerm = "";
+let offlineTypeFilter = "All";
+
+function offlinePinned(record) {
+  return record?.pinned === true;
+}
+
+function offlineSavedDate(record) {
+  const n = Number(record?.savedAt || 0);
+  if (!n) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, { day:"numeric", month:"short", year:"numeric" }).format(new Date(n));
+  } catch (_) {
+    return "";
+  }
+}
+
+function renderOfflineTypeFilters(records) {
+  const wrap = document.getElementById("offlineTypeFilters");
+  if (!wrap) return;
+  const types = [...new Set((records || []).map(r => String(r.type || "").trim()).filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b));
+  const options = ["All", ...types];
+  if (!options.includes(offlineTypeFilter)) offlineTypeFilter = "All";
+  wrap.innerHTML = options.map(type => `
+    <button type="button" class="offline-filter${offlineTypeFilter === type ? " active" : ""}"
+      data-offline-filter="${escapeHtml(type)}">${escapeHtml(type === "All" ? "All types" : type)}</button>
+  `).join("");
+}
+
 async function renderOfflineLibrary() {
   const list = document.getElementById("offlineLibraryList");
   const clearBtn = document.getElementById("clearOfflineLibraryBtn");
@@ -5199,11 +5410,26 @@ async function renderOfflineLibrary() {
     return;
   }
 
-  records.sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0));
+  records.sort((a, b) => {
+    const pinDiff = Number(offlinePinned(b)) - Number(offlinePinned(a));
+    if (pinDiff) return pinDiff;
+    return (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0);
+  });
+
   offlineEntryIds.clear();
   records.forEach(r => offlineEntryIds.add(String(r.id)));
   updateOfflineLibraryCount(records.length);
   updateOfflineStorageInfo(records);
+
+  const subjectCount = new Set(records.map(r => r.subjectName || r.subject || "Other")).size;
+  const subjectEl = document.getElementById("offlineSubjectCount");
+  if (subjectEl) subjectEl.textContent = String(records.length ? subjectCount : 0);
+
+  const totalBytes = records.reduce((sum, r) => sum + Number(r?.blob?.size || r?.size || 0), 0);
+  const sizeEl = document.getElementById("offlineStoredSize");
+  if (sizeEl) sizeEl.textContent = formatSize(totalBytes);
+
+  renderOfflineTypeFilters(records);
   if (clearBtn) clearBtn.style.display = records.length ? "inline-block" : "none";
 
   if (!records.length) {
@@ -5211,22 +5437,72 @@ async function renderOfflineLibrary() {
     return;
   }
 
-  list.innerHTML = records.map(record => `
-    <div class="offline-file" data-offline-id="${escapeHtml(String(record.id))}">
-      <div class="offline-file-head">
-        <div>
-          <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}</div>
-          <div class="offline-file-meta">${escapeHtml(offlineRecordLabel(record))}<br/>${escapeHtml(record.filename || "file")}</div>
-        </div>
-        <span class="offline-file-size">${escapeHtml(formatSize(Number(record.blob?.size || record.size || 0)))}</span>
+  const q = offlineSearchTerm.trim().toLowerCase();
+  const visible = records.filter(record => {
+    if (offlineTypeFilter !== "All" && String(record.type || "") !== offlineTypeFilter) return false;
+    if (!q) return true;
+    const haystack = [
+      record.title, record.filename, record.subjectName, record.subject,
+      record.type, record.year, record.level
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(q);
+  });
+
+  if (!visible.length) {
+    list.innerHTML = `<div class="offline-no-results">No saved files match this search or filter.</div>`;
+    return;
+  }
+
+  const groups = new Map();
+  visible.forEach(record => {
+    const subject = record.subjectName || record.subject || "Other";
+    if (!groups.has(subject)) groups.set(subject, []);
+    groups.get(subject).push(record);
+  });
+
+  list.innerHTML = [...groups.entries()].map(([subject, files]) => `
+    <section class="offline-subject-group">
+      <div class="offline-subject-head">
+        <span>${escapeHtml(subject)}</span>
+        <span>${files.length} ${files.length === 1 ? "file" : "files"}</span>
       </div>
-      <div class="offline-file-actions">
-        <button type="button" class="offline-open-btn">⊙ Open offline</button>
-        <button type="button" class="offline-device-btn">⬇ Save to device</button>
-        <button type="button" class="offline-remove-btn">Remove</button>
+      <div class="offline-subject-files">
+        ${files.map(record => `
+          <div class="offline-file${offlinePinned(record) ? " is-pinned" : ""}" data-offline-id="${escapeHtml(String(record.id))}">
+            <div class="offline-file-head">
+              <div>
+                <div class="offline-file-title-row">
+                  <button type="button" class="offline-pin-btn${offlinePinned(record) ? " is-pinned" : ""}"
+                    title="${offlinePinned(record) ? "Unpin file" : "Pin file"}"
+                    aria-label="${offlinePinned(record) ? "Unpin file" : "Pin file"}">${offlinePinned(record) ? "★" : "☆"}</button>
+                  <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}</div>
+                </div>
+                <div class="offline-file-meta">
+                  ${escapeHtml([record.type, record.year].filter(Boolean).join(" · ") || "Saved file")}<br/>
+                  ${escapeHtml(record.filename || "file")}
+                  ${offlineSavedDate(record) ? `<span class="offline-file-saved">Saved ${escapeHtml(offlineSavedDate(record))}</span>` : ""}
+                </div>
+              </div>
+              <span class="offline-file-size">${escapeHtml(formatSize(Number(record.blob?.size || record.size || 0)))}</span>
+            </div>
+            <div class="offline-file-actions">
+              <button type="button" class="offline-open-btn">⊙ Open offline</button>
+              <button type="button" class="offline-device-btn">⬇ Save to device</button>
+              <button type="button" class="offline-remove-btn">Remove</button>
+            </div>
+          </div>
+        `).join("")}
       </div>
-    </div>
+    </section>
   `).join("");
+}
+
+async function toggleOfflinePin(id) {
+  const record = await getOfflineFile(id);
+  if (!record) return;
+  record.pinned = !offlinePinned(record);
+  await putOfflineFile(record);
+  await renderOfflineLibrary();
 }
 
 function openOfflineLibrary(focusId = null) {
@@ -5288,6 +5564,8 @@ async function saveEntryOffline(entry, btn) {
     });
 
     offlineEntryIds.add(String(entry.id));
+    // Saving a file into the Offline Library is a successful file download,
+    // so it contributes to the global Downloads activity figure.
     incrementActivity("download");
     updateOfflineLibraryCount();
     if (btn) {
@@ -6670,12 +6948,24 @@ document.getElementById("offlineLibraryList")?.addEventListener("click", async (
   if (!file) return;
   const id = file.dataset.offlineId;
   try {
-    if (e.target.closest(".offline-open-btn")) await openOfflineFile(id);
+    if (e.target.closest(".offline-pin-btn")) await toggleOfflinePin(id);
+    else if (e.target.closest(".offline-open-btn")) await openOfflineFile(id);
     else if (e.target.closest(".offline-device-btn")) await saveOfflineFileToDevice(id);
     else if (e.target.closest(".offline-remove-btn")) await removeOfflineFile(id);
   } catch (err) {
     showError(err?.message || "Offline file action failed.");
   }
+});
+
+document.getElementById("offlineSearchInput")?.addEventListener("input", (e) => {
+  offlineSearchTerm = e.target.value || "";
+  renderOfflineLibrary();
+});
+document.getElementById("offlineTypeFilters")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-offline-filter]");
+  if (!btn) return;
+  offlineTypeFilter = btn.dataset.offlineFilter || "All";
+  renderOfflineLibrary();
 });
 document.getElementById("clearOfflineLibraryBtn")?.addEventListener("click", async () => {
   if (!confirm("Remove every file saved inside the Offline library on this device?")) return;
