@@ -66,41 +66,6 @@
   body{cursor:default}
   button,.pill,.action-btn,a,label{cursor:pointer}
 
-  .cursor-dot,.cursor-ring{
-    position:fixed;
-    left:0;
-    top:0;
-    pointer-events:none;
-    z-index:9999;
-    border-radius:50%;
-    transform:translate(-50%,-50%);
-  }
-
-  .cursor-dot{
-    width:7px;
-    height:7px;
-    background:var(--coral);
-    opacity:.8;
-  }
-
-  .cursor-ring{
-    width:28px;
-    height:28px;
-    border:1px solid rgba(52,125,115,.5);
-    transition:
-      width .18s,
-      height .18s,
-      border-color .18s,
-      background .18s;
-  }
-
-  body.cursor-hover .cursor-ring{
-    width:44px;
-    height:44px;
-    border-color:var(--mustard);
-    background:rgba(213,166,64,.08);
-  }
-
   .cursor-spark{
     position:fixed;
     width:5px;
@@ -870,15 +835,23 @@ body{
     position:fixed;
     left:0;
     top:0;
-    width:420px;
-    height:420px;
+    width:520px;
+    height:520px;
     border-radius:50%;
     pointer-events:none;
     z-index:-1;
     transform:translate(-50%,-50%);
-    background:radial-gradient(circle,rgba(94,231,247,.075) 0%,rgba(94,231,247,.025) 30%,transparent 68%);
+    background:
+      radial-gradient(
+        circle,
+        rgba(94,231,247,.055) 0%,
+        rgba(94,231,247,.025) 27%,
+        rgba(94,231,247,.012) 45%,
+        transparent 72%
+      );
+    filter:blur(2px);
     opacity:0;
-    transition:opacity .35s ease;
+    transition:opacity .4s ease;
     will-change:transform;
   }
   body.mouse-active .mouse-spotlight{opacity:1}
@@ -906,63 +879,6 @@ body{
     justify-content:flex-end;
     gap:9px;
   }
-
-  .cursor-dot,.cursor-ring{
-    position:fixed;
-    left:0;
-    top:0;
-    pointer-events:none;
-    z-index:10001;
-    border-radius:50%;
-    transform:translate3d(-50%,-50%,0);
-  }
-
-  .cursor-dot{
-    width:7px;
-    height:7px;
-    background:var(--cyan);
-    box-shadow:0 0 12px rgba(94,231,247,.28);
-    opacity:.9;
-  }
-
-  .cursor-ring{
-    width:30px;
-    height:30px;
-    border:1px solid rgba(94,231,247,.42);
-    background:rgba(94,231,247,.025);
-    transition:
-      width .18s ease,
-      height .18s ease,
-      border-color .18s ease,
-      background .18s ease;
-    will-change:transform,width,height;
-  }
-
-  body.cursor-hover .cursor-ring{
-    width:44px;
-    height:44px;
-    border-color:rgba(94,231,247,.62);
-    background:rgba(94,231,247,.06);
-  }
-
-  .mouse-spotlight{
-    width:520px!important;
-    height:520px!important;
-    z-index:-1!important;
-    background:
-      radial-gradient(
-        circle,
-        rgba(94,231,247,.055) 0%,
-        rgba(94,231,247,.025) 27%,
-        rgba(94,231,247,.012) 45%,
-        transparent 72%
-      )!important;
-    filter:blur(2px);
-    opacity:0!important;
-    transition:opacity .4s ease;
-  }
-
-  body.mouse-active .mouse-spotlight{opacity:1!important}
 
   /* Light theme: visual palette taken from the uploaded light design. */
   html[data-theme="light"]{
@@ -1310,21 +1226,6 @@ body{
   }
   body[data-theme="light"] #summaryTypeBreakdown b{
     color:#245e57!important;
-  }
-
-  body[data-theme="light"] .cursor-dot{
-    background:#d96f5f;
-    box-shadow:0 0 12px rgba(217,111,95,.22);
-  }
-
-  body[data-theme="light"] .cursor-ring{
-    border-color:rgba(52,125,115,.5);
-    background:rgba(52,125,115,.02);
-  }
-
-  body[data-theme="light"].cursor-hover .cursor-ring{
-    border-color:rgba(213,166,64,.65);
-    background:rgba(213,166,64,.08);
   }
 
   body[data-theme="light"] .mouse-spotlight{
@@ -2268,6 +2169,8 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     box-shadow:0 8px 20px rgba(52,125,115,.24);
   }
 </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#070a0f">
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -2716,8 +2619,8 @@ let justSignedIn = false; // true only right after the login form is submitted �
                            // distinguish a real sign-in from Supabase restoring a session
                            // from storage on page load (which also fires "SIGNED_IN").
 
-/* ===== 24-hour auto sign-out ===== */
-const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/* ===== 14-day auto sign-out ===== */
+const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const LOGIN_AT_KEY = "statArchiveLoginAt";
 let autoSignOutTimer = null;
 
@@ -2737,7 +2640,7 @@ function clearLoginTime() {
   }
 }
 
-// Returns true if the stored login is older than 24h (or malformed).
+// Returns true if the stored login is older than SESSION_MAX_AGE_MS (or malformed).
 function isLoginExpired() {
   const raw = localStorage.getItem(LOGIN_AT_KEY);
   if (raw === null) return false;
@@ -2773,7 +2676,7 @@ async function autoSignOut() {
     catch (err) { console.warn("Network failed, clearing local session.", err); }
     finally {
       session = null;
-      showError("You've been signed out after 24 hours. Please sign in again.");
+      showError("You've been signed out after 14 days. Please sign in again.");
       updateAuthUI();
     }
   }
@@ -3162,10 +3065,10 @@ async function init() {
       await sb.auth.signOut();
       session = null;
       clearLoginTime();
-      showError("You've been signed out after 24 hours. Please sign in again.");
+      showError("You've been signed out after 14 days. Please sign in again.");
     } else if (session) {
       // Existing session with no recorded login time (e.g. from before this
-      // feature, or a page refresh) — start the 24h clock now.
+      // feature, or a page refresh) — start the session clock now.
       if (!localStorage.getItem(LOGIN_AT_KEY)) markLoginTime();
       scheduleAutoSignOut();
     }
@@ -3636,6 +3539,16 @@ let subjectFilterResizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(subjectFilterResizeTimer);
   subjectFilterResizeTimer = setTimeout(() => {
+    // Skip while the "+ Subject" form is open — a full re-render wipes it
+    // via row.innerHTML = "" (inside renderSubjectFilters), losing
+    // whatever the user has typed. This matters far more than it looks:
+    // on mobile, tapping the "Add" submit button dismisses the on-screen
+    // keyboard, which itself fires a resize event as the viewport height
+    // grows back — so submitting the form could trigger this same
+    // 150ms-later re-render mid-submit, destroying the form (and the
+    // visual "Adding…" state) while createSubject() was still in flight,
+    // which looked to the user like clicking Add did nothing at all.
+    if (document.getElementById("addSubjectForm")) return;
     if (document.getElementById("subjectFilterRow")) renderSubjectFilters();
   }, 150);
 });
@@ -4084,7 +3997,14 @@ function wireSubjectCarousel(wrap) {
     const perView = cardsPerView(track);
     const first = track.querySelector(".card");
     const gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 0;
-    const step = first ? (first.getBoundingClientRect().width + gap) * perView : track.clientWidth;
+    const rawStep = first ? (first.getBoundingClientRect().width + gap) * perView : track.clientWidth;
+    // Round to a whole pixel before scrolling. getBoundingClientRect()
+    // can return sub-pixel widths (cards are sized via a CSS calc() that
+    // doesn't always divide evenly), and multiplying that fractional
+    // width by perView compounds the error. A fractional scroll target
+    // could land scrollLeft just off of a scroll-snap-align boundary,
+    // occasionally making it snap to the wrong (sometimes previous) card.
+    const step = Math.round(rawStep);
     // Removed the explicit "smooth" behavior option: it fights the
     // .subject-track CSS scroll-snap-type on Safari and causes jank.
     // The CSS already sets scroll-behavior:smooth, so motion stays smooth.
@@ -4618,6 +4538,25 @@ async function previewEntry(entry) {
           });
         }
         rendering = true;
+
+        // Cancel any render tasks still tracked from the *previous* call
+        // before wiping pageMeta/pagesHost out from under them. The wait
+        // above only guarantees the last renderAllPages() call's own
+        // (synchronous) setup phase finished — individual per-page
+        // render tasks kicked off via the IntersectionObserver run
+        // independently and could still be active. body._pdfRenderTasks
+        // was previously only ever cleared in closePreview(), so zooming
+        // or resizing while the preview stayed open left those old tasks
+        // running in the background, burning CPU/GPU against canvases
+        // that no longer existed in the DOM, for as long as the preview
+        // stayed open at the new zoom level.
+        if (body._pdfRenderTasks) {
+          for (const task of body._pdfRenderTasks) {
+            try { task.cancel(); } catch (e) {}
+          }
+          body._pdfRenderTasks.clear();
+        }
+
         pagesHost.innerHTML = "";
         pageElements = [];
         pageMeta = [];
@@ -5842,6 +5781,27 @@ function clearLoginModalState() {
   if (form) form.reset();
   if (input) input.value = "";
   if (error) { error.textContent = ""; error.style.display = "none"; }
+
+  // form.reset() only restores default *values*, not the passcode
+  // field's type — if the previous person had clicked the eye icon to
+  // reveal it, the field (and its eye-icon button) stayed in "visible"
+  // mode here even after the value itself was cleared, so the next
+  // person to open this modal on a shared device would land on an
+  // already-revealed (if currently empty) passcode field instead of a
+  // masked one.
+  if (input) input.type = "password";
+  const toggleBtn = document.getElementById("togglePasscodeBtn");
+  if (toggleBtn) {
+    toggleBtn.innerHTML = `
+    <svg class="password-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="m3 3 18 18"></path>
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17.6 17.6 0 0 1-3.1 3.8"></path>
+      <path d="M6.3 6.4A10.9 10.9 0 0 0 2.5 12s3.5 6 9.5 6c1.3 0 2.5-.3 3.6-.8"></path>
+      <path d="M9.9 9.9a2.7 2.7 0 0 0 3.8 3.8"></path>
+    </svg>`;
+    toggleBtn.setAttribute("aria-label", "Show passcode");
+    toggleBtn.setAttribute("title", "Show passcode");
+  }
 }
 document.getElementById("closeLoginBtn").onclick = () => {
   clearLoginModalState();
@@ -5874,7 +5834,16 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     scheduleAutoSignOut();
     document.getElementById("loginOverlay").style.display = "none";
     document.body.classList.remove("no-scroll");
-    document.getElementById("passcodeInput").value = "";
+    // Clear any stale page-level banner (e.g. "You've been signed out
+    // after..." from an earlier auto-sign-out) now that the user has
+    // successfully re-authenticated — this is a different banner from
+    // the login modal's own error banner, which clearLoginModalState()
+    // below already handles, so it was never being cleared on sign-in.
+    showError("");
+    // Same reset as the cancel paths (clearLoginModalState) — otherwise
+    // a passcode revealed via the eye icon right before submitting would
+    // still be showing in "visible" mode the next time this modal opens.
+    clearLoginModalState();
     // No manual render() here: the global sb.auth.onAuthStateChange listener
     // fires right after sign-in, reloads fresh data, and calls render()
     // itself. Calling it again here caused a visible UI stutter.
@@ -6440,7 +6409,7 @@ document.querySelectorAll(".overlay").forEach(overlay => {
 
       if (openOverlay) {
         if (openOverlay.id === "previewOverlay") closePreview();
-        else if (openOverlay.id === "loginOverlay") { document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
+        else if (openOverlay.id === "loginOverlay") { clearLoginModalState(); document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
         else if (openOverlay.id === "overlay") closeAndResetUploadForm();
         else if (openOverlay.id === "editEntryOverlay") closeEditEntry();
         else if (openOverlay.id === "contributorDisclaimerOverlay") { openOverlay.style.display = "none"; document.body.classList.remove("no-scroll"); }
@@ -6694,5 +6663,8 @@ document.querySelectorAll(".overlay").forEach(overlay => {
   }
 }
 </style>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}
+</script>
 </body>
 </html>
