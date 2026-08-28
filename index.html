@@ -2442,41 +2442,38 @@ html.stat-archive-pwa .offline-btn{
 
 
 
-<style id="mobile-subject-more-overlay-fix">
+<style id="mobile-subject-more-clean-fix">
 @media(max-width:700px){
   #subjectFilterRow{
     position:relative;
+    display:flex;
+    flex-wrap:wrap !important;
+    align-items:flex-start;
     overflow:visible !important;
   }
   #subjectFilterExpanded{
-    position:absolute;
-    left:0;
-    right:0;
-    top:calc(100% + 7px);
-    z-index:40;
-    display:none;
+    position:static !important;
+    display:flex !important;
+    flex:0 0 100%;
+    width:100%;
+    box-sizing:border-box;
     flex-wrap:wrap;
+    align-items:flex-start;
     gap:7px;
-    padding:11px;
-    max-height:220px;
-    overflow-y:auto;
-    border:1px solid var(--line-strong);
-    border-radius:12px;
-    background:rgba(15,20,29,.98);
-    box-shadow:0 18px 45px rgba(0,0,0,.35);
-    -webkit-backdrop-filter:blur(16px);
-    backdrop-filter:blur(16px);
-    overscroll-behavior:contain;
+    margin:2px 0 0;
+    padding:0;
+    max-height:none !important;
+    overflow:visible !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    -webkit-backdrop-filter:none !important;
+    backdrop-filter:none !important;
   }
-  #subjectFilterExpanded.open{display:flex}
   #subjectFilterExpanded .pill{
-    margin:0;
+    margin:0 !important;
     transform:none !important;
-  }
-  body[data-theme="light"] #subjectFilterExpanded{
-    background:rgba(251,249,253,.98);
-    border-color:#d8d0e3;
-    box-shadow:0 18px 40px rgba(39,48,45,.16);
   }
 }
 </style>
@@ -2969,6 +2966,7 @@ let hiddenDefaults = [];
 let filterSubjects = new Set(); // empty = "All subjects"
 let latestEntriesMode = false; // Admin/Contributor: newest uploads in one combined row
 let showAllSubjectPills = false;
+let mobileSubjectListOpen = false;
 let showAllEntrySubjects = false;
 const VISIBLE_SUBJECT_LIMIT = 7;
 const VISIBLE_ENTRY_SUBJECT_LIMIT = 6;
@@ -3656,6 +3654,24 @@ function codeFromName(name, existingCodes) {
 
 function renderSubjectFilters() {
   const row = document.getElementById("subjectFilterRow");
+  const isMobile = window.matchMedia("(max-width: 700px)").matches;
+  const openPanel = document.getElementById("subjectFilterExpanded");
+
+  // Do not rebuild the mobile subject row while the expanded list is open.
+  // Android Chrome/PWA can trigger font/viewport refreshes while scrolling;
+  // rebuilding the row there destroys the open panel and makes it collapse.
+  if (isMobile && mobileSubjectListOpen && openPanel) {
+    openPanel.querySelectorAll("[data-subject-code]").forEach(btn => {
+      btn.classList.toggle("active", filterSubjects.has(btn.dataset.subjectCode));
+    });
+    row.querySelectorAll(".subject-pill[data-subject-code]").forEach(pill => {
+      pill.classList.toggle("active", filterSubjects.has(pill.dataset.subjectCode));
+    });
+    const more = row.querySelector(".subject-more-pill");
+    if (more) more.textContent = "Show less";
+    return;
+  }
+
   row.innerHTML = "";
 
   const allPill = document.createElement("button");
@@ -3692,6 +3708,7 @@ function renderSubjectFilters() {
   visibleSubjects.forEach(s => {
       const pill = document.createElement("span");
       pill.className = "pill subject-pill" + (filterSubjects.has(s.code) ? " active" : "");
+      pill.dataset.subjectCode = s.code;
 
       const label = document.createElement("button");
       label.type = "button";
@@ -3761,42 +3778,73 @@ function renderSubjectFilters() {
     if (window.matchMedia("(max-width: 700px)").matches) {
       othersPill.blur();
 
-      let panel = document.getElementById("subjectFilterExpanded");
-      if (panel) {
-        const isOpen = panel.classList.toggle("open");
-        othersPill.textContent = isOpen ? "Show less" : "More";
+      const existingPanel = document.getElementById("subjectFilterExpanded");
+      if (existingPanel) {
+        // Collapse only on an explicit tap of Show less.
+        mobileSubjectListOpen = false;
+        existingPanel.remove();
+        othersPill.textContent = "More";
+        renderSubjectFilters();
         return;
       }
 
-      panel = document.createElement("div");
-      panel.id = "subjectFilterExpanded";
-      panel.className = "open";
+      mobileSubjectListOpen = true;
 
-      sortedSubjects.forEach(s => {
+      // The compact view already contains Other. Remove that single pill before
+      // expanding so Other can be placed exactly once at the end of the list.
+      const otherCode = sortedSubjects.find(s =>
+        s.code === "MISC" || s.name.trim().toLowerCase() === "other"
+      )?.code;
+      const compactOther = otherCode
+        ? row.querySelector(`.subject-pill[data-subject-code="${CSS.escape(otherCode)}"]`)
+        : null;
+      if (compactOther) compactOther.remove();
+
+      const hiddenPills = Array.from(row.querySelectorAll(".subject-pill"))
+        .filter(p => p.style.display === "none")
+        .map(p => p.dataset.subjectCode);
+
+      const hiddenSubjects = sortedSubjects.filter(s =>
+        hiddenPills.includes(s.code)
+      );
+      const otherSubject = sortedSubjects.find(s =>
+        s.code === "MISC" || s.name.trim().toLowerCase() === "other"
+      );
+
+      const panel = document.createElement("div");
+      panel.id = "subjectFilterExpanded";
+
+      // Expanded order: hidden subjects -> Other -> Show less.
+      [...hiddenSubjects, ...(otherSubject ? [otherSubject] : [])].forEach(s => {
         const p = document.createElement("button");
         p.type = "button";
         p.className = "pill" + (filterSubjects.has(s.code) ? " active" : "");
+        p.dataset.subjectCode = s.code;
         p.textContent = s.name;
         p.title = s.name;
-        p.onclick = () => {
+        p.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           if (filterSubjects.has(s.code)) filterSubjects.delete(s.code);
           else filterSubjects.add(s.code);
-
           latestEntriesMode = false;
-          panel.remove();
-          showAllSubjectPills = false;
-          renderSubjectFilters();
+          p.classList.toggle("active", filterSubjects.has(s.code));
+          // Do not rebuild the subject row here. This keeps the expanded list
+          // open while the archive results update.
           render();
         };
         panel.appendChild(p);
       });
 
+      // Insert the expanded list before More, then move More to the very end.
       row.appendChild(panel);
+      row.appendChild(othersPill);
       othersPill.textContent = "Show less";
       return;
     }
 
     showAllSubjectPills = !showAllSubjectPills;
+    mobileSubjectListOpen = false;
     renderSubjectFilters();
   };
   row.appendChild(othersPill);
