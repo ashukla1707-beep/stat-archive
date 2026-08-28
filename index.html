@@ -3578,9 +3578,21 @@ function setLevelUI(level) {
 // own contributor/admin accounts, so a session from one means nothing under
 // the other), swaps in that level's placeholder subjects immediately for a
 // snappy toggle, then reloads the real level-scoped entries/subjects.
+let levelSwitchInProgress = false;
+
 async function switchLevel(level) {
   const value = level === "bsc" ? "bsc" : "msc";
-  if (value === currentLevel) return;
+  if (value === currentLevel || levelSwitchInProgress) return;
+
+  // Close the mobile subject expansion BEFORE changing level. The expanded
+  // panel belongs to the old level; if it stays mounted, renderSubjectFilters()
+  // intentionally preserves it and the new B.Sc/M.Sc subjects never appear.
+  mobileSubjectListOpen = false;
+  showAllSubjectPills = false;
+  const staleSubjectPanel = document.getElementById("subjectFilterExpanded");
+  if (staleSubjectPanel) staleSubjectPanel.remove();
+
+  levelSwitchInProgress = true;
 
   if (session) {
     try { await sb.auth.signOut(); } catch (e) {}
@@ -3624,6 +3636,7 @@ async function switchLevel(level) {
   renderTypeFilters();
   renderSubjectOptions();
   render();
+  levelSwitchInProgress = false;
 }
 
 window.addEventListener("popstate", () => {
