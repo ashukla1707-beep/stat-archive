@@ -2386,6 +2386,53 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 }
 </style>
 
+
+<style id="mobile-hero-gap-and-pwa-offline-only">
+/* Mobile only: remove unused vertical space above the bell curve. */
+@media (max-width:700px){
+  .hero-probability{
+    height:174px !important;
+    margin-top:14px !important;
+    overflow:hidden !important;
+  }
+  .probability-svg{
+    top:18px !important;
+    bottom:auto !important;
+    left:3px !important;
+    right:3px !important;
+    width:calc(100% - 6px) !important;
+    height:154px !important;
+    aspect-ratio:auto !important;
+  }
+  .curve-title{top:9px !important;}
+  .formula-chip{top:7px !important;}
+  .axis-label{bottom:2px !important;}
+}
+@media (max-width:430px){
+  .hero-probability{
+    height:168px !important;
+    margin-top:12px !important;
+  }
+  .probability-svg{
+    top:17px !important;
+    height:149px !important;
+  }
+}
+
+/* Offline Library belongs to the installed PWA only.
+   Website/browser mode never shows its launcher. */
+html:not(.stat-archive-pwa) #offlineLibraryBtn,
+html:not(.stat-archive-pwa) .offline-btn{
+  display:none !important;
+}
+html.stat-archive-pwa #offlineLibraryBtn{
+  display:inline-flex !important;
+}
+html.stat-archive-pwa .offline-btn{
+  display:flex !important;
+}
+</style>
+
 </head>
 <body>
 <script id="stat-archive-pwa-mode-detection">
@@ -6368,6 +6415,18 @@ function updateFileSizeHint() {
 document.getElementById("typeSelect").addEventListener("change", updateFileSizeHint);
 updateFileSizeHint();
 
+// Android may temporarily background the PWA while the native file chooser is open.
+// Keep a flag so the normal "app resumed" hard-refresh does not close the upload form.
+window.statArchiveNativePickerActive = false;
+
+const archiveFileInput = document.getElementById("fileInput");
+archiveFileInput?.addEventListener("click", () => {
+  window.statArchiveNativePickerActive = true;
+});
+archiveFileInput?.addEventListener("pointerdown", () => {
+  window.statArchiveNativePickerActive = true;
+});
+
 // Fix: give immediate feedback on oversized files instead of waiting until
 // the user hits submit.
 document.getElementById("fileInput").addEventListener("change", (e) => {
@@ -6381,6 +6440,10 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
   } else {
     showFormError("");
   }
+
+  setTimeout(() => {
+    window.statArchiveNativePickerActive = false;
+  }, 700);
 });
 
 function closePreview() {
@@ -6995,7 +7058,8 @@ if (document.fonts && document.fonts.ready) {
 let archiveRefreshInFlight = false;
 async function refreshArchiveSilently() {
   if (archiveRefreshInFlight || document.visibilityState !== "visible" || isLoadingArchive) return;
-  if (document.querySelector(".overlay[style*='display: flex']")) return;
+  const uploadOverlay = document.getElementById("overlay");
+  if (uploadOverlay && getComputedStyle(uploadOverlay).display !== "none") return;
   archiveRefreshInFlight = true;
   try {
     const [freshEntries] = await Promise.all([loadEntries(), loadSubjectsFromWorker()]);
@@ -7051,6 +7115,16 @@ document.addEventListener("visibilitychange", () => {
 
     // Keep/reopen the library exactly where the user came from.
     setTimeout(() => openOfflineLibrary(returnId), 40);
+    return;
+  }
+
+  if (document.visibilityState === "visible" && window.statArchiveNativePickerActive) {
+    // Returning from Android's file chooser is not an app reopen.
+    // Preserve the upload modal and selected subject/type.
+    statArchiveWentToBackground = false;
+    setTimeout(() => {
+      window.statArchiveNativePickerActive = false;
+    }, 900);
     return;
   }
 
@@ -7580,7 +7654,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
         requestAnimationFrame(() => {
           curve.style.setProperty(
             "transition",
-            "stroke-dashoffset 2.25s cubic-bezier(.22,.61,.36,1)",
+            "stroke-dashoffset 3.2s cubic-bezier(.22,.61,.36,1)",
             "important"
           );
           curve.style.setProperty("stroke-dashoffset", "0", "important");
@@ -7604,7 +7678,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
           requestAnimationFrame(() => {
             dot.style.setProperty(
               "transition",
-              `transform .78s cubic-bezier(.22,.61,.36,1) ${delayText}, opacity .18s ease ${delayText}`,
+              `transform 1.05s cubic-bezier(.22,.61,.36,1) ${delayText}, opacity .28s ease ${delayText}`,
               "important"
             );
             dot.style.setProperty("transform", `translateY(${fall})`, "important");
