@@ -5,7 +5,9 @@
   try {
     if (localStorage.getItem("statArchiveTheme") === "light") {
       document.documentElement.setAttribute("data-theme", "light");
-      // The CSS rules target body[data-theme="light"], but <body> doesn't
+      // The CSS rules target body[data-theme="light"], but <body>
+
+ doesn't
       // exist yet this early in <head>. Watch for it and apply immediately
       // once it's created, instead of waiting for setupThemeButtons() to
       // run near the end of the page — that gap caused a dark-theme flash
@@ -1992,14 +1994,19 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   }
 
   @media (max-width:700px){
+    /* Mobile only: keep the four summary cards in a compact 2 × 2 grid. */
     #archiveSummary{
-      grid-template-columns:repeat(2,1fr) !important;
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      gap:10px !important;
     }
-  }
 
-  @media (max-width:430px){
-    #archiveSummary{
-      grid-template-columns:1fr !important;
+    #archiveSummary > div{
+      padding:12px 11px !important;
+      min-width:0 !important;
+    }
+
+    #archiveSummary #summaryActivity{
+      gap:10px !important;
     }
   }
 </style>
@@ -2171,8 +2178,115 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#070a0f">
+
+<style id="offline-library-styles">
+  .offline-library-count{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:18px;height:18px;margin-left:5px;padding:0 5px;border-radius:999px;
+    background:rgba(94,231,247,.12);color:var(--cyan);
+    font:700 9px 'JetBrains Mono',monospace;
+  }
+  .offline-library-card{max-width:780px}
+  .offline-library-intro{
+    margin:-4px 0 14px;color:var(--muted);font-size:12.5px;line-height:1.6
+  }
+  .offline-library-stats{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:14px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:10px;background:rgba(255,255,255,.02);
+    font:600 10px 'JetBrains Mono',monospace;color:var(--muted)
+  }
+  .offline-library-stats strong{color:var(--text)}
+  .offline-library-list{display:flex;flex-direction:column;gap:10px}
+  .offline-file{
+    padding:13px;border:1px solid var(--line);border-radius:12px;
+    background:rgba(255,255,255,.018)
+  }
+  .offline-file-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .offline-file-title{font-size:13px;font-weight:700;line-height:1.4;color:var(--text)}
+  .offline-file-size{flex-shrink:0;font:600 9px 'JetBrains Mono',monospace;color:var(--muted)}
+  .offline-file-meta{
+    margin-top:5px;color:var(--muted);font:500 9.5px 'JetBrains Mono',monospace;line-height:1.5
+  }
+  .offline-file-actions{
+    display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)
+  }
+  .offline-file-actions button{
+    border:1px solid var(--line-strong);border-radius:8px;background:transparent;
+    color:var(--text);padding:7px 10px;font:700 10px 'JetBrains Mono',monospace;cursor:pointer
+  }
+  .offline-file-actions button:hover{border-color:rgba(94,231,247,.5);color:var(--cyan)}
+  .offline-file-actions .offline-remove-btn{color:var(--danger)}
+  .offline-empty{
+    padding:36px 18px;text-align:center;border:1px dashed var(--line-strong);
+    border-radius:12px;color:var(--muted);font-size:12.5px;line-height:1.6
+  }
+  .offline-clear-btn{
+    margin-top:12px;border:0;background:transparent;color:var(--danger);
+    font:600 10px 'JetBrains Mono',monospace;text-decoration:underline;text-underline-offset:3px;cursor:pointer
+  }
+  .offline-btn.is-saved{color:var(--green)}
+  body[data-theme="light"] .offline-library-stats,
+  body[data-theme="light"] .offline-file{background:rgba(52,125,115,.035)}
+  @media(max-width:700px){
+    .offline-library-card{
+      width:100%;max-width:none;height:calc(100vh - 16px);height:calc(100dvh - 16px);
+      max-height:none;margin-top:8px;display:flex;flex-direction:column;overflow:hidden
+    }
+    .offline-library-card .offline-library-scroll{
+      flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch
+    }
+    .offline-library-stats{align-items:flex-start;flex-direction:column;gap:5px}
+    .offline-file-actions button{flex:1 1 auto;min-height:38px}
+  }
+</style>
+
+
+<style id="offline-library-pwa-only">
+  /* Offline Library is intentionally PWA-only.
+     It stays hidden in ordinary browser tabs and appears only when
+     Stat Archive is launched as an installed standalone app. */
+  #offlineLibraryBtn,
+  .offline-btn{
+    display:none !important;
+  }
+
+  html.stat-archive-pwa #offlineLibraryBtn{
+    display:inline-flex !important;
+  }
+
+  html.stat-archive-pwa .offline-btn{
+    display:flex !important;
+  }
+</style>
+
 </head>
 <body>
+<script id="stat-archive-pwa-mode-detection">
+(function () {
+  function isStandalonePWA() {
+    return (
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function syncPwaMode() {
+    document.documentElement.classList.toggle("stat-archive-pwa", isStandalonePWA());
+  }
+
+  syncPwaMode();
+
+  try {
+    const mq = window.matchMedia("(display-mode: standalone)");
+    if (mq?.addEventListener) mq.addEventListener("change", syncPwaMode);
+    else if (mq?.addListener) mq.addListener(syncPwaMode);
+  } catch (_) {}
+
+  window.addEventListener("pageshow", syncPwaMode);
+})();
+</script>
 <div class="grid-bg"></div>
 <div class="cursor-ring" id="cursorRing"></div><div class="cursor-dot" id="cursorDot"></div>
 <div class="mouse-spotlight" id="mouseSpotlight" aria-hidden="true"></div>
@@ -2279,6 +2393,7 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     <div class="archive-action-row">
       <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry">+ File a new entry</button>
       <button class="latest-btn" id="latestEntriesBtn" type="button" style="display:none">↕ Latest entries</button>
+      <button class="latest-btn" id="offlineLibraryBtn" type="button">⇩ Offline library <span class="offline-library-count" id="offlineLibraryCount">0</span></button>
     </div>
     <div id="permissionHint" style="font:500 10px 'JetBrains Mono',monospace;color:#596578;margin-top:-4px;">
       Contributors can delete only the 3 newest entries. Older entries require Admin permission.
@@ -2289,6 +2404,25 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 
   <div id="emptyState" class="empty-state" style="display:none;"></div>
   <div class="grid" id="grid"></div>
+</div>
+
+
+<div class="overlay" id="offlineLibraryOverlay" role="dialog" aria-modal="true" aria-labelledby="offlineLibraryTitle">
+  <div class="form-card offline-library-card">
+    <div class="form-header">
+      <span class="form-title" id="offlineLibraryTitle">Offline library</span>
+      <button type="button" class="close-btn" id="closeOfflineLibraryBtn" aria-label="Close offline library">✕</button>
+    </div>
+    <div class="offline-library-scroll">
+      <p class="offline-library-intro">Files saved here are stored inside Stat Archive on this device, so you can open them without internet.</p>
+      <div class="offline-library-stats">
+        <span><strong id="offlineSavedCount">0</strong> files saved offline</span>
+        <span id="offlineStorageInfo">Checking storage…</span>
+      </div>
+      <div class="offline-library-list" id="offlineLibraryList"></div>
+      <button type="button" class="offline-clear-btn" id="clearOfflineLibraryBtn" style="display:none">Remove all offline files</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="loginOverlay" role="dialog" aria-modal="true">
@@ -3096,6 +3230,7 @@ async function init() {
     showError("Could not connect to the archive.");
   }
 
+  await loadOfflineLibraryState();
   renderSubjectFilters();
   renderTypeFilters();
   renderSubjectOptions();
@@ -3884,6 +4019,8 @@ function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const offlineEntryIds = new Set();
+
 function buildCard(entry) {
   const meta = subjectMeta(entry.subject);
   const canDelete =
@@ -3938,7 +4075,7 @@ function buildCard(entry) {
     <div class="card-actions">
       ${entry.driveUrl
         ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
-        : `<button class="action-btn pv-btn">⊙ Preview</button><button class="action-btn dl-btn">⬇ Download</button>`
+        : `<button class="action-btn pv-btn">⊙ Preview</button><button class="action-btn dl-btn">⬇ Download</button><button class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}" title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}">${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}</button>`
       }
       ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
       ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Delete entry" : "Delete one of the 3 newest entries"}">🗑</button>` : ""}
@@ -4925,6 +5062,286 @@ async function previewEntry(entry) {
       if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
   }
 }
+
+/* ===== Offline Library (IndexedDB) =====
+   This is not download history. It stores actual file blobs inside the PWA
+   so saved files can be opened again without an internet connection. */
+const OFFLINE_DB_NAME = "statArchiveOfflineLibrary";
+const OFFLINE_DB_VERSION = 1;
+const OFFLINE_STORE = "files";
+
+function openOfflineDb() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("Offline storage is not supported by this browser."));
+      return;
+    }
+    const request = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(OFFLINE_STORE)) {
+        db.createObjectStore(OFFLINE_STORE, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not open offline storage."));
+  });
+}
+
+async function offlineDbAction(mode, action) {
+  const db = await openOfflineDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OFFLINE_STORE, mode);
+      const store = tx.objectStore(OFFLINE_STORE);
+      let result;
+      try { result = action(store); } catch (err) { reject(err); return; }
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error || new Error("Offline storage operation failed."));
+      tx.onabort = () => reject(tx.error || new Error("Offline storage operation was cancelled."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function getOfflineFiles() {
+  const db = await openOfflineDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OFFLINE_STORE, "readonly");
+      const req = tx.objectStore(OFFLINE_STORE).getAll();
+      req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function getOfflineFile(id) {
+  const db = await openOfflineDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OFFLINE_STORE, "readonly");
+      const req = tx.objectStore(OFFLINE_STORE).get(String(id));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function putOfflineFile(record) {
+  return offlineDbAction("readwrite", store => store.put(record));
+}
+
+async function deleteOfflineFile(id) {
+  return offlineDbAction("readwrite", store => store.delete(String(id)));
+}
+
+async function clearOfflineFiles() {
+  return offlineDbAction("readwrite", store => store.clear());
+}
+
+async function loadOfflineLibraryState() {
+  try {
+    const records = await getOfflineFiles();
+    offlineEntryIds.clear();
+    records.forEach(r => offlineEntryIds.add(String(r.id)));
+    updateOfflineLibraryCount(records.length);
+  } catch (err) {
+    console.warn("Offline library unavailable:", err);
+    updateOfflineLibraryCount(0);
+  }
+}
+
+function updateOfflineLibraryCount(count = offlineEntryIds.size) {
+  const badge = document.getElementById("offlineLibraryCount");
+  if (badge) badge.textContent = String(count);
+  const saved = document.getElementById("offlineSavedCount");
+  if (saved) saved.textContent = String(count);
+}
+
+async function updateOfflineStorageInfo(records) {
+  const el = document.getElementById("offlineStorageInfo");
+  if (!el) return;
+  const bytes = (records || []).reduce((sum, r) => sum + Number(r?.blob?.size || r?.size || 0), 0);
+  let text = `${formatSize(bytes)} stored`;
+  try {
+    if (navigator.storage?.estimate) {
+      const estimate = await navigator.storage.estimate();
+      if (estimate?.quota) {
+        const pct = estimate.usage ? Math.min(100, (estimate.usage / estimate.quota) * 100) : 0;
+        text += ` · ${pct.toFixed(pct >= 10 ? 0 : 1)}% browser storage used`;
+      }
+    }
+  } catch (_) {}
+  el.textContent = text;
+}
+
+function offlineRecordLabel(record) {
+  const subject = record.subjectName || record.subject || "Other";
+  return [subject, record.type, record.year].filter(Boolean).join(" · ");
+}
+
+async function renderOfflineLibrary() {
+  const list = document.getElementById("offlineLibraryList");
+  const clearBtn = document.getElementById("clearOfflineLibraryBtn");
+  if (!list) return;
+
+  let records = [];
+  try {
+    records = await getOfflineFiles();
+  } catch (err) {
+    list.innerHTML = `<div class="offline-empty">Offline storage could not be opened on this device.</div>`;
+    return;
+  }
+
+  records.sort((a, b) => (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0));
+  offlineEntryIds.clear();
+  records.forEach(r => offlineEntryIds.add(String(r.id)));
+  updateOfflineLibraryCount(records.length);
+  updateOfflineStorageInfo(records);
+  if (clearBtn) clearBtn.style.display = records.length ? "inline-block" : "none";
+
+  if (!records.length) {
+    list.innerHTML = `<div class="offline-empty"><strong style="color:var(--text)">No offline files yet.</strong><br/>Open any archive card and tap <b>⇩ Offline</b>. The actual file will be stored inside Stat Archive on this device.</div>`;
+    return;
+  }
+
+  list.innerHTML = records.map(record => `
+    <div class="offline-file" data-offline-id="${escapeHtml(String(record.id))}">
+      <div class="offline-file-head">
+        <div>
+          <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}</div>
+          <div class="offline-file-meta">${escapeHtml(offlineRecordLabel(record))}<br/>${escapeHtml(record.filename || "file")}</div>
+        </div>
+        <span class="offline-file-size">${escapeHtml(formatSize(Number(record.blob?.size || record.size || 0)))}</span>
+      </div>
+      <div class="offline-file-actions">
+        <button type="button" class="offline-open-btn">⊙ Open offline</button>
+        <button type="button" class="offline-device-btn">⬇ Save to device</button>
+        <button type="button" class="offline-remove-btn">Remove</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openOfflineLibrary(focusId = null) {
+  if (!document.documentElement.classList.contains("stat-archive-pwa")) return;
+  const overlay = document.getElementById("offlineLibraryOverlay");
+  if (!overlay) return;
+  overlay.style.display = "flex";
+  document.body.classList.add("no-scroll");
+  renderOfflineLibrary().then(() => {
+    if (focusId != null) {
+      const el = overlay.querySelector(`[data-offline-id="${CSS.escape(String(focusId))}"]`);
+      if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  });
+}
+
+function closeOfflineLibrary() {
+  const overlay = document.getElementById("offlineLibraryOverlay");
+  if (!overlay) return;
+  overlay.style.display = "none";
+  document.body.classList.remove("no-scroll");
+}
+
+async function saveEntryOffline(entry, btn) {
+  if (!document.documentElement.classList.contains("stat-archive-pwa")) return;
+  if (!entry || entry.driveUrl) return;
+
+  if (offlineEntryIds.has(String(entry.id))) {
+    openOfflineLibrary(entry.id);
+    return;
+  }
+
+  const original = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.textContent = "Saving…";
+    btn.disabled = true;
+  }
+  showError("");
+
+  try {
+    const response = await fetch(`${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`);
+    if (!response.ok) throw new Error("Couldn't save that file for offline use.");
+
+    const blob = await response.blob();
+    const meta = subjectMeta(entry.subject);
+    await putOfflineFile({
+      id: String(entry.id),
+      title: entry.title || entry.filename || "Untitled",
+      subject: entry.subject || "",
+      subjectName: meta?.name || entry.subject || "",
+      type: entry.type || "",
+      year: entry.year || "",
+      filename: entry.filename || "file",
+      size: Number(entry.size || blob.size || 0),
+      level: entry.level || currentLevel,
+      mime: blob.type || response.headers.get("content-type") || "application/octet-stream",
+      savedAt: Date.now(),
+      blob
+    });
+
+    offlineEntryIds.add(String(entry.id));
+    incrementActivity("download");
+    updateOfflineLibraryCount();
+    if (btn) {
+      btn.innerHTML = "✓ Offline";
+      btn.classList.add("is-saved");
+      btn.title = "Already saved offline — open Offline library";
+    }
+
+    // Ask the browser to make this site's storage less likely to be evicted.
+    try { if (navigator.storage?.persist) await navigator.storage.persist(); } catch (_) {}
+  } catch (err) {
+    showError(err?.message || "Couldn't save that file for offline use.");
+    if (btn) btn.innerHTML = original;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openOfflineFile(id) {
+  const record = await getOfflineFile(id);
+  if (!record?.blob) return;
+  const url = URL.createObjectURL(record.blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 600000);
+}
+
+async function saveOfflineFileToDevice(id) {
+  const record = await getOfflineFile(id);
+  if (!record?.blob) return;
+  const url = URL.createObjectURL(record.blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = record.filename || "file";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 600000);
+}
+
+async function removeOfflineFile(id) {
+  await deleteOfflineFile(id);
+  offlineEntryIds.delete(String(id));
+  updateOfflineLibraryCount();
+  await renderOfflineLibrary();
+  render(); // refresh card button labels
+}
+
+
 async function downloadEntry(entry, btn) {
   const original = btn ? btn.innerHTML : null;
 
@@ -5488,6 +5905,7 @@ document.getElementById("grid").addEventListener("click", (e) => {
   if (!entry) return;
   if (btn.classList.contains("pv-btn")) previewEntry(entry);
   else if (btn.classList.contains("dl-btn")) downloadEntry(entry, btn);
+  else if (btn.classList.contains("offline-btn")) saveEntryOffline(entry, btn);
   else if (btn.classList.contains("drive-btn")) {
     incrementActivity("preview");
     window.open(entry.driveUrl, "_blank", "noopener");
@@ -6238,6 +6656,38 @@ async function refreshArchiveSilently() {
 setInterval(refreshArchiveSilently, 30000);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshArchiveSilently();
+});
+
+
+/* Offline library controls */
+document.getElementById("offlineLibraryBtn")?.addEventListener("click", () => openOfflineLibrary());
+document.getElementById("closeOfflineLibraryBtn")?.addEventListener("click", closeOfflineLibrary);
+document.getElementById("offlineLibraryOverlay")?.addEventListener("click", (e) => {
+  if (e.target.id === "offlineLibraryOverlay") closeOfflineLibrary();
+});
+document.getElementById("offlineLibraryList")?.addEventListener("click", async (e) => {
+  const file = e.target.closest(".offline-file");
+  if (!file) return;
+  const id = file.dataset.offlineId;
+  try {
+    if (e.target.closest(".offline-open-btn")) await openOfflineFile(id);
+    else if (e.target.closest(".offline-device-btn")) await saveOfflineFileToDevice(id);
+    else if (e.target.closest(".offline-remove-btn")) await removeOfflineFile(id);
+  } catch (err) {
+    showError(err?.message || "Offline file action failed.");
+  }
+});
+document.getElementById("clearOfflineLibraryBtn")?.addEventListener("click", async () => {
+  if (!confirm("Remove every file saved inside the Offline library on this device?")) return;
+  try {
+    await clearOfflineFiles();
+    offlineEntryIds.clear();
+    updateOfflineLibraryCount(0);
+    await renderOfflineLibrary();
+    render();
+  } catch (err) {
+    showError(err?.message || "Couldn't clear the Offline library.");
+  }
 });
 
 /* Bootstraps the application data */
