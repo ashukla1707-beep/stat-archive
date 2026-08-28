@@ -2365,6 +2365,38 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   }
 </style>
 
+
+<style id="mobile-animation-auth-alignment-fix">
+@media(max-width:700px){
+  /* Vertically align the read-only message and Sign in button. */
+  .authbar{
+    align-items:center !important;
+  }
+  .authbar .status{
+    flex:1 1 auto;
+    min-width:0;
+    align-items:center;
+    line-height:1.45 !important;
+  }
+  .authbar button{
+    flex:0 0 auto;
+    align-self:center;
+  }
+
+  /* Force the same left-to-right curve drawing effect used on desktop.
+     This intentionally overrides device reduced-motion settings for this
+     decorative hero effect because the requested mobile behavior is animated. */
+  .gaussian-curve{
+    animation:curveDrawOnce 1.55s cubic-bezier(.22,.61,.36,1) forwards !important;
+    stroke-dasharray:1400 !important;
+    stroke-dashoffset:1000 !important;
+  }
+  .data-dot{
+    animation:dotFallOnce .78s cubic-bezier(.22,.61,.36,1) var(--delay) forwards !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <script id="stat-archive-pwa-mode-detection">
@@ -6989,19 +7021,38 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-// If the app was opened without internet and connectivity comes back,
-// refresh immediately instead of waiting for the 30-second background timer.
+// Hard-refresh when connectivity returns. A full reload is intentional here:
+// it re-runs the app boot, picks up the newest deployed HTML through the
+// network-first service worker, and restores live archive/activity data.
+let statArchiveWasOffline = !navigator.onLine;
+window.addEventListener("offline", () => {
+  statArchiveWasOffline = true;
+});
 window.addEventListener("online", () => {
-  refreshArchiveSilently();
-  loadActivityStats().catch(() => {});
+  if (!statArchiveWasOffline) return;
+  statArchiveWasOffline = false;
+  setTimeout(() => window.location.reload(), 180);
 });
 
-// When an installed PWA/browser page is restored from the back-forward cache,
-// treat it like reopening the app and refresh its live data.
+// Treat reopening the app after it has been in the background as a fresh launch.
+// The flag exists only in this page instance, so the reload does not loop.
+let statArchiveWentToBackground = false;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    statArchiveWentToBackground = true;
+    return;
+  }
+  if (document.visibilityState === "visible" && statArchiveWentToBackground && navigator.onLine) {
+    statArchiveWentToBackground = false;
+    setTimeout(() => window.location.reload(), 100);
+  }
+});
+
+// If Android/Chrome restores the PWA from the back-forward cache, force a fresh
+// page load so current server data and the newest app shell are used.
 window.addEventListener("pageshow", (event) => {
   if (event.persisted && navigator.onLine) {
-    refreshArchiveSilently();
-    loadActivityStats().catch(() => {});
+    setTimeout(() => window.location.reload(), 60);
   }
 });
 
@@ -7480,5 +7531,29 @@ document.querySelectorAll(".overlay").forEach(overlay => {
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}
 </script>
+
+<script id="mobile-hero-animation-replay">
+(function(){
+  function replayHeroAnimation(){
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    const curve = document.querySelector(".gaussian-curve");
+    const dots = Array.from(document.querySelectorAll(".data-dot"));
+    if (!curve) return;
+
+    curve.style.animation = "none";
+    dots.forEach(dot => { dot.style.animation = "none"; });
+
+    // Force style/layout flush, then restore CSS animations.
+    void curve.getBoundingClientRect();
+
+    curve.style.animation = "";
+    dots.forEach(dot => { dot.style.animation = ""; });
+  }
+
+  window.addEventListener("load", replayHeroAnimation, {once:true});
+  window.addEventListener("pageshow", () => setTimeout(replayHeroAnimation, 40));
+})();
+</script>
+
 </body>
 </html>
