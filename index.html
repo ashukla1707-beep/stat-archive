@@ -2433,6 +2433,60 @@ html.stat-archive-pwa .offline-btn{
 }
 </style>
 
+
+
+
+
+
+
+
+
+
+<style id="mobile-subject-more-overlay-fix">
+@media(max-width:700px){
+  #subjectFilterRow{
+    position:relative;
+    overflow:visible !important;
+  }
+  #subjectFilterExpanded{
+    position:absolute;
+    left:0;
+    right:0;
+    top:calc(100% + 7px);
+    z-index:40;
+    display:none;
+    flex-wrap:wrap;
+    gap:7px;
+    padding:11px;
+    max-height:220px;
+    overflow-y:auto;
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    background:rgba(15,20,29,.98);
+    box-shadow:0 18px 45px rgba(0,0,0,.35);
+    -webkit-backdrop-filter:blur(16px);
+    backdrop-filter:blur(16px);
+    overscroll-behavior:contain;
+  }
+  #subjectFilterExpanded.open{display:flex}
+  #subjectFilterExpanded .pill{
+    margin:0;
+    transform:none !important;
+  }
+  body[data-theme="light"] #subjectFilterExpanded{
+    background:rgba(251,249,253,.98);
+    border-color:#d8d0e3;
+    box-shadow:0 18px 40px rgba(39,48,45,.16);
+  }
+}
+</style>
+
+
+<style id="entry-results-more-stability">
+@media(max-width:700px){
+  #grid, .entry-subject-more-wrap{overflow-anchor:none !important;}
+}
+</style>
 </head>
 <body>
 <script id="stat-archive-pwa-mode-detection">
@@ -3701,9 +3755,47 @@ function renderSubjectFilters() {
 
   const othersPill = document.createElement("button");
   othersPill.type = "button";
-  othersPill.className = "pill";
+  othersPill.className = "pill subject-more-pill";
   othersPill.textContent = showAllSubjectPills ? "Show less" : "More";
   othersPill.onclick = () => {
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      othersPill.blur();
+
+      let panel = document.getElementById("subjectFilterExpanded");
+      if (panel) {
+        const isOpen = panel.classList.toggle("open");
+        othersPill.textContent = isOpen ? "Show less" : "More";
+        return;
+      }
+
+      panel = document.createElement("div");
+      panel.id = "subjectFilterExpanded";
+      panel.className = "open";
+
+      sortedSubjects.forEach(s => {
+        const p = document.createElement("button");
+        p.type = "button";
+        p.className = "pill" + (filterSubjects.has(s.code) ? " active" : "");
+        p.textContent = s.name;
+        p.title = s.name;
+        p.onclick = () => {
+          if (filterSubjects.has(s.code)) filterSubjects.delete(s.code);
+          else filterSubjects.add(s.code);
+
+          latestEntriesMode = false;
+          panel.remove();
+          showAllSubjectPills = false;
+          renderSubjectFilters();
+          render();
+        };
+        panel.appendChild(p);
+      });
+
+      row.appendChild(panel);
+      othersPill.textContent = "Show less";
+      return;
+    }
+
     showAllSubjectPills = !showAllSubjectPills;
     renderSubjectFilters();
   };
@@ -3932,18 +4024,19 @@ function renderSubjectFilters() {
 // which is why "Others" could end up positioned past the edge of the
 // screen on desktop.
 let subjectFilterResizeTimer = null;
+let subjectFilterLastViewportWidth = Math.round(window.innerWidth);
+
 window.addEventListener("resize", () => {
+  // On Android Chrome/PWA, scrolling hides/shows the browser UI and fires
+  // resize events because the viewport HEIGHT changes. Rebuilding the
+  // subject-filter row on those height-only resizes caused the page to jump.
+  const currentWidth = Math.round(window.innerWidth);
+  if (Math.abs(currentWidth - subjectFilterLastViewportWidth) < 2) return;
+
+  subjectFilterLastViewportWidth = currentWidth;
+
   clearTimeout(subjectFilterResizeTimer);
   subjectFilterResizeTimer = setTimeout(() => {
-    // Skip while the "+ Subject" form is open — a full re-render wipes it
-    // via row.innerHTML = "" (inside renderSubjectFilters), losing
-    // whatever the user has typed. This matters far more than it looks:
-    // on mobile, tapping the "Add" submit button dismisses the on-screen
-    // keyboard, which itself fires a resize event as the viewport height
-    // grows back — so submitting the form could trigger this same
-    // 150ms-later re-render mid-submit, destroying the form (and the
-    // visual "Adding…" state) while createSubject() was still in flight,
-    // which looked to the user like clicking Add did nothing at all.
     if (document.getElementById("addSubjectForm")) return;
     if (document.getElementById("subjectFilterRow")) renderSubjectFilters();
   }, 150);
@@ -4617,8 +4710,25 @@ function render() {
     moreBtn.className = "entry-subject-more-btn";
     moreBtn.textContent = showAllEntrySubjects ? "Show less" : "More";
     moreBtn.onclick = () => {
+      // Preserve the viewport relative to this results control while render()
+      // inserts/removes subject groups above it. This is the "More" shown
+      // beneath the archive subject sections (not the filter-row More).
+      const beforeTop = moreWrap.getBoundingClientRect().top;
+      moreBtn.blur();
+
       showAllEntrySubjects = !showAllEntrySubjects;
       render();
+
+      // Find the newly rendered More/Show less control and compensate only
+      // for the layout displacement caused by inserting/removing groups.
+      const replacement = grid.querySelector(".entry-subject-more-wrap");
+      if (replacement) {
+        const afterTop = replacement.getBoundingClientRect().top;
+        const delta = afterTop - beforeTop;
+        if (Math.abs(delta) > 0.5) {
+          window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+        }
+      }
     };
     moreWrap.appendChild(moreBtn);
     grid.appendChild(moreWrap);
@@ -5603,11 +5713,10 @@ async function renderOfflineLibrary() {
                   <button type="button" class="offline-pin-btn${offlinePinned(record) ? " is-pinned" : ""}"
                     title="${offlinePinned(record) ? "Unpin file" : "Pin file"}"
                     aria-label="${offlinePinned(record) ? "Unpin file" : "Pin file"}">${offlinePinned(record) ? "★" : "☆"}</button>
-                  <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}</div>
+                  <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}${/^(19|20)\d{2}$/.test(String(record.year || "").trim()) ? ` : ${escapeHtml(String(record.year).trim())}` : ""}</div>
                 </div>
                 <div class="offline-file-meta">
-                  ${offlineCompactMeta(record) ? `${escapeHtml(offlineCompactMeta(record))}` : ""}
-                  ${offlineSavedDate(record) ? `<span class="offline-file-saved">Saved ${escapeHtml(offlineSavedDate(record))}</span>` : ""}
+                  ${offlineSavedDate(record) ? `<span class="offline-file-saved">· Saved ${escapeHtml(offlineSavedDate(record))}</span>` : ""}
                 </div>
               </div>
               <span class="offline-file-size">${escapeHtml(formatSize(Number(record.blob?.size || record.size || 0)))}</span>
@@ -7020,11 +7129,17 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
 
 /* Single global resize listener for all subject carousels' arrow visibility,
    instead of one listener per carousel per render() call. */
+let carouselLastViewportWidth = Math.round(window.innerWidth);
 window.addEventListener("resize", () => {
+  const currentWidth = Math.round(window.innerWidth);
+  if (Math.abs(currentWidth - carouselLastViewportWidth) < 2) return;
+  carouselLastViewportWidth = currentWidth;
+
   document.querySelectorAll(".subject-carousel").forEach(wrap => {
     refreshCarouselNav(wrap);
 
-    // Recalculate mobile slider dimensions on device rotation
+    // Recalculate mobile slider dimensions only on a real width change
+    // (rotation / desktop-mode change), not while the browser chrome moves.
     const track = wrap.querySelector(".subject-track");
     const mobileRange = wrap.querySelector(".subject-mobile-scroll-range");
     const mobileScrollbar = wrap.querySelector(".subject-mobile-scrollbar");
@@ -7062,21 +7177,22 @@ async function refreshArchiveSilently() {
     totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
     renderSubjectFilters();
     renderSubjectOptions();
-    if (oldSignature !== newSignature) render();
+
+    if (oldSignature !== newSignature) {
+      // Background sync must never throw the reader back to the top.
+      const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      render();
+
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
+      });
+    }
   } catch (err) {
     console.warn("Background archive refresh failed:", err);
   } finally {
     archiveRefreshInFlight = false;
   }
 }
-setInterval(refreshArchiveSilently, 30000);
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    refreshArchiveSilently();
-    loadActivityStats().catch(() => {});
-  }
-});
-
 // Hard-refresh when connectivity returns. A full reload is intentional here:
 // it re-runs the app boot, picks up the newest deployed HTML through the
 // network-first service worker, and restores live archive/activity data.
@@ -7122,16 +7238,21 @@ document.addEventListener("visibilitychange", () => {
   }
 
   if (document.visibilityState === "visible" && statArchiveWentToBackground && navigator.onLine) {
+    // Reopening/resuming the app should update live data without reloading
+    // the whole page. Mobile browsers can trigger viewport/visibility changes
+    // while scrolling; a hard reload here made the page appear to refresh.
     statArchiveWentToBackground = false;
-    setTimeout(() => window.location.reload(), 100);
+    refreshArchiveSilently();
+    loadActivityStats().catch(() => {});
   }
 });
 
-// If Android/Chrome restores the PWA from the back-forward cache, force a fresh
-// page load so current server data and the newest app shell are used.
+// If Android/Chrome restores the PWA from the back-forward cache,
+// refresh live data without reloading the whole page.
 window.addEventListener("pageshow", (event) => {
   if (event.persisted && navigator.onLine) {
-    setTimeout(() => window.location.reload(), 60);
+    refreshArchiveSilently();
+    loadActivityStats().catch(() => {});
   }
 });
 
@@ -7689,21 +7810,29 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
     replayTimer = setTimeout(replayMobileHero, delay);
   }
 
-  // Initial browser/PWA launch.
-  if (document.readyState === "complete") scheduleReplay(80);
-  else window.addEventListener("load", () => scheduleReplay(80), {once:true});
-
-  // Android PWA/page restore.
-  window.addEventListener("pageshow", () => scheduleReplay(120));
-
-  // Android often finalizes viewport dimensions a moment after opening.
-  scheduleReplay(500);
-
-  // Replay if orientation/viewport mode changes into mobile.
-  window.addEventListener("resize", () => {
-    if (isPhoneLayout()) scheduleReplay(180);
-  });
+  // Run only on a genuine page load/refresh.
+  // Do not replay on resize, scroll-driven mobile viewport changes,
+  // pageshow, or app resume.
+  if (document.readyState === "complete") {
+    scheduleReplay(100);
+  } else {
+    window.addEventListener("load", () => scheduleReplay(100), {once:true});
+  }
 })();
+</script>
+
+
+<script id="mobile-subject-overlay-close">
+document.addEventListener("pointerdown", (e) => {
+  const panel = document.getElementById("subjectFilterExpanded");
+  if (!panel || !panel.classList.contains("open")) return;
+  const row = document.getElementById("subjectFilterRow");
+  if (row && row.contains(e.target)) return;
+
+  panel.remove();
+  const more = row?.querySelector(".subject-more-pill");
+  if (more) more.textContent = "More";
+}, {passive:true});
 </script>
 
 </body>
