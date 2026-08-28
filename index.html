@@ -2366,33 +2366,22 @@ body[data-theme="light"] .axis-mid{color:#347d73}
 </style>
 
 
-<style id="mobile-animation-auth-alignment-fix">
+
+
+<style id="mobile-auth-and-curve-fix">
 @media(max-width:700px){
-  /* Vertically align the read-only message and Sign in button. */
-  .authbar{
-    align-items:center !important;
-  }
+  .authbar{align-items:center !important}
   .authbar .status{
-    flex:1 1 auto;
-    min-width:0;
-    align-items:center;
-    line-height:1.45 !important;
+    flex:1 1 auto;min-width:0;align-items:center;
+    line-height:1.45 !important
   }
   .authbar button{
-    flex:0 0 auto;
-    align-self:center;
+    flex:0 0 auto;align-self:center
   }
 
-  /* Force the same left-to-right curve drawing effect used on desktop.
-     This intentionally overrides device reduced-motion settings for this
-     decorative hero effect because the requested mobile behavior is animated. */
+  /* JS below drives the mobile curve using its real SVG path length. */
   .gaussian-curve{
-    animation:curveDrawOnce 1.55s cubic-bezier(.22,.61,.36,1) forwards !important;
-    stroke-dasharray:1400 !important;
-    stroke-dashoffset:1000 !important;
-  }
-  .data-dot{
-    animation:dotFallOnce .78s cubic-bezier(.22,.61,.36,1) var(--delay) forwards !important;
+    opacity:1 !important;
   }
 }
 </style>
@@ -5679,9 +5668,19 @@ async function saveEntryOffline(entry, btn) {
   }
 }
 
+let statArchiveReturningFromOfflineFile = false;
+let statArchiveReturnOfflineId = null;
+
 async function openOfflineFile(id) {
   const record = await getOfflineFile(id);
   if (!record?.blob) return;
+
+  // Opening a PDF/image may temporarily background the PWA. Mark this so
+  // Android's Back button returns to the Offline Library instead of causing
+  // our normal "app resumed" hard refresh.
+  statArchiveReturningFromOfflineFile = true;
+  statArchiveReturnOfflineId = String(id);
+
   const url = URL.createObjectURL(record.blob);
   const a = document.createElement("a");
   a.href = url;
@@ -7042,6 +7041,19 @@ document.addEventListener("visibilitychange", () => {
     statArchiveWentToBackground = true;
     return;
   }
+
+  if (document.visibilityState === "visible" && statArchiveReturningFromOfflineFile) {
+    statArchiveWentToBackground = false;
+    statArchiveReturningFromOfflineFile = false;
+
+    const returnId = statArchiveReturnOfflineId;
+    statArchiveReturnOfflineId = null;
+
+    // Keep/reopen the library exactly where the user came from.
+    setTimeout(() => openOfflineLibrary(returnId), 40);
+    return;
+  }
+
   if (document.visibilityState === "visible" && statArchiveWentToBackground && navigator.onLine) {
     statArchiveWentToBackground = false;
     setTimeout(() => window.location.reload(), 100);
@@ -7532,26 +7544,83 @@ document.querySelectorAll(".overlay").forEach(overlay => {
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}
 </script>
 
-<script id="mobile-hero-animation-replay">
+
+
+<script id="mobile-hero-animation-replay-v2">
 (function(){
-  function replayHeroAnimation(){
+  let mobileHeroAnimation = null;
+
+  function runMobileHeroAnimation(){
     if (!window.matchMedia("(max-width: 700px)").matches) return;
+
     const curve = document.querySelector(".gaussian-curve");
-    const dots = Array.from(document.querySelectorAll(".data-dot"));
-    if (!curve) return;
+    if (!curve || typeof curve.getTotalLength !== "function") return;
 
-    curve.style.animation = "none";
-    dots.forEach(dot => { dot.style.animation = "none"; });
+    try {
+      if (mobileHeroAnimation) mobileHeroAnimation.cancel();
 
-    // Force style/layout flush, then restore CSS animations.
-    void curve.getBoundingClientRect();
+      const length = Math.ceil(curve.getTotalLength());
 
-    curve.style.animation = "";
-    dots.forEach(dot => { dot.style.animation = ""; });
+      // Inline values deliberately override all desktop/reduced-motion rules.
+      curve.style.animation = "none";
+      curve.style.strokeDasharray = `${length} ${length}`;
+      curve.style.strokeDashoffset = String(length);
+      curve.style.opacity = "1";
+
+      // Force the browser to paint the hidden-start state first.
+      curve.getBoundingClientRect();
+
+      mobileHeroAnimation = curve.animate(
+        [
+          { strokeDashoffset: String(length) },
+          { strokeDashoffset: "0" }
+        ],
+        {
+          duration: 2200,
+          easing: "cubic-bezier(.22,.61,.36,1)",
+          fill: "forwards"
+        }
+      );
+
+      mobileHeroAnimation.onfinish = () => {
+        curve.style.strokeDashoffset = "0";
+      };
+
+      // Replay the falling dots as well.
+      document.querySelectorAll(".data-dot").forEach((dot, i) => {
+        dot.style.animation = "none";
+        const fall = getComputedStyle(dot).getPropertyValue("--fall").trim() || "0px";
+        const delayText = getComputedStyle(dot).getPropertyValue("--delay").trim() || "0s";
+        const delay = delayText.endsWith("s") ? parseFloat(delayText) * 1000 : 0;
+
+        dot.animate(
+          [
+            { transform: "translateY(0)", opacity: 0 },
+            { transform: `translateY(${fall})`, opacity: .95 }
+          ],
+          {
+            duration: 780,
+            delay,
+            easing: "cubic-bezier(.22,.61,.36,1)",
+            fill: "forwards"
+          }
+        );
+      });
+    } catch (err) {
+      console.warn("Mobile hero animation could not start:", err);
+    }
   }
 
-  window.addEventListener("load", replayHeroAnimation, {once:true});
-  window.addEventListener("pageshow", () => setTimeout(replayHeroAnimation, 40));
+  window.addEventListener("load", () => {
+    requestAnimationFrame(() => requestAnimationFrame(runMobileHeroAnimation));
+  }, {once:true});
+
+  window.addEventListener("pageshow", () => {
+    setTimeout(runMobileHeroAnimation, 80);
+  });
+
+  // Some Android PWAs finish viewport sizing after initial load.
+  setTimeout(runMobileHeroAnimation, 450);
 })();
 </script>
 
