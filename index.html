@@ -2657,7 +2657,7 @@ html.stat-archive-pwa .offline-btn{
       <li>For books, notes, and others, there is an option to add a <strong style="color:var(--text);">Drive link</strong>.</li>
       <li>It's recommended to upload a <strong style="color:var(--text);">compressed PDF</strong> to keep file sizes small.</li>
       <li>Do not share the passcode with anyone.</li>
-      <li>Facing any problem? Contact <strong style="color:var(--text);">Adarsh Shukla (Admin)</strong> — a.shukla.1707@gmail.com</li>
+      <li>Facing any problem? Contact <strong style="color:var(--text);">Adarsh Shukla (Admin)</strong> — a.shukla.1707@gmail.com · 9555755251</li>
     </ul>
     <button type="button" class="submit-btn" id="ackContributorDisclaimerBtn">Got it</button>
   </div>
@@ -5510,21 +5510,14 @@ function renderOfflineTypeFilters(records) {
 
 
 function offlineCompactMeta(record) {
-  const title = String(record?.title || "").toLowerCase();
   const type = String(record?.type || "").trim();
   const yearRaw = String(record?.year || "").trim();
-
   const parts = [];
 
-  // Show the type only when it is not already written in the title.
-  if (type && !title.includes(type.toLowerCase())) {
-    parts.push(type);
-  }
-
-  // Only show a plausible 4-digit academic year.
-  if (/^(19|20)\d{2}$/.test(yearRaw)) {
-    parts.push(yearRaw);
-  }
+  // Offline cards always keep TYPE and YEAR together on the same line.
+  // Example: Notes · 2026
+  if (type) parts.push(type);
+  if (/^(19|20)\d{2}$/.test(yearRaw)) parts.push(yearRaw);
 
   return parts.join(" · ");
 }
