@@ -2484,6 +2484,33 @@ html.stat-archive-pwa .offline-btn{
   #grid, .entry-subject-more-wrap{overflow-anchor:none !important;}
 }
 </style>
+
+<style id="creator-about-final-styles">
+.creator-about{max-width:1120px;margin:38px auto 0;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:radial-gradient(circle at 88% 18%,rgba(94,231,247,.11),transparent 28%),linear-gradient(135deg,rgba(18,25,37,.92),rgba(9,14,21,.82));box-shadow:0 24px 70px rgba(0,0,0,.16)}
+.creator-about-inner{padding:34px 38px;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(270px,.7fr);gap:34px;align-items:end}.creator-about-eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:13px;color:#9eabbc;font:700 9px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.16em}.creator-about-eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}.creator-about h2{margin:0;color:var(--text);font:800 clamp(28px,4vw,44px)/1 'Plus Jakarta Sans',sans-serif;letter-spacing:-.045em}.creator-role{margin:11px 0 0;color:var(--cyan);font:600 10px 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase}.creator-about-copy{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:22px}.creator-about-copy h3{margin:0 0 8px;color:var(--text);font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em}.creator-about-copy p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.72}.creator-connect{padding:18px;border:1px solid var(--line);border-radius:16px;background:rgba(7,10,15,.35)}.creator-connect-label{margin-bottom:11px;color:var(--muted);font:700 9px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em}.creator-links{display:flex;flex-direction:column;gap:8px}.creator-link{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;color:var(--text);text-decoration:none;background:rgba(255,255,255,.018);font:600 10.5px 'JetBrains Mono',monospace;transition:.18s ease}.creator-link:hover{transform:translateY(-1px);border-color:rgba(94,231,247,.45);color:var(--cyan);background:rgba(94,231,247,.05)}.creator-note{margin-top:11px;color:var(--muted-2);font:500 8.5px 'JetBrains Mono',monospace;line-height:1.55}
+body[data-theme="light"] .creator-about{border-color:#ddd6c8;background:radial-gradient(circle at 90% 18%,rgba(52,125,115,.12),transparent 27%),linear-gradient(135deg,rgba(251,249,242,.98),rgba(244,240,230,.93));box-shadow:0 18px 45px rgba(58,53,42,.09)}body[data-theme="light"] .creator-connect{background:rgba(255,255,255,.42)}
+@media(min-width:1200px){.creator-about{max-width:none;width:100%}}@media(max-width:700px){.creator-about{margin-top:28px;border-radius:20px}.creator-about-inner{padding:27px 22px 24px;grid-template-columns:1fr;gap:24px}.creator-about h2{font-size:32px}.creator-about-copy{margin-top:20px;grid-template-columns:1fr;gap:17px}.creator-about-copy p{font-size:12px}.creator-connect{padding:14px}}
+</style>
+
+<style id="mobile-admin-subject-controls-fix">
+@media(max-width:700px){
+  #subjectFilterExpanded .subject-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    max-width:100%;
+    white-space:normal;
+  }
+  #subjectFilterExpanded .subject-pill > button:not(.subject-delete){
+    min-width:0;
+    text-align:left;
+  }
+  #subjectFilterExpanded .subject-delete{
+    flex:0 0 auto;
+  }
+}
+</style>
+
 </head>
 <body>
 <script id="stat-archive-pwa-mode-detection">
@@ -2628,6 +2655,27 @@ html.stat-archive-pwa .offline-btn{
 
   <div id="emptyState" class="empty-state" style="display:none;"></div>
   <div class="grid" id="grid"></div>
+
+  <section class="creator-about" aria-labelledby="creatorAboutTitle">
+    <div class="creator-about-inner">
+      <div>
+        <div class="creator-about-eyebrow"><i></i><span>Built by</span></div>
+        <h2 id="creatorAboutTitle">Adarsh Shukla</h2>
+        <div class="creator-role">Creator of Stat Archive</div>
+        <div class="creator-about-copy">
+          <div><h3>The idea</h3><p>Stat Archive began with a simple thought: useful academic material should not disappear when one batch graduates. Notes, books and question papers become more valuable when they stay organized, searchable and available to the students who come next.</p></div>
+          <div><h3>About me</h3><p>I like building things that solve problems I encounter myself. What started as a small attempt to organize study material gradually became something I wanted to make useful for everyone. I enjoy learning through experimentation — trying an idea, finding what doesn’t work, and improving it until it does.<br><br>Stat Archive is one of those experiments, and certainly not the last.</p></div>
+        </div>
+      </div>
+      <aside class="creator-connect" aria-label="Connect with Adarsh Shukla">
+        <div class="creator-connect-label">Connect</div><div class="creator-links">
+          <a class="creator-link" href="https://www.linkedin.com/in/adarsh-shukla-b7509727b" target="_blank" rel="noopener noreferrer"><span>LinkedIn</span><span>↗</span></a>
+          <a class="creator-link" href="https://www.instagram.com/the_illusionistic_07?igsi=MTFuNmN0djQ0eXNxYg==" target="_blank" rel="noopener noreferrer"><span>Instagram</span><span>↗</span></a>
+          <a class="creator-link" href="mailto:a.shukla.1707@gmail.com"><span>Email</span><span>→</span></a>
+        </div><div class="creator-note">Questions, feedback or ideas for Stat Archive are welcome.</div>
+      </aside>
+    </div>
+  </section>
 </div>
 
 
@@ -3828,25 +3876,72 @@ function renderSubjectFilters() {
       panel.id = "subjectFilterExpanded";
 
       // Expanded order: hidden subjects -> Other -> Show less.
+      // Mobile/PWA previously rendered only a plain subject button here,
+      // so admin edit/delete controls disappeared for subjects revealed
+      // under "More". Build the same controls that desktop uses.
       [...hiddenSubjects, ...(otherSubject ? [otherSubject] : [])].forEach(s => {
-        const p = document.createElement("button");
-        p.type = "button";
-        p.className = "pill" + (filterSubjects.has(s.code) ? " active" : "");
-        p.dataset.subjectCode = s.code;
-        p.textContent = s.name;
-        p.title = s.name;
-        p.onclick = (e) => {
+        const pill = document.createElement("span");
+        pill.className = "pill subject-pill" + (filterSubjects.has(s.code) ? " active" : "");
+        pill.dataset.subjectCode = s.code;
+
+        const label = document.createElement("button");
+        label.type = "button";
+        label.textContent = s.name;
+        label.title = s.name;
+        label.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
           if (filterSubjects.has(s.code)) filterSubjects.delete(s.code);
           else filterSubjects.add(s.code);
           latestEntriesMode = false;
-          p.classList.toggle("active", filterSubjects.has(s.code));
-          // Do not rebuild the subject row here. This keeps the expanded list
-          // open while the archive results update.
+          pill.classList.toggle("active", filterSubjects.has(s.code));
           render();
         };
-        panel.appendChild(p);
+        pill.appendChild(label);
+
+        const canEdit =
+          !!session && (
+            archiveRole === "admin" ||
+            (
+              archiveRole === "contributor" &&
+              s.created_by === session.user.id
+            )
+          );
+
+        if (canEdit) {
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "subject-delete subject-edit";
+          editBtn.textContent = "✎";
+          editBtn.title = `Rename ${s.name}`;
+          editBtn.setAttribute("aria-label", `Rename ${s.name}`);
+          editBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await renameSubject(s);
+          };
+          pill.appendChild(editBtn);
+        }
+
+        if (session && archiveRole === "admin") {
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "subject-delete";
+          deleteBtn.textContent = "×";
+          deleteBtn.title = `Delete ${s.name}`;
+          deleteBtn.setAttribute("aria-label", `Delete ${s.name}`);
+          deleteBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!confirm(
+              `Delete the subject "${s.name}"?\n\nThis cannot be done while entries are filed under it.`
+            )) return;
+            await removeSubject(s.code);
+          };
+          pill.appendChild(deleteBtn);
+        }
+
+        panel.appendChild(pill);
       });
 
       // Insert the expanded list before More, then move More to the very end.
