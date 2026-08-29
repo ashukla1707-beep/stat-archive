@@ -1,159 +1,607 @@
-/* =========================================================
-   STAT ARCHIVE — INSTALLED PWA / TWA MOBILE LAYOUT
-   Applies only when html has .stat-archive-pwa
-   ========================================================= */
+/* Stat Archive — installed PWA / TWA phone layout
+   Loaded after assets/styles.css.
+   Scoped to installed-PWA mode on touch devices,
+   so the normal desktop website keeps its existing layout.
+*/
 
-html.stat-archive-pwa,
-html.stat-archive-pwa body {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
+@media (pointer: coarse) {
 
-html.stat-archive-pwa .page {
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 24px 12px 56px !important;
-  box-sizing: border-box !important;
-}
+  html.stat-archive-pwa,
+  html.stat-archive-pwa body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
 
-/* HERO */
-html.stat-archive-pwa .header {
-  min-height: 500px !important;
-  height: auto !important;
-  padding: 28px 20px 220px !important;
-  display: block !important;
-  box-sizing: border-box !important;
-  border-radius: 18px !important;
-}
+  html.stat-archive-pwa body {
+    -webkit-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+  }
 
-html.stat-archive-pwa .hero-copy {
-  width: 100% !important;
-  max-width: none !important;
-  min-width: 0 !important;
-  flex: none !important;
-}
+  html.stat-archive-pwa .page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100dvh !important;
+    padding: 20px 12px 56px !important;
+    box-sizing: border-box !important;
+  }
 
-html.stat-archive-pwa .hero-probability {
-  position: absolute !important;
-  left: 12px !important;
-  right: 12px !important;
-  top: auto !important;
-  bottom: 12px !important;
-  width: auto !important;
-  max-width: none !important;
-  height: 174px !important;
-  margin: 0 !important;
-  transform: none !important;
-}
 
-html.stat-archive-pwa .probability-svg {
-  left: 3px !important;
-  right: 3px !important;
-  width: calc(100% - 6px) !important;
-  height: 154px !important;
-}
+  /* =====================================================
+     HERO
+     ===================================================== */
 
-html.stat-archive-pwa h1 {
-  font-size: clamp(34px, 11vw, 48px) !important;
-}
+  html.stat-archive-pwa .header,
+  html.stat-archive-pwa body[data-theme="light"] .header {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
 
-html.stat-archive-pwa .sub {
-  max-width: 100% !important;
-  font-size: 13px !important;
-  line-height: 1.6 !important;
-}
+    margin: 0 auto 16px !important;
+    padding: 28px 18px 14px !important;
 
-/* AUTH BAR */
-html.stat-archive-pwa .authbar {
-  width: 100% !important;
-  max-width: none !important;
-  box-sizing: border-box !important;
-}
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
 
-/* SUMMARY — 2 x 2 like normal mobile */
-html.stat-archive-pwa #archiveSummary,
-html.stat-archive-pwa .archive-summary {
-  width: 100% !important;
-  max-width: none !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-}
+    gap: 18px !important;
 
-/* SEARCH */
-html.stat-archive-pwa .toolbar,
-html.stat-archive-pwa .search-wrap,
-html.stat-archive-pwa .search-box {
-  width: 100% !important;
-  max-width: none !important;
-  box-sizing: border-box !important;
-}
+    overflow: hidden !important;
 
-/* FILTER ROWS */
-html.stat-archive-pwa .filter-row {
-  width: 100% !important;
-  max-width: 100% !important;
-  gap: 6px !important;
-}
+    border-radius: 18px !important;
+    box-sizing: border-box !important;
+  }
 
-html.stat-archive-pwa #subjectFilterRow {
-  display: grid !important;
-  grid-template-rows: repeat(2, max-content) !important;
-  grid-auto-flow: column !important;
-  grid-auto-columns: max-content !important;
-  justify-content: start !important;
-  gap: 7px 6px !important;
+  html.stat-archive-pwa .hero-copy {
+    position: relative !important;
 
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
 
-  flex-wrap: unset !important;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
+    flex: 0 0 auto !important;
+  }
 
-html.stat-archive-pwa #subjectFilterRow::-webkit-scrollbar {
-  display: none !important;
-}
+  html.stat-archive-pwa .eyebrow {
+    max-width: calc(100% - 118px) !important;
 
-html.stat-archive-pwa .pill {
-  white-space: nowrap !important;
-}
+    margin-bottom: 14px !important;
 
-/* SUBJECT SECTIONS */
-html.stat-archive-pwa .subject-row {
-  width: 100% !important;
-  max-width: none !important;
-}
+    font-size: 8.5px !important;
+    letter-spacing: .12em !important;
 
-/* ARCHIVE GRID */
-html.stat-archive-pwa .grid {
-  width: 100% !important;
-  max-width: none !important;
-  grid-template-columns: 1fr !important;
-  gap: 14px !important;
-}
+    flex-wrap: wrap !important;
+  }
 
-/* ENTRY CARDS */
-html.stat-archive-pwa .card {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
+  html.stat-archive-pwa h1 {
+    font-size: clamp(36px, 10.5vw, 48px) !important;
+    line-height: 1 !important;
+    letter-spacing: -.055em !important;
+  }
 
-/* FORM / PREVIEW OVERLAYS */
-html.stat-archive-pwa .overlay {
-  padding: 8px !important;
-}
+  html.stat-archive-pwa .hero-line {
+    margin-top: 15px !important;
 
-html.stat-archive-pwa .form-card {
-  width: 100% !important;
-  max-width: 100% !important;
-  max-height: calc(100dvh - 16px) !important;
-}
+    gap: 9px !important;
+    align-items: flex-start !important;
+  }
 
-html.stat-archive-pwa .preview-card {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: calc(100dvh - 16px) !important;
+  html.stat-archive-pwa .hero-line > span {
+    width: 32px !important;
+
+    flex: 0 0 32px !important;
+
+    margin-top: 10px !important;
+  }
+
+  html.stat-archive-pwa .sub {
+    width: auto !important;
+
+    max-width: none !important;
+    min-width: 0 !important;
+
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+  }
+
+
+  /* =====================================================
+     PROBABILITY GRAPH
+     ===================================================== */
+
+  html.stat-archive-pwa .hero-probability {
+    position: relative !important;
+
+    inset: auto !important;
+
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+
+    transform: none !important;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    height: 190px !important;
+    min-height: 190px !important;
+
+    margin: 0 !important;
+
+    flex: 0 0 190px !important;
+
+    overflow: hidden !important;
+
+    box-sizing: border-box !important;
+    border-radius: 16px !important;
+  }
+
+  html.stat-archive-pwa .probability-svg {
+    position: absolute !important;
+
+    left: 4px !important;
+    right: 4px !important;
+
+    top: 24px !important;
+    bottom: auto !important;
+
+    width: calc(100% - 8px) !important;
+    height: 162px !important;
+
+    aspect-ratio: auto !important;
+
+    overflow: visible !important;
+  }
+
+  html.stat-archive-pwa .curve-title {
+    left: 11px !important;
+    top: 10px !important;
+  }
+
+  html.stat-archive-pwa .formula-chip {
+    right: 10px !important;
+    top: 8px !important;
+
+    padding: 6px 7px !important;
+  }
+
+  html.stat-archive-pwa .formula-chip span {
+    display: none !important;
+  }
+
+  html.stat-archive-pwa .axis-label {
+    bottom: 3px !important;
+  }
+
+  html.stat-archive-pwa .curve-note {
+    font-size: 5.5px !important;
+  }
+
+
+  /* =====================================================
+     THEME SWITCH
+     ===================================================== */
+
+  html.stat-archive-pwa .theme-toggle {
+    top: 8px !important;
+    right: 8px !important;
+  }
+
+  html.stat-archive-pwa .theme-option {
+    padding: 8px 9px !important;
+    font-size: 11px !important;
+  }
+
+
+  /* =====================================================
+     LOGIN / AUTH BAR
+     ===================================================== */
+
+  html.stat-archive-pwa .authbar {
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 auto 14px !important;
+    padding: 11px 12px !important;
+
+    align-items: center !important;
+
+    gap: 10px !important;
+
+    box-sizing: border-box !important;
+  }
+
+  html.stat-archive-pwa .authbar .status {
+    min-width: 0 !important;
+
+    flex: 1 1 auto !important;
+
+    font-size: 10px !important;
+    line-height: 1.45 !important;
+  }
+
+  html.stat-archive-pwa .auth-actions {
+    flex: 0 0 auto !important;
+    width: auto !important;
+  }
+
+
+  /* =====================================================
+     SUMMARY CARDS
+     ===================================================== */
+
+  html.stat-archive-pwa #archiveSummary,
+  html.stat-archive-pwa .archive-summary {
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 auto 14px !important;
+
+    display: grid !important;
+
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+
+    gap: 10px !important;
+
+    box-sizing: border-box !important;
+  }
+
+  html.stat-archive-pwa #archiveSummary > div {
+    min-width: 0 !important;
+
+    padding: 13px 14px !important;
+  }
+
+
+  /* =====================================================
+     TOOLBAR
+     ===================================================== */
+
+  html.stat-archive-pwa .toolbar {
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 auto 18px !important;
+
+    gap: 10px !important;
+
+    box-sizing: border-box !important;
+  }
+
+
+  /* =====================================================
+     SEARCH
+     ===================================================== */
+
+  html.stat-archive-pwa .search-row,
+  html.stat-archive-pwa #searchInput {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  html.stat-archive-pwa #searchInput {
+    min-height: 44px !important;
+
+    font-size: 13px !important;
+  }
+
+
+  /* =====================================================
+     FILTERS
+     ===================================================== */
+
+  html.stat-archive-pwa .filter-row {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    gap: 6px !important;
+  }
+
+
+  /*
+     SUBJECT FILTER
+
+     Two-row horizontal layout.
+
+     This prevents long subject names from squeezing
+     the entire page and still allows horizontal scrolling.
+  */
+
+  html.stat-archive-pwa #subjectFilterRow,
+  html.stat-archive-pwa #subjectFilterRow.wrap-needed,
+  html.stat-archive-pwa #subjectFilterRow.show-all-subjects {
+
+    display: grid !important;
+
+    grid-template-rows:
+      repeat(2, max-content) !important;
+
+    grid-auto-flow: column !important;
+    grid-auto-columns: max-content !important;
+
+    align-items: center !important;
+    justify-content: start !important;
+
+    column-gap: 6px !important;
+    row-gap: 7px !important;
+
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+
+    flex-wrap: unset !important;
+
+    padding-bottom: 4px !important;
+
+    scrollbar-width: none !important;
+
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  html.stat-archive-pwa
+  #subjectFilterRow::-webkit-scrollbar {
+    display: none !important;
+  }
+
+
+  html.stat-archive-pwa
+  #subjectFilterRow .pill,
+
+  html.stat-archive-pwa
+  #typeFilterRow .pill {
+
+    margin: 0 !important;
+
+    white-space: nowrap !important;
+  }
+
+
+  /* FILE TYPE FILTER */
+
+  html.stat-archive-pwa #typeFilterRow {
+
+    display: flex !important;
+
+    flex-wrap: wrap !important;
+
+    overflow: visible !important;
+  }
+
+
+  /* =====================================================
+     ACTION BUTTONS
+     ===================================================== */
+
+  html.stat-archive-pwa .archive-action-row {
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    gap: 7px !important;
+
+    flex-wrap: wrap !important;
+  }
+
+  html.stat-archive-pwa .new-btn,
+  html.stat-archive-pwa .latest-btn {
+
+    min-height: 42px !important;
+  }
+
+
+  /* =====================================================
+     ARCHIVE
+     ===================================================== */
+
+  html.stat-archive-pwa .grid,
+  html.stat-archive-pwa .subject-row {
+
+    width: 100% !important;
+
+    max-width: none !important;
+
+    box-sizing: border-box !important;
+  }
+
+  html.stat-archive-pwa .grid {
+
+    gap: 22px !important;
+  }
+
+
+  /* =====================================================
+     SUBJECT HEADER
+     ===================================================== */
+
+  html.stat-archive-pwa .subject-row-head {
+
+    margin-bottom: 10px !important;
+  }
+
+  html.stat-archive-pwa .subject-row-title {
+
+    min-width: 0 !important;
+
+    max-width: 100% !important;
+
+    font-size: 12.5px !important;
+
+    align-items: flex-start !important;
+
+    flex-wrap: wrap !important;
+  }
+
+  html.stat-archive-pwa .subject-row-count {
+
+    white-space: nowrap !important;
+
+    flex-shrink: 0 !important;
+  }
+
+
+  /* =====================================================
+     CARD CAROUSEL
+     ===================================================== */
+
+  html.stat-archive-pwa .subject-carousel,
+  html.stat-archive-pwa .subject-track {
+
+    width: 100% !important;
+
+    max-width: 100% !important;
+  }
+
+  html.stat-archive-pwa .subject-track {
+
+    gap: 12px !important;
+  }
+
+
+  /*
+     CRITICAL FIX
+
+     Desktop CSS normally uses:
+
+     3 cards
+     2 cards
+     etc.
+
+     PWA phone mode always gets exactly
+     ONE full-width card.
+  */
+
+  html.stat-archive-pwa .subject-track .card,
+
+  html.stat-archive-pwa
+  .subject-row[data-subject-code="__latest__"]
+  .subject-track .card {
+
+    flex: 0 0 100% !important;
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    min-width: 100% !important;
+
+    box-sizing: border-box !important;
+  }
+
+
+  /* Remove desktop carousel arrows */
+
+  html.stat-archive-pwa .subject-nav-row {
+
+    display: none !important;
+  }
+
+
+  /* Mobile slider */
+
+  html.stat-archive-pwa
+  .subject-mobile-scrollbar {
+
+    display: block !important;
+
+    width: 100% !important;
+
+    margin-top: 10px !important;
+  }
+
+  html.stat-archive-pwa
+  .subject-mobile-scrollbar.is-disabled {
+
+    display: none !important;
+  }
+
+
+  /* =====================================================
+     CARDS
+     ===================================================== */
+
+  html.stat-archive-pwa .card {
+
+    padding: 16px 15px 14px !important;
+  }
+
+  html.stat-archive-pwa .card-title {
+
+    min-height: 0 !important;
+
+    font-size: 15px !important;
+  }
+
+
+  /* =====================================================
+     CARD ACTIONS
+     ===================================================== */
+
+  html.stat-archive-pwa .card-actions {
+
+    gap: 4px !important;
+
+    flex-wrap: wrap !important;
+
+    justify-content: flex-start !important;
+  }
+
+  html.stat-archive-pwa .action-btn {
+
+    min-height: 42px !important;
+
+    padding: 7px 9px !important;
+  }
+
+
+  /* =====================================================
+     DIALOGS
+     ===================================================== */
+
+  html.stat-archive-pwa .overlay {
+
+    padding: 8px !important;
+
+    align-items: flex-start !important;
+  }
+
+  html.stat-archive-pwa .form-card {
+
+    width: 100% !important;
+
+    max-width: 440px !important;
+
+    max-height:
+      calc(100dvh - 16px) !important;
+  }
+
+
+  /* =====================================================
+     PDF / IMAGE PREVIEW
+     ===================================================== */
+
+  html.stat-archive-pwa .preview-card {
+
+    width: 100% !important;
+
+    max-width: none !important;
+
+    height:
+      calc(100dvh - 16px) !important;
+
+    max-height: none !important;
+  }
+
+
+  /* =====================================================
+     FORMS
+     ===================================================== */
+
+  html.stat-archive-pwa .form-row {
+
+    flex-direction: column !important;
+
+    gap: 0 !important;
+  }
+
 }
