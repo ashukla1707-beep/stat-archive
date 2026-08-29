@@ -4212,6 +4212,13 @@ async function createSubject(name) {
 
   await loadSubjectsFromWorker();
 
+  // Mobile/PWA keeps the expanded subject panel mounted while it is open.
+  // After adding a subject, renderSubjectFilters() would otherwise return
+  // early and the newly created subject would not appear until a manual refresh.
+  // Close the expanded panel first, then rebuild from the freshly loaded list.
+  mobileSubjectListOpen = false;
+  document.getElementById("subjectFilterExpanded")?.remove();
+
   renderSubjectFilters();
   renderSubjectOptions();
   render();
