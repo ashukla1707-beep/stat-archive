@@ -4289,6 +4289,13 @@ async function renameSubject(subject) {
       current.created_by = data.created_by || current.created_by;
     }
 
+    // Mobile/PWA keeps the expanded subject panel mounted while it is open.
+    // After renaming a subject, renderSubjectFilters() would otherwise return
+    // early and leave the old subject name visible until a manual refresh.
+    // Close the expanded panel first, then rebuild from the updated subjects.
+    mobileSubjectListOpen = false;
+    document.getElementById("subjectFilterExpanded")?.remove();
+
     renderSubjectFilters();
     renderSubjectOptions();
     render();
