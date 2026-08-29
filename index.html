@@ -21,32 +21,45 @@
   } catch(e) {}
 </script>
 <meta charset="UTF-8" />
-<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<script id="stat-archive-app-mode">
+<meta
+  name="viewport"
+  id="viewportMeta"
+  content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+>
+
+<script id="stat-archive-mobile-viewport-fix">
 (function () {
-  function isInstalledAppMode() {
-    const standalone =
+  function isAndroidApp() {
+    return (
+      (typeof document.referrer === "string" &&
+       document.referrer.startsWith("android-app://")) ||
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
       window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
-      window.navigator.standalone === true;
-
-    const androidTwa =
-      typeof document.referrer === "string" &&
-      document.referrer.startsWith("android-app://");
-
-    return !!(standalone || androidTwa);
-  }
-
-  if (isInstalledAppMode()) {
-    document.documentElement.classList.add("stat-archive-pwa");
-  }
-
-  window.addEventListener("pageshow", function () {
-    document.documentElement.classList.toggle(
-      "stat-archive-pwa",
-      isInstalledAppMode()
+      window.navigator.standalone === true
     );
-  });
+  }
+
+  function setCorrectViewport() {
+    const viewport = document.getElementById("viewportMeta");
+    if (!viewport) return;
+
+    if (isAndroidApp()) {
+      viewport.setAttribute(
+        "content",
+        "width=420, initial-scale=1.0, viewport-fit=cover"
+      );
+      document.documentElement.classList.add("stat-archive-pwa");
+    } else {
+      viewport.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      );
+      document.documentElement.classList.remove("stat-archive-pwa");
+    }
+  }
+
+  setCorrectViewport();
+  window.addEventListener("pageshow", setCorrectViewport);
 })();
 </script>
 <title>Stat Archive</title>
@@ -88,7 +101,6 @@
 
 
   <link rel="stylesheet" href="assets/styles.css">
-  <link rel="stylesheet" href="assets/pwa-mobile.css?v=20260829-2">
 </head>
 <body>
 
