@@ -21,7 +21,34 @@
   } catch(e) {}
 </script>
 <meta charset="UTF-8" />
-<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<script id="stat-archive-app-mode">
+(function () {
+  function isInstalledAppMode() {
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
+      window.navigator.standalone === true;
+
+    const androidTwa =
+      typeof document.referrer === "string" &&
+      document.referrer.startsWith("android-app://");
+
+    return !!(standalone || androidTwa);
+  }
+
+  if (isInstalledAppMode()) {
+    document.documentElement.classList.add("stat-archive-pwa");
+  }
+
+  window.addEventListener("pageshow", function () {
+    document.documentElement.classList.toggle(
+      "stat-archive-pwa",
+      isInstalledAppMode()
+    );
+  });
+})();
+</script>
 <title>Stat Archive</title>
 <meta name="description" content="Stat Archive — Statistics study archive">
 <meta property="og:title" content="Stat Archive">
@@ -61,7 +88,7 @@
 
 
   <link rel="stylesheet" href="assets/styles.css">
-  <link rel="stylesheet" href="assets/pwa-mobile.css?v=20260829-1">
+  <link rel="stylesheet" href="assets/pwa-mobile.css?v=20260829-2">
 </head>
 <body>
 
