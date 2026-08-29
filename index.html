@@ -21,45 +21,30 @@
   } catch(e) {}
 </script>
 <meta charset="UTF-8" />
-<meta
-  name="viewport"
-  id="viewportMeta"
-  content="width=device-width, initial-scale=1.0, viewport-fit=cover"
->
-
-<script id="stat-archive-mobile-viewport-fix">
+<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<script id="stat-archive-android-app-viewport">
 (function () {
-  function isAndroidApp() {
-    return (
-      (typeof document.referrer === "string" &&
-       document.referrer.startsWith("android-app://")) ||
-      window.matchMedia?.("(display-mode: standalone)")?.matches ||
-      window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
-      window.navigator.standalone === true
+  const params = new URLSearchParams(window.location.search);
+  const isAndroidApp = params.get("statarchive_app") === "1";
+
+  window.STAT_ARCHIVE_ANDROID_APP = isAndroidApp;
+
+  const viewport = document.getElementById("viewportMeta");
+  if (!viewport) return;
+
+  if (isAndroidApp) {
+    viewport.setAttribute(
+      "content",
+      "width=420, initial-scale=1.0, viewport-fit=cover"
     );
+    document.documentElement.classList.add("stat-archive-pwa");
+  } else {
+    viewport.setAttribute(
+      "content",
+      "width=device-width, initial-scale=1.0, viewport-fit=cover"
+    );
+    document.documentElement.classList.remove("stat-archive-pwa");
   }
-
-  function setCorrectViewport() {
-    const viewport = document.getElementById("viewportMeta");
-    if (!viewport) return;
-
-    if (isAndroidApp()) {
-      viewport.setAttribute(
-        "content",
-        "width=420, initial-scale=1.0, viewport-fit=cover"
-      );
-      document.documentElement.classList.add("stat-archive-pwa");
-    } else {
-      viewport.setAttribute(
-        "content",
-        "width=device-width, initial-scale=1.0, viewport-fit=cover"
-      );
-      document.documentElement.classList.remove("stat-archive-pwa");
-    }
-  }
-
-  setCorrectViewport();
-  window.addEventListener("pageshow", setCorrectViewport);
 })();
 </script>
 <title>Stat Archive</title>
