@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.statarchive.app",
+      "sha256_cert_fingerprints": [
+        "4F:D0:C2:5B:58:8C:37:33:D9:A3:CA:61:51:3F:AA:CD:3F:77:7C:25:A5:58:8F:89:DA:AA:F7:6A:4C:1E:6A:5E"
+      ]
+    }
+  }
+]
