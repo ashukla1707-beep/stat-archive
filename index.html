@@ -21,32 +21,7 @@
   } catch(e) {}
 </script>
 <meta charset="UTF-8" />
-<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<script id="stat-archive-android-app-viewport">
-(function () {
-  const params = new URLSearchParams(window.location.search);
-  const isAndroidApp = params.get("statarchive_app") === "1";
-
-  window.STAT_ARCHIVE_ANDROID_APP = isAndroidApp;
-
-  const viewport = document.getElementById("viewportMeta");
-  if (!viewport) return;
-
-  if (isAndroidApp) {
-    viewport.setAttribute(
-      "content",
-      "width=420, initial-scale=1.0, viewport-fit=cover"
-    );
-    document.documentElement.classList.add("stat-archive-pwa");
-  } else {
-    viewport.setAttribute(
-      "content",
-      "width=device-width, initial-scale=1.0, viewport-fit=cover"
-    );
-    document.documentElement.classList.remove("stat-archive-pwa");
-  }
-})();
-</script>
+<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1.0" />
 <title>Stat Archive</title>
 <meta name="description" content="Stat Archive — Statistics study archive">
 <meta property="og:title" content="Stat Archive">
