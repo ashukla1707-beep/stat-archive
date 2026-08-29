@@ -2485,12 +2485,6 @@ html.stat-archive-pwa .offline-btn{
 }
 </style>
 
-<style id="creator-about-final-styles">
-.creator-about{max-width:1120px;margin:38px auto 0;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:radial-gradient(circle at 88% 18%,rgba(94,231,247,.11),transparent 28%),linear-gradient(135deg,rgba(18,25,37,.92),rgba(9,14,21,.82));box-shadow:0 24px 70px rgba(0,0,0,.16)}
-.creator-about-inner{padding:34px 38px;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(270px,.7fr);gap:34px;align-items:end}.creator-about-eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:13px;color:#9eabbc;font:700 9px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.16em}.creator-about-eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}.creator-about h2{margin:0;color:var(--text);font:800 clamp(28px,4vw,44px)/1 'Plus Jakarta Sans',sans-serif;letter-spacing:-.045em}.creator-role{margin:11px 0 0;color:var(--cyan);font:600 10px 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase}.creator-about-copy{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:22px}.creator-about-copy h3{margin:0 0 8px;color:var(--text);font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em}.creator-about-copy p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.72}.creator-connect{padding:18px;border:1px solid var(--line);border-radius:16px;background:rgba(7,10,15,.35)}.creator-connect-label{margin-bottom:11px;color:var(--muted);font:700 9px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.12em}.creator-links{display:flex;flex-direction:column;gap:8px}.creator-link{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;color:var(--text);text-decoration:none;background:rgba(255,255,255,.018);font:600 10.5px 'JetBrains Mono',monospace;transition:.18s ease}.creator-link:hover{transform:translateY(-1px);border-color:rgba(94,231,247,.45);color:var(--cyan);background:rgba(94,231,247,.05)}.creator-note{margin-top:11px;color:var(--muted-2);font:500 8.5px 'JetBrains Mono',monospace;line-height:1.55}
-body[data-theme="light"] .creator-about{border-color:#ddd6c8;background:radial-gradient(circle at 90% 18%,rgba(52,125,115,.12),transparent 27%),linear-gradient(135deg,rgba(251,249,242,.98),rgba(244,240,230,.93));box-shadow:0 18px 45px rgba(58,53,42,.09)}body[data-theme="light"] .creator-connect{background:rgba(255,255,255,.42)}
-@media(min-width:1200px){.creator-about{max-width:none;width:100%}}@media(max-width:700px){.creator-about{margin-top:28px;border-radius:20px}.creator-about-inner{padding:27px 22px 24px;grid-template-columns:1fr;gap:24px}.creator-about h2{font-size:32px}.creator-about-copy{margin-top:20px;grid-template-columns:1fr;gap:17px}.creator-about-copy p{font-size:12px}.creator-connect{padding:14px}}
-</style>
 
 <style id="mobile-admin-subject-controls-fix">
 @media(max-width:700px){
@@ -2655,27 +2649,6 @@ body[data-theme="light"] .creator-about{border-color:#ddd6c8;background:radial-g
 
   <div id="emptyState" class="empty-state" style="display:none;"></div>
   <div class="grid" id="grid"></div>
-
-  <section class="creator-about" aria-labelledby="creatorAboutTitle">
-    <div class="creator-about-inner">
-      <div>
-        <div class="creator-about-eyebrow"><i></i><span>Built by</span></div>
-        <h2 id="creatorAboutTitle">Adarsh Shukla</h2>
-        <div class="creator-role">Creator of Stat Archive</div>
-        <div class="creator-about-copy">
-          <div><h3>The idea</h3><p>Stat Archive began with a simple thought: useful academic material should not disappear when one batch graduates. Notes, books and question papers become more valuable when they stay organized, searchable and available to the students who come next.</p></div>
-          <div><h3>About me</h3><p>I like building things that solve problems I encounter myself. What started as a small attempt to organize study material gradually became something I wanted to make useful for everyone. I enjoy learning through experimentation — trying an idea, finding what doesn’t work, and improving it until it does.<br><br>Stat Archive is one of those experiments, and certainly not the last.</p></div>
-        </div>
-      </div>
-      <aside class="creator-connect" aria-label="Connect with Adarsh Shukla">
-        <div class="creator-connect-label">Connect</div><div class="creator-links">
-          <a class="creator-link" href="https://www.linkedin.com/in/adarsh-shukla-b7509727b" target="_blank" rel="noopener noreferrer"><span>LinkedIn</span><span>↗</span></a>
-          <a class="creator-link" href="https://www.instagram.com/the_illusionistic_07?igsi=MTFuNmN0djQ0eXNxYg==" target="_blank" rel="noopener noreferrer"><span>Instagram</span><span>↗</span></a>
-          <a class="creator-link" href="mailto:a.shukla.1707@gmail.com"><span>Email</span><span>→</span></a>
-        </div><div class="creator-note">Questions, feedback or ideas for Stat Archive are welcome.</div>
-      </aside>
-    </div>
-  </section>
 </div>
 
 
@@ -3944,9 +3917,14 @@ function renderSubjectFilters() {
         panel.appendChild(pill);
       });
 
-      // Insert the expanded list before More, then move More to the very end.
+      // Insert the expanded list, keep Show less after the subjects,
+      // and always keep + Subject as the final control.
       row.appendChild(panel);
       row.appendChild(othersPill);
+
+      const addSubjectControl = row.querySelector(".pill-dashed");
+      if (addSubjectControl) row.appendChild(addSubjectControl);
+
       othersPill.textContent = "Show less";
       return;
     }
@@ -4357,6 +4335,14 @@ async function removeSubject(code) {
 
     subjects = subjects.filter(s => s.code !== code);
     filterSubjects.delete(code);
+
+    // Mobile/PWA keeps the expanded subject panel mounted while it is open.
+    // After deleting a subject, renderSubjectFilters() would otherwise return
+    // early and leave that deleted subject visible in the stale panel.
+    // Close/remove the mobile expanded panel first, then rebuild from the
+    // updated subjects array so the deletion is reflected immediately.
+    mobileSubjectListOpen = false;
+    document.getElementById("subjectFilterExpanded")?.remove();
 
     renderSubjectFilters();
     renderSubjectOptions();
