@@ -1,0 +1,5293 @@
+(function () {
+  function isStandalonePWA() {
+    return (
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.matchMedia?.("(display-mode: minimal-ui)")?.matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function syncPwaMode() {
+    document.documentElement.classList.toggle("stat-archive-pwa", isStandalonePWA());
+  }
+
+  syncPwaMode();
+
+  try {
+    const mq = window.matchMedia("(display-mode: standalone)");
+    if (mq?.addEventListener) mq.addEventListener("change", syncPwaMode);
+    else if (mq?.addListener) mq.addListener(syncPwaMode);
+  } catch (_) {}
+
+  window.addEventListener("pageshow", syncPwaMode);
+})();
+
+/* application section */
+
+/* PDF.js is loaded only when a PDF preview is requested. This avoids relying
+   on the browser's built-in mobile PDF iframe viewer.
+
+   Self-hosted first: if pdfjs previously relied solely on the cdnjs CDN, a
+   CDN outage or a network firewall blocking it would break preview
+   entirely. We now try a locally-served copy first (place pdf.min.js and
+   pdf.worker.min.js from pdf.js v3.11.174 at /vendor/pdfjs/ on your
+   server/Worker), and only fall back to the CDN copy if that 404s or
+   otherwise fails to load. */
+const PDFJS_LOCAL_BASE = "/vendor/pdfjs/";
+const PDFJS_CDN_BASE = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+
+let pdfJsPromise = null;
+function loadPdfJsScript(baseUrl) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = baseUrl + "pdf.min.js";
+    script.async = true;
+    script.onload = () => {
+      if (!window.pdfjsLib) {
+        reject(new Error("PDF preview library failed to load."));
+        return;
+      }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = baseUrl + "pdf.worker.min.js";
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => reject(new Error("Could not load the PDF preview library."));
+    document.head.appendChild(script);
+  });
+}
+
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfJsPromise) return pdfJsPromise;
+
+  pdfJsPromise = loadPdfJsScript(PDFJS_LOCAL_BASE)
+    .catch((err) => {
+      console.warn("Local PDF.js copy unavailable, falling back to CDN:", err);
+      return loadPdfJsScript(PDFJS_CDN_BASE);
+    })
+    .catch((err) => {
+      // Never cache a rejected loader promise permanently. A transient
+      // network/CDN failure should be retryable on the next preview.
+      pdfJsPromise = null;
+      throw err;
+    });
+
+  return pdfJsPromise;
+}
+
+/* application section */
+
+// ====== CONFIGURE THESE VALUES ======
+const SUPABASE_URL = "https://owjaazsilueottklxjug.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_AiJVlfLg2zrT2S4Fv3Ha5Q_tL-SvZxH";
+const WORKER_URL = "https://stat-archive-api.lustats.workers.dev";
+// Separate Contributor and Admin accounts, one pair per course level.
+// Create all four users once in Supabase Dashboard -> Authentication -> Users -> Add user.
+// Then set RLS on storage.objects so only 'authenticated' can INSERT/UPDATE/DELETE,
+// while SELECT stays open to anon so browsing/preview/download need no login.
+// NOTE: the BSc accounts below are placeholder addresses/naming — create the
+// real Supabase Auth users with whatever emails you prefer, and update these
+// two lines to match before relying on the B.Sc login.
+const LOGIN_EMAILS = {
+  msc: {
+    contributor: "archive@statarchive.local",
+    admin: "admin@statarchive.local"
+  },
+  bsc: {
+    contributor: "archive-bsc@statarchive.local",
+    admin: "admin-bsc@statarchive.local"
+  }
+};
+// =====================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const TYPE_MAX_BYTES = {
+  "Previous Year Question": 1 * 1024 * 1024,
+  "Mid-Term Question": 1 * 1024 * 1024,
+  "Notes": 20 * 1024 * 1024,
+  "Book": 20 * 1024 * 1024,
+  "Others": 10 * 1024 * 1024,
+};
+const MAX_BYTES = 20 * 1024 * 1024;
+function maxBytesForType(type) {
+  return TYPE_MAX_BYTES[type] || MAX_BYTES;
+}
+
+const DEFAULT_SUBJECTS_MSC = [
+  { code: "AML", name: "Advanced Machine Learning", builtin: true },
+  { code: "APT", name: "Advanced Probability Theory", builtin: true },
+  { code: "AST", name: "Advanced Sampling Theory", builtin: true },
+  { code: "BDES", name: "Block Design", builtin: true },
+  { code: "ECON", name: "Econometrics", builtin: true },
+  { code: "MISC", name: "Other", builtin: true },
+];
+
+// Placeholder starter list only — rename/replace these anytime from the
+// admin "+ Subject" control once B.Sc is live; they do not need to match
+// your actual paper names before you start using the toggle.
+const DEFAULT_SUBJECTS_BSC = [
+  { code: "DESC", name: "Descriptive Statistics", builtin: true },
+  { code: "PROB", name: "Probability Theory", builtin: true },
+  { code: "SAMP", name: "Sampling Theory", builtin: true },
+  { code: "SQC", name: "Statistical Quality Control", builtin: true },
+  { code: "OR", name: "Operations Research", builtin: true },
+  { code: "MISC", name: "Other", builtin: true },
+];
+
+function defaultSubjectsForLevel(level) {
+  return level === "bsc" ? DEFAULT_SUBJECTS_BSC : DEFAULT_SUBJECTS_MSC;
+}
+
+// Read synchronously (not inside a later DOMContentLoaded/IIFE) so that
+// init(), further down, already sees the right level on the very first
+// load instead of briefly fetching M.Sc data and swapping to B.Sc after.
+let currentLevel = "msc";
+try {
+  const urlLevel = new URLSearchParams(window.location.search).get("level");
+  if (urlLevel === "bsc" || urlLevel === "msc") {
+    currentLevel = urlLevel;
+    localStorage.setItem("statArchiveLevel", urlLevel);
+  } else {
+    currentLevel = localStorage.getItem("statArchiveLevel") === "bsc" ? "bsc" : "msc";
+  }
+} catch (e) {}
+
+let entries = [];
+let subjects = [...defaultSubjectsForLevel(currentLevel)];
+let hiddenDefaults = [];
+let filterSubjects = new Set(); // empty = "All subjects"
+let latestEntriesMode = false; // Admin/Contributor: newest uploads in one combined row
+let showAllSubjectPills = false;
+let mobileSubjectListOpen = false;
+let showAllEntrySubjects = false;
+const VISIBLE_SUBJECT_LIMIT = 7;
+const VISIBLE_ENTRY_SUBJECT_LIMIT = 6;
+let filterTypes = new Set(); // empty = "All types"
+let searchQ = "";
+let session = null;
+let archiveRole = "viewer"; // viewer | contributor | admin; enforced by Supabase too
+let signingOut = false; // prevents auth refresh races from restoring stale privileges during sign-out
+let isEditing = false; // prevents double-submit races on the edit-entry form
+let isLoadingArchive = false;
+// Tracks the "current" preview request. previewEntry() captures the token
+// after bumping it; any async step that finishes once the token no longer
+// matches (i.e. the preview was closed or a newer preview was opened)
+// bails out instead of overwriting the (now stale or gone) preview area.
+let currentPreviewToken = 0;
+// The currently-open pdf.js document, kept so closePreview() can call
+// .destroy() on it and free its memory instead of leaving rendering tasks
+// running after the preview is closed.
+let activePdfDoc = null;
+// Tracks the object URL of an in-progress or displayed image preview so
+// closePreview() can revoke it even if the image hasn't finished loading
+// yet (otherwise closing early orphans the Blob URL).
+let activeObjectUrl = null;
+// Lets closePreview() abort an in-flight preview fetch instead of letting
+// a large file keep downloading in the background after the user left.
+let previewAbortController = null;
+let justSignedIn = false; // true only right after the login form is submitted — used to
+                           // distinguish a real sign-in from Supabase restoring a session
+                           // from storage on page load (which also fires "SIGNED_IN").
+
+/* ===== 14-day auto sign-out ===== */
+const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const LOGIN_AT_KEY = "statArchiveLoginAt";
+let autoSignOutTimer = null;
+
+function markLoginTime() {
+  try {
+    localStorage.setItem(LOGIN_AT_KEY, String(Date.now()));
+  } catch (err) {
+    console.error("Could not persist login time:", err);
+  }
+}
+
+function clearLoginTime() {
+  localStorage.removeItem(LOGIN_AT_KEY);
+  if (autoSignOutTimer) {
+    clearTimeout(autoSignOutTimer);
+    autoSignOutTimer = null;
+  }
+}
+
+// Returns true if the stored login is older than SESSION_MAX_AGE_MS (or malformed).
+function isLoginExpired() {
+  const raw = localStorage.getItem(LOGIN_AT_KEY);
+  if (raw === null) return false;
+  const at = Number(raw);
+  if (!Number.isFinite(at) || at <= 0) return true;
+  return Date.now() - at >= SESSION_MAX_AGE_MS;
+}
+
+function scheduleAutoSignOut() {
+  if (autoSignOutTimer) clearTimeout(autoSignOutTimer);
+  if (!session) return; // Abort for read-only users
+  const raw = localStorage.getItem(LOGIN_AT_KEY);
+  const at = Number(raw);
+  if (!Number.isFinite(at) || at <= 0) {
+    clearLoginTime();
+    autoSignOut();
+    return;
+  }
+  const remaining = SESSION_MAX_AGE_MS - (Date.now() - at);
+  if (remaining <= 0) {
+    autoSignOut();
+    return;
+  }
+  // setTimeout is capped in practice by tab lifetime; also re-checked on
+  // visibility change below as a safety net for sleeping/backgrounded tabs.
+  autoSignOutTimer = setTimeout(autoSignOut, remaining);
+}
+
+async function autoSignOut() {
+  clearLoginTime();
+  if (session) {
+    try { await sb.auth.signOut(); }
+    catch (err) { console.warn("Network failed, clearing local session.", err); }
+    finally {
+      session = null;
+      showError("You've been signed out after 14 days. Please sign in again.");
+      updateAuthUI();
+    }
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && session) {
+    if (isLoginExpired()) {
+      autoSignOut();
+    } else {
+      scheduleAutoSignOut();
+    }
+  }
+});
+
+function showError(msg) {
+  const el = document.getElementById("errorBanner");
+  el.textContent = msg;
+  el.style.display = msg ? "flex" : "none";
+  if (msg) requestAnimationFrame(() => {
+    if (el.offsetParent !== null) el.scrollIntoView({block:"nearest", behavior:"smooth"});
+  });
+}
+
+function formatSize(bytes) {
+  if (isNaN(bytes)) return "0 B";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+// Short labels for the type-breakdown chips (keeps the card compact).
+const TYPE_ABBR = {
+  "Notes": "Notes",
+  "Book": "Book",
+  "Previous Year Question": "PYQ",
+  "Mid-Term Question": "Mid-Term",
+  "Others": "Others"
+};
+
+async function loadActivityStats() {
+  try {
+    // Activity totals are loaded from Supabase. For true all-time totals,
+    // the get_archive_activity RPC must not reset its counters by month.
+    const { data, error } = await sb.rpc("get_archive_activity");
+
+    if (error) throw error;
+
+    const previewEl = document.getElementById("summaryPreviewCount");
+    const downloadEl = document.getElementById("summaryDownloadCount");
+    if (previewEl) previewEl.textContent = Number(data?.preview_count || 0).toLocaleString();
+    if (downloadEl) downloadEl.textContent = Number(data?.download_count || 0).toLocaleString();
+  } catch (err) {
+    console.warn("Could not load activity stats:", err);
+    const previewEl = document.getElementById("summaryPreviewCount");
+    const downloadEl = document.getElementById("summaryDownloadCount");
+    if (previewEl) previewEl.textContent = "—";
+    if (downloadEl) downloadEl.textContent = "—";
+  }
+}
+
+async function incrementActivity(kind) {
+  try {
+    await sb.rpc("increment_archive_activity", { p_event: kind });
+    await loadActivityStats();
+  } catch (err) {
+    // Activity tracking must never block preview/download.
+    console.warn("Could not record activity:", err);
+  }
+}
+
+function updateStorageUI() {
+  const card = document.getElementById("adminStorageCard");
+  const label = document.getElementById("summaryStorageLabel");
+  const value = document.getElementById("summaryStorage");
+  const meta = document.getElementById("summaryStorageMeta");
+  const activity = document.getElementById("summaryActivity");
+  if (!card) return;
+
+  card.style.display = "block";
+
+  if (archiveRole === "admin" || archiveRole === "contributor") {
+    if (activity) activity.style.display = "none";
+    value.style.display = "block";
+    if (meta) meta.style.display = "block";
+
+    if (label) label.textContent = "Storage used";
+    value.textContent = formatSize(totalStorageBytes);
+    if (meta) {
+      const count = entries.length;
+      meta.textContent = `${count} archived ${count === 1 ? "file" : "files"} · R2 archive`;
+    }
+    return;
+  }
+
+  // Public/read-only visitors see global preview/download activity.
+  if (label) label.textContent = "Activity";
+  if (activity) activity.style.display = "flex";
+  value.style.display = "none";
+  if (meta) meta.style.display = "none";
+  // loadActivityStats() used to be called here, but updateStorageUI() runs
+  // on every render() — i.e. on every search keystroke and filter change —
+  // which fired a database RPC call each time even though the activity
+  // numbers hadn't changed. It's now loaded once in init() and refreshed
+  // after an actual preview/download via incrementActivity().
+}
+
+// Cached code/id -> subject lookup, rebuilt only when the `subjects` array
+// reference actually changes (it's reassigned, not mutated, everywhere in
+// this app). Avoids re-scanning the whole subjects list for every single
+// entry on every render() and every search keystroke.
+let totalStorageBytes = 0;
+let subjectIndexCache = null;
+let subjectIndexCacheSource = null;
+function getSubjectIndex() {
+  if (subjectIndexCacheSource !== subjects) {
+    subjectIndexCache = new Map();
+    subjects.forEach(s => {
+      if (s.code) subjectIndexCache.set(s.code, s);
+      if (s.id) subjectIndexCache.set(s.id, s);
+    });
+    subjectIndexCacheSource = subjects;
+  }
+  return subjectIndexCache;
+}
+
+function subjectMeta(codeOrId) {
+  if (!codeOrId) return { name: "Other", code: "MISC" };
+  const idx = getSubjectIndex();
+  return idx.get(codeOrId) || idx.get("MISC") || { name: "Other", code: "MISC" };
+}
+
+function updateAuthUI() {
+  // Never let a stale role survive without a live session.
+  if (!session) archiveRole = "viewer";
+  const dot = document.getElementById("authDot");
+  const access = document.getElementById("summaryAccess");
+  const label = document.getElementById("authLabel");
+  const authBtn = document.getElementById("authBtn");
+  const openFormBtn = document.getElementById("openFormBtn");
+  const latestEntriesBtn = document.getElementById("latestEntriesBtn");
+  const permissionHint = document.getElementById("permissionHint");
+
+  document.documentElement.dataset.authenticated = session ? "true" : "false";
+
+  if (session) {
+    dot.className = "dot on";
+    if (access) {
+      access.textContent =
+        archiveRole === "admin" ? "ADMIN" :
+        archiveRole === "contributor" ? "CONTRIBUTOR" :
+        "SIGNED IN";
+    }
+
+    label.textContent = archiveRole === "admin"
+      ? "Signed in as admin"
+      : archiveRole === "contributor"
+        ? "Signed in - You can upload files"
+        : "Signed in - Upload permission only";
+
+    authBtn.textContent = "Sign out";
+    const canFileEntry = archiveRole === "admin" || archiveRole === "contributor";
+    openFormBtn.disabled = !canFileEntry;
+    openFormBtn.style.display = canFileEntry ? "inline-flex" : "none";
+    openFormBtn.title = canFileEntry ? "" : "This account cannot upload";
+    const canUseLatestEntries = archiveRole === "admin" || archiveRole === "contributor";
+    if (latestEntriesBtn) {
+      latestEntriesBtn.style.display = canUseLatestEntries ? "inline-flex" : "none";
+      latestEntriesBtn.classList.toggle("active", latestEntriesMode);
+    }
+
+    // Keep the contributor interface clean: no permission-rules text below
+    // the “File a new entry” button.
+    if (permissionHint) {
+      permissionHint.textContent = "";
+      permissionHint.style.display = "none";
+    }
+  } else {
+    dot.className = "dot off";
+    if (access) access.textContent = "READ ONLY";
+    label.textContent = "Read-only — sign in to file or remove entries";
+    authBtn.textContent = "Sign in";
+    openFormBtn.disabled = true;
+    openFormBtn.style.display = "none";
+    openFormBtn.title = "Sign in to file a new entry";
+    latestEntriesMode = false;
+    if (latestEntriesBtn) {
+      latestEntriesBtn.style.display = "none";
+      latestEntriesBtn.classList.remove("active");
+    }
+    if (permissionHint) {
+      permissionHint.textContent = "";
+      permissionHint.style.display = "none";
+    }
+  }
+
+  updateStorageUI();
+}
+
+function applySignedOutUI() {
+  // Do not rebuild thousands of cards just to remove privileged controls.
+  // Remove them directly so sign-out stays responsive even on large archives.
+  document.querySelectorAll("#grid .edit-btn, #grid .del-btn, .subject-edit, .subject-delete")
+    .forEach(el => el.remove());
+
+  const formBtn = document.getElementById("openFormBtn");
+  if (formBtn) {
+    formBtn.disabled = true;
+    formBtn.style.display = "none";
+  }
+
+  const latestBtn = document.getElementById("latestEntriesBtn");
+  if (latestBtn) {
+    latestBtn.style.display = "none";
+    latestBtn.classList.remove("active");
+  }
+
+  const addSubject = document.getElementById("addSubjectForm");
+  if (addSubject) addSubject.remove();
+
+  const addSubjectButton = document.querySelector("#subjectFilterRow .pill-dashed");
+  if (addSubjectButton) addSubjectButton.remove();
+
+  latestEntriesMode = false;
+  document.documentElement.dataset.authenticated = "false";
+}
+
+async function getArchiveRole() {
+  if (!session) {
+    archiveRole = "viewer";
+    return;
+  }
+  try {
+    const { data, error } = await sb.rpc("get_my_archive_role");
+    if (error) throw error;
+    archiveRole = data === "admin" || data === "contributor" ? data : "viewer";
+  } catch {
+    archiveRole = "viewer";
+  }
+}
+
+function mapDbEntry(e) {
+  return {
+    id: e.id,
+    title: e.title || "Untitled",
+    subject: e.subjects?.code || e.subject || "MISC",
+    type: e.type || "Notes",
+    year: e.year || "",
+    filename: e.file_name || e.filename || "file",
+    path: e.r2_key || "",
+    size: Number(e.size || 0),
+    uploadedAt: e.uploaded_at,
+    uploadedBy: e.uploaded_by || e.user_id || null,
+    level: e.level || currentLevel,
+    // Backend-calculated permission. The frontend also independently computes
+    // the latest 3 entries below so the Edit button still appears if an older
+    // Worker response does not include contributor_editable. The backend remains
+    // the final security authority and rejects unauthorized PATCH requests.
+    contributorEditable: Boolean(e.contributor_editable),
+    // Large files (>20MB) are hosted on Google Drive instead of R2 — the
+    // Worker/DB return a drive_url for these instead of an r2_key. When
+    // present, cards link out to Drive instead of hitting /file.
+    driveUrl: e.drive_url || null
+  };
+}
+
+async function workerFetch(path, options = {}, requireAuth = false) {
+  const headers = new Headers(options.headers || {});
+  headers.set("Accept", "application/json");
+
+  if (requireAuth) {
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw error;
+    const token = data?.session?.access_token;
+    if (!token) throw new Error("Please sign in first.");
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${WORKER_URL}${path}`, {
+    ...options,
+    headers
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!response.ok) {
+    let message = `Request failed (${response.status})`;
+
+    if (contentType.includes("application/json")) {
+      const body = await response.json().catch(() => null);
+      if (body?.error) message = body.error;
+
+      // The Worker often attaches a raw Supabase/Postgres error under
+      // `details` (e.g. RLS policy denials, missing grants, FK violations)
+      // that was previously swallowed here. Append it (truncated) so the
+      // real cause is visible in the UI instead of just the generic
+      // wrapper message like "Supabase rejected the deletion."
+      if (body?.details) {
+        const detailText =
+          typeof body.details === "string"
+            ? body.details
+            : JSON.stringify(body.details);
+        message += ` — ${detailText.slice(0, 300)}`;
+      }
+    } else {
+      const text = await response.text().catch(() => "");
+      if (text) message = text.slice(0, 300);
+    }
+
+    throw new Error(message);
+  }
+
+  return contentType.includes("application/json")
+    ? response.json()
+    : response;
+}
+
+async function loadEntries() {
+  const data = await workerFetch(`/entries?level=${encodeURIComponent(currentLevel)}`);
+  return Array.isArray(data?.entries)
+    ? data.entries.map(mapDbEntry)
+    : [];
+}
+
+async function loadSubjectsFromWorker() {
+  // Public subject list comes from the Worker.
+  // When signed in, also fetch created_by directly so the UI can show
+  // the edit control only for subjects owned by the current contributor.
+  const data = await workerFetch(`/subjects?level=${encodeURIComponent(currentLevel)}`);
+
+  let dbSubjects = Array.isArray(data?.subjects)
+    ? data.subjects.map(s => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        created_by: null,
+        builtin: false
+      }))
+    : [];
+
+  if (session) {
+    try {
+      const { data: ownedRows, error } = await sb
+        .from("subjects")
+        .select("id,name,code,created_by")
+        .eq("level", currentLevel)
+        .order("name", { ascending: true });
+
+      if (!error && Array.isArray(ownedRows)) {
+        dbSubjects = ownedRows.map(s => ({
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          created_by: s.created_by || null,
+          builtin: false
+        }));
+      }
+    } catch (err) {
+      console.warn("Could not load subject ownership:", err);
+    }
+  }
+
+  // A successful Worker/database response is always the source of truth,
+  // even when it contains ZERO subjects. Treating [] as "missing data" used
+  // to resurrect legacy default subjects after the last real subject was
+  // deleted, creating ghost pills that had no database record.
+  subjects = dbSubjects.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+}
+
+async function init() {
+  try {
+    let data;
+    try {
+      ({ data } = await sb.auth.getSession());
+    } catch (authErr) {
+      console.error("getSession failed:", authErr);
+      archiveRole = "viewer";
+      data = null;
+    }
+    // Optional chaining: if the Supabase client is unreachable it can
+    // resolve with a null `data`, and `data.session` would throw.
+    session = data?.session || null;
+
+    if (session && isLoginExpired()) {
+      await sb.auth.signOut();
+      session = null;
+      clearLoginTime();
+      showError("You've been signed out after 14 days. Please sign in again.");
+    } else if (session) {
+      // Existing session with no recorded login time (e.g. from before this
+      // feature, or a page refresh) — start the session clock now.
+      if (!localStorage.getItem(LOGIN_AT_KEY)) markLoginTime();
+      scheduleAutoSignOut();
+    }
+
+    await getArchiveRole();
+    updateAuthUI();
+
+    // Loaded once here instead of on every render() (see updateStorageUI).
+    if (archiveRole === "viewer") {
+      loadActivityStats();
+    }
+
+    const [loadedEntries] = await Promise.all([
+      loadEntries(),
+      loadSubjectsFromWorker()
+    ]);
+    entries = loadedEntries;
+    totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
+  } catch (err) {
+    // If the Worker connection drops during startup, fail gracefully
+    // instead of throwing an unhandled rejection and leaving a blank screen.
+    console.error("Init failed:", err);
+    entries = entries || [];
+    subjects = subjects && subjects.length ? subjects : [...defaultSubjectsForLevel(currentLevel)];
+    showError("Could not connect to the archive.");
+  }
+
+  await loadOfflineLibraryState();
+  renderSubjectFilters();
+  renderTypeFilters();
+  renderSubjectOptions();
+  render();
+}
+
+// Supabase fires an INITIAL_SESSION event shortly after onAuthStateChange is
+// registered, on top of init() also loading data itself — without this flag
+// both ran the full entries/subjects/role fetch and render() on every page
+// load, doubling the startup requests.
+let isInitialLoad = true;
+sb.auth.onAuthStateChange(async (event, s) => {
+  // During a manual sign-out, TOKEN_REFRESHED can arrive before Supabase
+  // emits SIGNED_OUT. Ignore that stale session instead of restoring Edit/Delete.
+  if (signingOut && event !== "SIGNED_OUT") {
+    return;
+  }
+
+  session = s;
+
+  if (event === "INITIAL_SESSION" || isInitialLoad) {
+    isInitialLoad = false;
+    return; // Let init() handle the first data fetch.
+  }
+
+  // TOKEN_REFRESHED fires whenever the tab regains focus — including right
+  // after the native file picker closes. It doesn't represent an actual
+  // sign-in/out, so skip the full reload here; otherwise it rebuilds the
+  // upload form's Subject dropdown mid-entry and wipes what was chosen.
+  if (event === "TOKEN_REFRESHED") {
+    return;
+  }
+
+  if (event === "SIGNED_OUT") {
+    // The manual sign-out path already removed privileged controls. For an
+    // automatic/external sign-out, do the same lightweight cleanup here.
+    clearLoginTime();
+    session = null;
+    archiveRole = "viewer";
+    latestEntriesMode = false;
+    applySignedOutUI();
+    updateAuthUI();
+    if (!signingOut) render();
+    signingOut = false;
+    return;
+  }
+
+  try {
+    await getArchiveRole();
+    updateAuthUI();
+    entries = await loadEntries();
+    await loadSubjectsFromWorker();
+    renderSubjectFilters();
+    renderTypeFilters();
+    renderSubjectOptions();
+    render();
+    if (event === "SIGNED_IN" && archiveRole === "contributor" && justSignedIn) {
+      document.getElementById("contributorDisclaimerOverlay").style.display = "flex";
+      document.body.classList.add("no-scroll");
+    }
+  } catch (err) {
+    console.error("Auth state update failed:", err);
+    showError("Network error while syncing your account. Please refresh.");
+  } finally {
+    justSignedIn = false;
+  }
+});
+
+// Updates the toggle buttons, page title, and hero eyebrow to match the
+// given level. Purely visual — does not touch data or the signed-in state.
+function setLevelUI(level) {
+  const value = level === "bsc" ? "bsc" : "msc";
+  const mscBtn = document.getElementById("levelMscBtn");
+  const bscBtn = document.getElementById("levelBscBtn");
+  if (mscBtn && bscBtn) {
+    mscBtn.classList.toggle("active", value === "msc");
+    bscBtn.classList.toggle("active", value === "bsc");
+    mscBtn.setAttribute("aria-pressed", value === "msc" ? "true" : "false");
+    bscBtn.setAttribute("aria-pressed", value === "bsc" ? "true" : "false");
+  }
+  // Keep the shared/browser title neutral for both course levels.
+  // The B.Sc / M.Sc selection is still controlled by the level parameter.
+  document.title = "Stat Archive";
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("level", value);
+    window.history.replaceState({ level: value }, "", url.href);
+  } catch (e) {}
+}
+
+// Switches the whole app to the other level: signs out (each level has its
+// own contributor/admin accounts, so a session from one means nothing under
+// the other), swaps in that level's placeholder subjects immediately for a
+// snappy toggle, then reloads the real level-scoped entries/subjects.
+let levelSwitchInProgress = false;
+
+async function switchLevel(level) {
+  const value = level === "bsc" ? "bsc" : "msc";
+  if (value === currentLevel || levelSwitchInProgress) return;
+
+  // Close the mobile subject expansion BEFORE changing level. The expanded
+  // panel belongs to the old level; if it stays mounted, renderSubjectFilters()
+  // intentionally preserves it and the new B.Sc/M.Sc subjects never appear.
+  mobileSubjectListOpen = false;
+  showAllSubjectPills = false;
+  const staleSubjectPanel = document.getElementById("subjectFilterExpanded");
+  if (staleSubjectPanel) staleSubjectPanel.remove();
+
+  levelSwitchInProgress = true;
+
+  if (session) {
+    try { await sb.auth.signOut(); } catch (e) {}
+  }
+
+  currentLevel = value;
+  try { localStorage.setItem("statArchiveLevel", value); } catch (e) {}
+  setLevelUI(value);
+
+  subjects = [...defaultSubjectsForLevel(value)];
+  filterSubjects = new Set();
+  filterTypes = new Set();
+  latestEntriesMode = false;
+  showAllEntrySubjects = false;
+  entries = [];
+  isLoadingArchive = true;
+
+  // Clear lingering search state
+  const searchInput = document.getElementById("searchInput");
+  const searchClear = document.getElementById("searchClear");
+  if (searchInput) searchInput.value = "";
+  if (searchClear) searchClear.style.display = "none";
+  searchQ = "";
+
+  render();
+
+  try {
+    const [loadedEntries] = await Promise.all([
+      loadEntries(),
+      loadSubjectsFromWorker()
+    ]);
+    entries = loadedEntries;
+    totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
+  } catch (err) {
+    console.error("Level switch load failed:", err);
+    showError(`Could not load ${value === "bsc" ? "B.Sc" : "M.Sc"} data.`);
+  }
+
+  isLoadingArchive = false;
+  renderSubjectFilters();
+  renderTypeFilters();
+  renderSubjectOptions();
+  render();
+  levelSwitchInProgress = false;
+}
+
+window.addEventListener("popstate", () => {
+  let value = currentLevel;
+  try {
+    const level = new URL(window.location.href).searchParams.get("level");
+    if (level === "bsc" || level === "msc") value = level;
+  } catch {}
+  if (value !== currentLevel) switchLevel(value);
+});
+
+function codeFromName(name, existingCodes) {
+  const normalizedName = String(name || "").trim().toLowerCase();
+  // MISC is the legacy/reserved code used by the built-in "Other" subject.
+  // If an admin creates "Other" in a level whose database already reserves
+  // MISC, use OTHER instead so the insert does not fail on subjects_code_unique.
+  let base = normalizedName === "other"
+    ? "OTHER"
+    : String(name || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
+  if (!base) base = "SUBJ";
+  let code = base, i = 1;
+  while (existingCodes.includes(code) || (normalizedName === "other" && code === "MISC")) {
+    const suffix = String(i++);
+    code = (base.slice(0, Math.max(1, 5 - suffix.length)) + suffix).slice(0, 5);
+  }
+  return code;
+}
+
+function renderSubjectFilters() {
+  const row = document.getElementById("subjectFilterRow");
+  const isMobile = window.matchMedia("(max-width: 700px)").matches;
+  const openPanel = document.getElementById("subjectFilterExpanded");
+
+  // Do not rebuild the mobile subject row while the expanded list is open.
+  // Android Chrome/PWA can trigger font/viewport refreshes while scrolling;
+  // rebuilding the row there destroys the open panel and makes it collapse.
+  if (isMobile && mobileSubjectListOpen && openPanel) {
+    openPanel.querySelectorAll("[data-subject-code]").forEach(btn => {
+      btn.classList.toggle("active", filterSubjects.has(btn.dataset.subjectCode));
+    });
+    row.querySelectorAll(".subject-pill[data-subject-code]").forEach(pill => {
+      pill.classList.toggle("active", filterSubjects.has(pill.dataset.subjectCode));
+    });
+    const more = row.querySelector(".subject-more-pill");
+    if (more) more.textContent = "Show less";
+    return;
+  }
+
+  row.innerHTML = "";
+
+  const allPill = document.createElement("button");
+  allPill.type = "button";
+  allPill.className = "pill" + (filterSubjects.size === 0 ? " active" : "");
+  allPill.textContent = "All subjects";
+  allPill.onclick = () => {
+    latestEntriesMode = false;
+    filterSubjects.clear();
+    renderSubjectFilters();
+    updateAuthUI();
+    render();
+  };
+  row.appendChild(allPill);
+
+
+  // Keep the special "Other" subject at the very end when all subjects are shown.
+  const sortedSubjects = [...subjects]
+    .sort((a, b) => {
+      const aIsOther = a.code === "MISC" || a.name.trim().toLowerCase() === "other";
+      const bIsOther = b.code === "MISC" || b.name.trim().toLowerCase() === "other";
+      if (aIsOther && !bIsOther) return 1;
+      if (!aIsOther && bIsOther) return -1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+
+  // Active filters bypass the visible-count limit so filtering by a
+  // subject that's currently hidden under "Others" doesn't make its pill
+  // (and the fact that it's still filtering) disappear on "Show less".
+  // Render all subjects first. In the compact state, the row below automatically
+  // keeps only as many as fit on the current monitor and moves the rest into Others.
+  const visibleSubjects = sortedSubjects;
+
+  visibleSubjects.forEach(s => {
+      const pill = document.createElement("span");
+      pill.className = "pill subject-pill" + (filterSubjects.has(s.code) ? " active" : "");
+      pill.dataset.subjectCode = s.code;
+
+      const label = document.createElement("button");
+      label.type = "button";
+      label.textContent = s.name;
+      label.title = s.name;
+      label.onclick = () => {
+        if (filterSubjects.has(s.code)) {
+          filterSubjects.delete(s.code);
+        } else {
+          filterSubjects.add(s.code);
+        }
+        renderSubjectFilters();
+        render();
+      };
+      pill.appendChild(label);
+
+      // Contributor: edit ONLY subjects created by this contributor.
+      // Admin: edit any subject and delete any subject.
+      const canEdit =
+        !!session && (
+        archiveRole === "admin" ||
+        (
+          archiveRole === "contributor" &&
+          session &&
+          s.created_by === session.user.id
+        ));
+
+      if (canEdit) {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "subject-delete subject-edit";
+        editBtn.textContent = "✎";
+        editBtn.title = `Rename ${s.name}`;
+        editBtn.setAttribute("aria-label", `Rename ${s.name}`);
+        editBtn.onclick = async (e) => {
+          e.stopPropagation();
+          await renameSubject(s);
+        };
+        pill.appendChild(editBtn);
+      }
+
+      if (session && archiveRole === "admin") {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "subject-delete";
+        deleteBtn.textContent = "×";
+        deleteBtn.title = `Delete ${s.name}`;
+        deleteBtn.setAttribute("aria-label", `Delete ${s.name}`);
+        deleteBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm(
+            `Delete the subject "${s.name}"?\n\nThis cannot be done while entries are filed under it.`
+          )) return;
+          await removeSubject(s.code);
+        };
+        pill.appendChild(deleteBtn);
+      }
+
+      row.appendChild(pill);
+    });
+
+  const othersPill = document.createElement("button");
+  othersPill.type = "button";
+  othersPill.className = "pill subject-more-pill";
+  othersPill.textContent = showAllSubjectPills ? "Show less" : "More";
+  othersPill.onclick = () => {
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      othersPill.blur();
+
+      const existingPanel = document.getElementById("subjectFilterExpanded");
+      if (existingPanel) {
+        // Collapse only on an explicit tap of Show less.
+        mobileSubjectListOpen = false;
+        existingPanel.remove();
+        othersPill.textContent = "More";
+        renderSubjectFilters();
+        return;
+      }
+
+      mobileSubjectListOpen = true;
+
+      // The compact view already contains Other. Remove that single pill before
+      // expanding so Other can be placed exactly once at the end of the list.
+      const otherCode = sortedSubjects.find(s =>
+        s.code === "MISC" || s.name.trim().toLowerCase() === "other"
+      )?.code;
+      const compactOther = otherCode
+        ? row.querySelector(`.subject-pill[data-subject-code="${CSS.escape(otherCode)}"]`)
+        : null;
+      if (compactOther) compactOther.remove();
+
+      const hiddenPills = Array.from(row.querySelectorAll(".subject-pill"))
+        .filter(p => p.style.display === "none")
+        .map(p => p.dataset.subjectCode);
+
+      const hiddenSubjects = sortedSubjects.filter(s =>
+        hiddenPills.includes(s.code)
+      );
+      const otherSubject = sortedSubjects.find(s =>
+        s.code === "MISC" || s.name.trim().toLowerCase() === "other"
+      );
+
+      const panel = document.createElement("div");
+      panel.id = "subjectFilterExpanded";
+
+      // Expanded order: hidden subjects -> Other -> Show less.
+      // Mobile/PWA previously rendered only a plain subject button here,
+      // so admin edit/delete controls disappeared for subjects revealed
+      // under "More". Build the same controls that desktop uses.
+      [...hiddenSubjects, ...(otherSubject ? [otherSubject] : [])].forEach(s => {
+        const pill = document.createElement("span");
+        pill.className = "pill subject-pill" + (filterSubjects.has(s.code) ? " active" : "");
+        pill.dataset.subjectCode = s.code;
+
+        const label = document.createElement("button");
+        label.type = "button";
+        label.textContent = s.name;
+        label.title = s.name;
+        label.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (filterSubjects.has(s.code)) filterSubjects.delete(s.code);
+          else filterSubjects.add(s.code);
+          latestEntriesMode = false;
+          pill.classList.toggle("active", filterSubjects.has(s.code));
+          render();
+        };
+        pill.appendChild(label);
+
+        const canEdit =
+          !!session && (
+            archiveRole === "admin" ||
+            (
+              archiveRole === "contributor" &&
+              s.created_by === session.user.id
+            )
+          );
+
+        if (canEdit) {
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "subject-delete subject-edit";
+          editBtn.textContent = "✎";
+          editBtn.title = `Rename ${s.name}`;
+          editBtn.setAttribute("aria-label", `Rename ${s.name}`);
+          editBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await renameSubject(s);
+          };
+          pill.appendChild(editBtn);
+        }
+
+        if (session && archiveRole === "admin") {
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "subject-delete";
+          deleteBtn.textContent = "×";
+          deleteBtn.title = `Delete ${s.name}`;
+          deleteBtn.setAttribute("aria-label", `Delete ${s.name}`);
+          deleteBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!confirm(
+              `Delete the subject "${s.name}"?\n\nThis cannot be done while entries are filed under it.`
+            )) return;
+            await removeSubject(s.code);
+          };
+          pill.appendChild(deleteBtn);
+        }
+
+        panel.appendChild(pill);
+      });
+
+      // Insert the expanded list, keep Show less after the subjects,
+      // and always keep + Subject as the final control.
+      row.appendChild(panel);
+      row.appendChild(othersPill);
+
+      const addSubjectControl = row.querySelector(".pill-dashed");
+      if (addSubjectControl) row.appendChild(addSubjectControl);
+
+      othersPill.textContent = "Show less";
+      return;
+    }
+
+    showAllSubjectPills = !showAllSubjectPills;
+    mobileSubjectListOpen = false;
+    renderSubjectFilters();
+  };
+  row.appendChild(othersPill);
+
+  // Only contributors and admins can see the + Subject control.
+  if (archiveRole === "contributor" || archiveRole === "admin") {
+  const addPill = document.createElement("button");
+  addPill.type = "button";
+  addPill.className = "pill pill-dashed";
+  addPill.textContent = "+ Subject";
+  addPill.onclick = () => {
+    const form = document.getElementById("addSubjectForm");
+    if (form) {
+      form.remove();
+      return;
+    }
+
+    const f = document.createElement("form");
+    f.id = "addSubjectForm";
+    f.className = "add-subject-form";
+    f.style.display = "inline-flex";
+    f.innerHTML =
+      `<input type="text" placeholder="New subject name" autofocus />` +
+      `<button type="submit">Add</button>`;
+
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+
+      const input = f.querySelector("input");
+      const button = f.querySelector("button");
+      const name = input.value.trim();
+
+      if (!name) {
+        input.focus();
+        return;
+      }
+
+      if (name.length > 100) {
+        showError("Subject name must be 100 characters or less.");
+        return;
+      }
+
+      const nameLower = name.toLowerCase();
+      if (subjects.some(s => s.name.toLowerCase() === nameLower)) {
+        showError("A subject with this name already exists.");
+        return;
+      }
+
+      isSubmitting = true;
+      button.disabled = true;
+      button.textContent = "…";
+      showError("");
+
+      try {
+        await createSubject(name);
+        f.remove();
+      } catch (err) {
+        console.error(err);
+        showError(
+          err?.message
+            ? `Couldn't create subject: ${err.message}`
+            : "Couldn't create subject."
+        );
+        button.disabled = false;
+        button.textContent = "Add";
+      } finally {
+        isSubmitting = false;
+      }
+    };
+
+    // Allow users to back out of the form via Escape or by clicking away,
+    // instead of it being stuck open with no way to close it.
+    let isSubmitting = false;
+    const cancelForm = () => {
+      if (isSubmitting) return;
+      if (document.body.contains(f)) {
+        filterSubjects.delete("");
+        renderSubjectFilters();
+      }
+    };
+    f.querySelector("input").addEventListener("keydown", (e) => { if (e.key === "Escape") cancelForm(); });
+    // Keep the form alive across focus changes, tab switches, and mobile keyboard resize events.
+
+    row.appendChild(f);
+    f.querySelector("input").focus();
+  };
+
+  row.appendChild(addPill);
+  }
+
+  // Desktop keeps the adaptive "fit as many as possible" behavior.
+  // Mobile is intentionally simpler: show at most 3 real subjects in the
+  // compact state, followed by the More button. This prevents 5 long subject
+  // pills from taking several lines on a phone.
+  const isMobileSubjectLayout = window.matchMedia("(max-width: 700px)").matches;
+  const DESKTOP_MIN_VISIBLE_SUBJECTS = 5;
+
+  row.classList.toggle("show-all-subjects", showAllSubjectPills);
+  row.classList.remove("wrap-needed");
+
+  if (!showAllSubjectPills) {
+    const subjectPills = Array.from(row.querySelectorAll(".subject-pill"));
+
+    // Reset to natural state before measuring.
+    subjectPills.forEach(p => { p.style.display = ""; });
+    othersPill.style.display = "inline-flex";
+    othersPill.textContent = "More";
+
+    if (isMobileSubjectLayout) {
+      /* Mobile remains adaptive, but the compact state is capped at TWO
+         visual rows. We measure the actual rendered pill widths, so a wider
+         phone can show more subjects while a narrower phone shows fewer. */
+      const styles = getComputedStyle(row);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 5;
+      const available = Math.max(1, row.clientWidth);
+      const allWidth = allPill.getBoundingClientRect().width;
+      const moreWidth = othersPill.getBoundingClientRect().width;
+      const widths = subjectPills.map(p => p.getBoundingClientRect().width);
+
+      // Hide everything first, then add pills only while they fit in the
+      // two-row packing model. "More" permanently reserves room on row 2.
+      subjectPills.forEach(p => { p.style.display = "none"; });
+
+      let row1Used = allWidth;
+      let row2Used = moreWidth;
+      let hiddenCount = subjectPills.length;
+      let activePill = null;
+
+      // Keep the active subject visible whenever possible.
+      subjectPills.forEach(p => {
+        if (p.classList.contains("active")) activePill = p;
+      });
+
+      const tryPlace = (pill, width) => {
+        // Prefer filling row 1 first.
+        if (row1Used + gap + width <= available) {
+          pill.style.display = "";
+          row1Used += gap + width;
+          hiddenCount--;
+          return true;
+        }
+        // Then fill row 2, preserving space already occupied by More.
+        if (row2Used + gap + width <= available) {
+          pill.style.display = "";
+          row2Used += gap + width;
+          hiddenCount--;
+          return true;
+        }
+        return false;
+      };
+
+      // If a non-first active subject exists, reserve/show it first so the
+      // current selection never disappears behind More.
+      if (activePill) {
+        const ai = subjectPills.indexOf(activePill);
+        if (ai >= 0) tryPlace(activePill, widths[ai]);
+      }
+
+      subjectPills.forEach((pill, i) => {
+        if (pill === activePill) return;
+        tryPlace(pill, widths[i]);
+      });
+
+      // If every subject fitted in two rows, remove More and try once more
+      // using the newly freed second-row space.
+      if (hiddenCount === 0) {
+        othersPill.style.display = "none";
+      } else {
+        othersPill.style.display = "inline-flex";
+      }
+
+      // Natural flex wrapping is now safe because only pills that mathematically
+      // fit within two rows remain visible.
+      row.classList.add("wrap-needed");
+    } else {
+      const styles = getComputedStyle(row);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 5;
+      const available = row.clientWidth;
+      const allPillWidth = allPill.getBoundingClientRect().width;
+      const othersWidth = othersPill.getBoundingClientRect().width;
+      const pillWidths = subjectPills.map(p => p.getBoundingClientRect().width);
+
+      const totalWithoutOthers =
+        allPillWidth + pillWidths.reduce((sum, w) => sum + w + gap, 0);
+
+      if (totalWithoutOthers <= available) {
+        othersPill.style.display = "none";
+      } else {
+        const budget = available - othersWidth - gap;
+        let used = allPillWidth;
+        let visibleCount = 0;
+        let hiddenCount = 0;
+
+        subjectPills.forEach((pill, i) => {
+          const isActive = pill.classList.contains("active");
+          const mustShow = isActive || visibleCount < DESKTOP_MIN_VISIBLE_SUBJECTS;
+          const projected = used + gap + pillWidths[i];
+
+          if (mustShow || projected <= budget) {
+            pill.style.display = "";
+            used = projected;
+            visibleCount++;
+          } else {
+            pill.style.display = "none";
+            hiddenCount++;
+          }
+        });
+
+        othersPill.style.display = hiddenCount > 0 ? "inline-flex" : "none";
+
+        if (row.scrollWidth > row.clientWidth) {
+          row.classList.add("wrap-needed");
+        }
+      }
+    }
+  } else {
+    othersPill.textContent = "Show less";
+  }
+}
+
+// Recompute the subject-pill overflow whenever the viewport actually
+// changes width, and once webfonts finish loading. Previously this was
+// only calculated once at render time, so a resize (or a late webfont
+// swap shifting pill widths) could leave the fit calculation stale --
+// which is why "Others" could end up positioned past the edge of the
+// screen on desktop.
+let subjectFilterResizeTimer = null;
+let subjectFilterLastViewportWidth = Math.round(window.innerWidth);
+
+window.addEventListener("resize", () => {
+  // On Android Chrome/PWA, scrolling hides/shows the browser UI and fires
+  // resize events because the viewport HEIGHT changes. Rebuilding the
+  // subject-filter row on those height-only resizes caused the page to jump.
+  const currentWidth = Math.round(window.innerWidth);
+  if (Math.abs(currentWidth - subjectFilterLastViewportWidth) < 2) return;
+
+  subjectFilterLastViewportWidth = currentWidth;
+
+  clearTimeout(subjectFilterResizeTimer);
+  subjectFilterResizeTimer = setTimeout(() => {
+    if (document.getElementById("addSubjectForm")) return;
+    if (document.getElementById("subjectFilterRow")) renderSubjectFilters();
+  }, 150);
+});
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    if (document.getElementById("subjectFilterRow")) renderSubjectFilters();
+  });
+}
+
+async function createSubject(name) {
+  if (!session || !["admin", "contributor"].includes(archiveRole)) {
+    throw new Error("You do not have permission to create subjects.");
+  }
+
+  const code = codeFromName(
+    name,
+    subjects.map(s => s.code)
+  );
+
+  const { data, error } = await sb
+    .from("subjects")
+    .insert({
+      name,
+      code,
+      created_by: session.user.id,
+      level: currentLevel
+    })
+    .select("id,name,code,created_by")
+    .single();
+
+  if (error) {
+    console.error("Create subject error:", error);
+    throw new Error(
+      error.message ||
+      "Supabase rejected the new subject. Check the subjects RLS policies."
+    );
+  }
+
+  await loadSubjectsFromWorker();
+
+  // Mobile/PWA keeps the expanded subject panel mounted while it is open.
+  // After adding a subject, renderSubjectFilters() would otherwise return
+  // early and the newly created subject would not appear until a manual refresh.
+  // Close the expanded panel first, then rebuild from the freshly loaded list.
+  mobileSubjectListOpen = false;
+  document.getElementById("subjectFilterExpanded")?.remove();
+
+  renderSubjectFilters();
+  renderSubjectOptions();
+  render();
+}
+
+async function renameSubject(subject) {
+  if (!session || !["admin", "contributor"].includes(archiveRole)) {
+    showError("Sign in with an archive account to rename a subject.");
+    return;
+  }
+
+  const canEdit =
+    archiveRole === "admin" ||
+    (
+      archiveRole === "contributor" &&
+      subject.created_by === session.user.id
+    );
+
+  if (!canEdit) {
+    showError("You can rename only subjects you created.");
+    return;
+  }
+
+  const nextName = prompt("Rename subject:", subject.name);
+  if (nextName === null) return;
+
+  const name = nextName.trim();
+  if (!name) {
+    showError("Subject name cannot be empty.");
+    return;
+  }
+
+  if (name.length > 100) {
+    showError("Subject name must be 100 characters or less.");
+    return;
+  }
+
+  if (name === subject.name) return;
+
+  const nameLower = name.toLowerCase();
+  if (subjects.some(s => s.id !== subject.id && s.name.toLowerCase() === nameLower)) {
+    showError("A subject with this name already exists.");
+    return;
+  }
+
+  showError("");
+
+  try {
+    let query = sb
+      .from("subjects")
+      .update({ name })
+      .eq("id", subject.id);
+
+    // This condition is the important security restriction for contributors.
+    if (archiveRole === "contributor") {
+      query = query.eq("created_by", session.user.id);
+    }
+
+    const { data, error } = await query
+      .select("id,name,code,created_by")
+      .single();
+
+    if (error) {
+      console.error("Rename subject error:", error);
+      throw new Error(
+        error.message ||
+        "Supabase rejected the rename. Check the subjects RLS policies."
+      );
+    }
+
+    const current = subjects.find(s => s.id === subject.id);
+    if (current) {
+      current.name = data.name;
+      current.code = data.code;
+      current.created_by = data.created_by || current.created_by;
+    }
+
+    // Mobile/PWA keeps the expanded subject panel mounted while it is open.
+    // After renaming a subject, renderSubjectFilters() would otherwise return
+    // early and leave the old subject name visible until a manual refresh.
+    // Close the expanded panel first, then rebuild from the updated subjects.
+    mobileSubjectListOpen = false;
+    document.getElementById("subjectFilterExpanded")?.remove();
+
+    renderSubjectFilters();
+    renderSubjectOptions();
+    render();
+  } catch (err) {
+    console.error(err);
+    showError(
+      err?.message
+        ? `Couldn't rename subject: ${err.message}`
+        : "Couldn't rename subject."
+    );
+  }
+}
+
+async function removeSubject(code) {
+  if (archiveRole !== "admin") {
+    showError("Only an Admin can delete subjects.");
+    return;
+  }
+
+  if (entries.some(e => e.subject === code)) {
+    showError("Move or delete entries filed under this subject before removing it.");
+    return;
+  }
+
+  try {
+    const subject = subjects.find(s => s.code === code);
+    if (!subject) {
+      throw new Error("Subject record not found.");
+    }
+
+    // Real database subjects have an id and must be removed from Supabase.
+    // A legacy fallback subject has no id, so there is no database record to
+    // delete; remove it from the current list instead. Because real database
+    // data is now the source of truth when available, it will not reappear on
+    // the next reload.
+    if (subject.id) {
+      const { error } = await sb
+        .from("subjects")
+        .delete()
+        .eq("id", subject.id);
+
+      if (error) throw error;
+    }
+
+    subjects = subjects.filter(s => s.code !== code);
+    filterSubjects.delete(code);
+
+    // Mobile/PWA keeps the expanded subject panel mounted while it is open.
+    // After deleting a subject, renderSubjectFilters() would otherwise return
+    // early and leave that deleted subject visible in the stale panel.
+    // Close/remove the mobile expanded panel first, then rebuild from the
+    // updated subjects array so the deletion is reflected immediately.
+    mobileSubjectListOpen = false;
+    document.getElementById("subjectFilterExpanded")?.remove();
+
+    renderSubjectFilters();
+    renderSubjectOptions();
+    render();
+  } catch (err) {
+    console.error(err);
+    showError(
+      err?.message
+        ? `Couldn't remove that subject: ${err.message}`
+        : "Couldn't remove that subject."
+    );
+  }
+}
+
+function renderTypeFilters() {
+  const row = document.getElementById("typeFilterRow");
+  row.innerHTML = "";
+  const types = ["Previous Year Question", "Mid-Term Question", "Notes", "Book", "Others"];
+
+  const allPill = document.createElement("button");
+  allPill.type = "button";
+  allPill.className = "pill" + (filterTypes.size === 0 ? " active" : "");
+  allPill.textContent = "All types";
+  allPill.onclick = () => { filterTypes.clear(); renderTypeFilters(); render(); };
+  row.appendChild(allPill);
+
+  types.forEach(t => {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    const active = filterTypes.has(t);
+    pill.className = "pill" + (active ? " active" : "");
+    pill.textContent = t;
+    pill.onclick = () => {
+      if (filterTypes.has(t)) {
+        filterTypes.delete(t);
+      } else {
+        filterTypes.add(t);
+      }
+      renderTypeFilters();
+      render();
+    };
+    row.appendChild(pill);
+  });
+}
+
+function renderSubjectOptions() {
+  const sel = document.getElementById("subjectSelect");
+  const previouslySelected = sel.value;
+  sel.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a subject";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sel.appendChild(placeholder);
+
+  [...subjects]
+    .filter(s => s.id || s.builtin)
+    .sort((a, b) => {
+      // Keep the special "Others" subject at the bottom of the filing dropdown.
+      const aIsOther = a.name.trim().toLowerCase() === "other" || a.name.trim().toLowerCase() === "others";
+      const bIsOther = b.name.trim().toLowerCase() === "other" || b.name.trim().toLowerCase() === "others";
+      if (aIsOther && !bIsOther) return 1;
+      if (!aIsOther && bIsOther) return -1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    })
+    .forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.id || s.code;
+      opt.dataset.code = s.code || "";
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+
+  if (previouslySelected && [...sel.options].some(o => o.value === previouslySelected)) {
+    sel.value = previouslySelected;
+  }
+}
+
+
+function setupCardTilt() {
+  // Disabled for performance: thousands of cards do not need individual
+  // pointermove listeners. CSS hover supplies the lightweight interaction.
+}
+
+function filteredEntries() {
+  const searchTerms = searchQ ? searchQ.split(/\s+/).filter(Boolean) : null;
+  return entries.filter(e => {
+    if (filterSubjects.size > 0 && !filterSubjects.has(e.subject)) return false;
+    if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
+    if (searchTerms) {
+      const meta = subjectMeta(e.subject);
+      const hay = `${e.title} ${e.filename} ${e.year || ""} ${meta.name} ${e.type}`.toLowerCase();
+      if (!searchTerms.every(term => hay.includes(term))) return false;
+    }
+    return true;
+  });
+}
+
+// Entries are always filed in this exact order inside each subject/row:
+// Book -> Notes -> latest-year Mid-Term -> latest-year Previous Year ->
+// next-year Mid-Term -> next-year Previous Year -> ... -> Others.
+// Normalize backend/legacy type names before sorting. The upload API uses
+// "Books" while the UI uses "Book", which previously caused Notes to appear
+// before Books because "Books" was not present in TYPE_ORDER.
+function canonicalEntryType(type) {
+  const t = String(type || "").trim().toLowerCase();
+  if (t === "book" || t === "books") return "Book";
+  if (t === "note" || t === "notes") return "Notes";
+  if (t === "mid-term question" || t === "mid term question" || t === "midterm question") return "Mid-Term Question";
+  if (t === "previous year question" || t === "previous-year question" || t === "previous year questions") return "Previous Year Question";
+  return "Others";
+}
+
+const TYPE_ORDER = {
+  "Book": 0,
+  "Notes": 1,
+  "Mid-Term Question": 2,
+  "Previous Year Question": 2,
+  "Others": 3
+};
+
+const QUESTION_TYPE_ORDER = {
+  "Mid-Term Question": 0,
+  "Previous Year Question": 1
+};
+
+function entryYear(entry) {
+  // Prefer the database year. If it is missing/invalid, recover a year from
+  // the title or filename so old records still sort correctly.
+  const sources = [entry.year, entry.title, entry.filename];
+  for (const source of sources) {
+    const text = String(source || "");
+    const match = text.match(/(?:19|20)\d{2}/);
+    if (match) return Number(match[0]);
+  }
+  return -Infinity;
+}
+
+function sortEntriesForDisplay(list) {
+  return [...list].sort((a, b) => {
+    const typeA = canonicalEntryType(a.type);
+    const typeB = canonicalEntryType(b.type);
+    const ta = TYPE_ORDER[typeA] ?? 3;
+    const tb = TYPE_ORDER[typeB] ?? 3;
+
+    // Book first, then Notes, regardless of upload date.
+    if (ta !== tb) return ta - tb;
+
+    // For question papers, sort by year first (newest to oldest), then
+    // Mid-Term before Previous Year for the same year.
+    if (ta === 2) {
+      const ya = entryYear(a);
+      const yb = entryYear(b);
+      if (ya !== yb) return yb - ya;
+
+      const qa = QUESTION_TYPE_ORDER[typeA] ?? 99;
+      const qb = QUESTION_TYPE_ORDER[typeB] ?? 99;
+      if (qa !== qb) return qa - qb;
+    }
+
+    const titleA = String(a.title || a.filename || "").toLowerCase();
+    const titleB = String(b.title || b.filename || "").toLowerCase();
+    return titleA.localeCompare(titleB);
+  });
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const offlineEntryIds = new Set();
+
+function buildCard(entry) {
+  const meta = subjectMeta(entry.subject);
+  // Entry deletion is Admin-only. Contributors may edit their allowed
+  // recent entries, but must never be shown a delete action.
+  const canDelete = !!session && archiveRole === "admin";
+  const canEdit = canEditEntry(entry);
+  const card = document.createElement("div");
+  card.className = "card";
+  card.dataset.tilt = "true";
+  card.dataset.id = entry.id;
+  const questionWithoutTitle =
+    entry.type === "Mid-Term Question" || entry.type === "Previous Year Question";
+
+  // Notes are stored as "Subject — Notes" (or "Subject — Notes: Subtitle").
+  // Showing that as a separate bold card title duplicated the "Notes" type
+  // badge right below it. Instead, treat Notes like question papers (no
+  // separate title) and fold any subtitle into the type badge itself:
+  // "Notes" or "Notes - Subtitle".
+  const isNotes = entry.type === "Notes";
+  const isBook = entry.type === "Book";
+  const notesBaseTitle = `${meta.name} — Notes`;
+  let notesSubtitle = "";
+  if (isNotes) {
+    const raw = entry.title || "";
+    const notesPrefix = new RegExp(`^${escapeRegExp(notesBaseTitle)}\s*[:：-]?\s*`, "i");
+    if (notesPrefix.test(raw)) notesSubtitle = raw.replace(notesPrefix, "").trim();
+  }
+  const displayTitle = (isNotes || isBook) ? "" : (entry.title || "");
+  const typeLabel = isNotes && notesSubtitle
+    ? `Notes - ${notesSubtitle}`
+    : isBook && entry.title
+      ? `Book - ${entry.title}`
+      : entry.type;
+
+  const hideTitle = questionWithoutTitle || isNotes || isBook || !displayTitle;
+  if (hideTitle) card.classList.add("card-no-title");
+
+  card.innerHTML = `
+    <div class="stamp">${escapeHtml(meta.name)}</div>
+    ${hideTitle ? "" : `<div class="card-title" title="${escapeHtml(displayTitle)}" data-full-title="${escapeHtml(displayTitle)}" tabindex="0">${escapeHtml(displayTitle)}</div>`}
+    <div class="card-meta-row">
+      <span class="card-type"${isBook && entry.title ? ` data-full-title="${escapeHtml(typeLabel)}" tabindex="0"` : ""}>${escapeHtml(typeLabel)}</span>
+      ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
+    </div>
+    ${archiveRole === "viewer" ? "" : `
+    <div class="card-file-row">
+      <span class="card-filename" title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</span>
+      <span class="card-size">${formatSize(entry.size)}</span>
+    </div>`}
+    <div class="card-actions">
+      ${entry.driveUrl
+        ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
+        : `<button class="action-btn pv-btn">⊙ Preview</button><button class="action-btn dl-btn">⬇ Download</button><button class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}" title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}">${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}</button>`
+      }
+      ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
+      ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="Delete entry" aria-label="Delete entry">🗑</button>` : ""}
+    </div>
+  `;
+  // Action buttons are wired via a single delegated listener on #grid
+  // (see setup below) instead of per-card onclick handlers, which used to
+  // attach thousands of listeners to the DOM as more entries were rendered.
+  return card;
+}
+
+function cardsPerView(track) {
+  const w = track.clientWidth;
+  if (w <= 0) return 1;
+  const first = track.querySelector(".card");
+  if (!first) return 1;
+  const gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 0;
+  const cardWidth = first.getBoundingClientRect().width + gap;
+  return Math.max(1, Math.round((w + gap) / cardWidth));
+}
+
+function refreshCarouselNav(wrap) {
+  const track = wrap.querySelector(".subject-track");
+  const prev = wrap.querySelector(".subject-nav-prev");
+  const next = wrap.querySelector(".subject-nav-next");
+  if (!track || !prev || !next) return;
+
+  const overflow = track.scrollWidth - track.clientWidth > 4;
+  if (!overflow) {
+    prev.classList.remove("show");
+    next.classList.remove("show");
+    return;
+  }
+  prev.classList.toggle("show", track.scrollLeft > 4);
+  next.classList.toggle("show", track.scrollLeft < track.scrollWidth - track.clientWidth - 4);
+}
+
+function wireSubjectCarousel(wrap) {
+  const track = wrap.querySelector(".subject-track");
+  const prev = wrap.querySelector(".subject-nav-prev");
+  const next = wrap.querySelector(".subject-nav-next");
+  const mobileRange = wrap.querySelector(".subject-mobile-scroll-range");
+  const mobileScrollbar = wrap.querySelector(".subject-mobile-scrollbar");
+
+  function syncMobileRange() {
+    if (!mobileRange || !track) return;
+    if (document.activeElement === mobileRange) return;
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
+    mobileRange.max = String(Math.max(1, Math.round(max)));
+    mobileRange.value = String(Math.min(Math.max(0, Math.round(track.scrollLeft)), Math.max(1, Math.round(max))));
+    mobileRange.disabled = max <= 4;
+    if (mobileScrollbar) mobileScrollbar.classList.toggle("is-disabled", max <= 4);
+  }
+
+  function scrollByPage(dir) {
+    const perView = cardsPerView(track);
+    const first = track.querySelector(".card");
+    const gap = parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap) || 0;
+    const rawStep = first ? (first.getBoundingClientRect().width + gap) * perView : track.clientWidth;
+    // Round to a whole pixel before scrolling. getBoundingClientRect()
+    // can return sub-pixel widths (cards are sized via a CSS calc() that
+    // doesn't always divide evenly), and multiplying that fractional
+    // width by perView compounds the error. A fractional scroll target
+    // could land scrollLeft just off of a scroll-snap-align boundary,
+    // occasionally making it snap to the wrong (sometimes previous) card.
+    const step = Math.round(rawStep);
+    // Removed the explicit "smooth" behavior option: it fights the
+    // .subject-track CSS scroll-snap-type on Safari and causes jank.
+    // The CSS already sets scroll-behavior:smooth, so motion stays smooth.
+    track.scrollBy({ left: dir * step });
+  }
+
+  if (mobileRange) {
+    mobileRange.oninput = () => {
+      track.scrollLeft = Number(mobileRange.value) || 0;
+    };
+    mobileRange.addEventListener("pointerdown", () => {
+      track.style.scrollBehavior = "auto";
+      track.style.scrollSnapType = "none";
+    });
+    mobileRange.addEventListener("pointerup", () => {
+      track.style.scrollBehavior = "";
+      track.style.scrollSnapType = "";
+    });
+  }
+
+  prev.onclick = () => scrollByPage(-1);
+  next.onclick = () => scrollByPage(1);
+  track.addEventListener("scroll", () => {
+    refreshCarouselNav(wrap);
+    syncMobileRange();
+  }, { passive: true });
+  // Note: no per-carousel window resize listener here anymore — see the
+  // single global listener registered near the bottom of this script.
+  // Attaching one every time render() runs (i.e. on every keystroke while
+  // searching) used to pile up hundreds of duplicate listeners and could
+  // freeze the tab on resize.
+  //
+  // Fix: don't check overflow synchronously here. .subject-track uses
+  // content-visibility:auto, and right after the row is inserted the
+  // browser hasn't yet decided whether it intersects the viewport — until
+  // it does, scrollWidth/clientWidth can reflect the contain-intrinsic-size
+  // placeholder instead of the real card layout, so the overflow check
+  // silently comes back false and the arrow never gets its "show" class.
+  // A double rAF waits for that first real layout/paint before measuring.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      refreshCarouselNav(wrap);
+      syncMobileRange();
+    });
+  });
+}
+
+// Remember each subject carousel position when a render is triggered by an action
+// such as deleting an entry. This prevents the row from jumping back to the
+// first card after every deletion.
+let pendingCarouselPositions = null;
+
+function captureCarouselPositions() {
+  const positions = new Map();
+  document.querySelectorAll(".subject-row[data-subject-code]").forEach(row => {
+    const track = row.querySelector(".subject-track");
+    if (track) positions.set(row.dataset.subjectCode, track.scrollLeft);
+  });
+  return positions;
+}
+
+function restoreCarouselPositions(positions) {
+  if (!positions || !positions.size) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".subject-row[data-subject-code]").forEach(row => {
+        const saved = positions.get(row.dataset.subjectCode);
+        const track = row.querySelector(".subject-track");
+        if (track && Number.isFinite(saved)) {
+          const max = Math.max(0, track.scrollWidth - track.clientWidth);
+          track.scrollLeft = Math.min(saved, max);
+          refreshCarouselNav(row.querySelector(".subject-carousel"));
+        }
+      });
+    });
+  });
+}
+
+function render() {
+  document.getElementById("entry-full-title-tooltip")?.classList.remove("show");
+  const carouselPositions = pendingCarouselPositions;
+  pendingCarouselPositions = null;
+  const grid = document.getElementById("grid");
+  const summaryEntries = document.getElementById("summaryEntries");
+  const summarySubjects = document.getElementById("summarySubjects");
+  if (summaryEntries) summaryEntries.textContent = entries.length;
+
+  // Count only subjects that actually have at least one archived file.
+  // This is based on entries, not on the total subject list.
+  const subjectsWithFiles = new Set(
+    entries.map(entry => entry.subject).filter(Boolean)
+  ).size;
+  if (summarySubjects) summarySubjects.textContent = subjectsWithFiles;
+
+  updateStorageUI();
+  const empty = document.getElementById("emptyState");
+  const list = filteredEntries();
+  if (isLoadingArchive) {
+    grid.innerHTML = "";
+    empty.style.display = "flex";
+    empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--text);">Loading archive…</p><p style="margin:8px 0 0;font-size:13.5px;color:var(--muted);">Fetching the latest entries.</p>`;
+    return;
+  }
+  grid.innerHTML = "";
+  if (list.length === 0) {
+    empty.style.display = "flex";
+    if (entries.length === 0) {
+      const promptText = session && archiveRole !== "viewer"
+        ? "Click '+ File a new entry' above to get started."
+        : "Sign in to file the first question paper or note.";
+      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--text);">Nothing filed yet.</p><p style="margin:8px 0 0;font-size:13.5px;color:var(--muted);">${promptText}</p>`;
+    } else {
+      empty.innerHTML = `<p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--text);">No entries match these filters.</p><p style="margin:8px 0 0;font-size:13.5px;color:var(--muted);">Try a different subject or type.</p>`;
+    }
+    return;
+  }
+  empty.style.display = "none";
+
+  // Normal view groups entries by subject. Latest Entries (available to
+  // Contributors/Admins) combines every subject into one row and orders by
+  // uploadedAt, newest first -- regardless of entry type (Book, Notes,
+  // Mid-Term, Previous Year all mix together purely by recency).
+  const bySubject = new Map();
+  if (latestEntriesMode) {
+    bySubject.set(
+      "__latest__",
+      [...list].sort((a, b) => {
+        const da = new Date(a.uploadedAt).getTime() || 0;
+        const db = new Date(b.uploadedAt).getTime() || 0;
+        return db - da; // newest upload first, no type priority
+      })
+    );
+  } else {
+    const subjectIndex = getSubjectIndex();
+    list.forEach(entry => {
+      const isKnown = subjectIndex.has(entry.subject);
+      const code = isKnown ? entry.subject : "__none__";
+      if (!bySubject.has(code)) bySubject.set(code, []);
+      bySubject.get(code).push(entry);
+    });
+  }
+
+  // Entries section: show subjects alphabetically by subject name, with the
+  // special Other/OTHERS subject always at the very end. This ordering is
+  // shared by both desktop and mobile because both use the same render list.
+  const orderedCodes = latestEntriesMode
+    ? ["__latest__"]
+    : [
+        ...subjects
+          .filter(s => bySubject.has(s.code))
+          .sort((a, b) => {
+            const aName = String(a.name || "").trim();
+            const bName = String(b.name || "").trim();
+            const aIsOther = a.code === "MISC" || /^(other|others)$/i.test(aName);
+            const bIsOther = b.code === "MISC" || /^(other|others)$/i.test(bName);
+            if (aIsOther && !bIsOther) return 1;
+            if (!aIsOther && bIsOther) return -1;
+            return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+          })
+          .map(s => s.code),
+        ...(bySubject.has("__none__") ? ["__none__"] : [])
+      ];
+
+  const wraps = [];
+  const visibleCodes = latestEntriesMode || showAllEntrySubjects
+    ? orderedCodes
+    : orderedCodes.slice(0, VISIBLE_ENTRY_SUBJECT_LIMIT);
+
+  const gridFragment = document.createDocumentFragment();
+  visibleCodes.forEach(code => {
+    const groupEntries = bySubject.get(code);
+    const meta = subjectMeta(code === "__none__" ? undefined : code);
+
+    const row = document.createElement("div");
+    row.className = "subject-row";
+    row.dataset.subjectCode = code;
+    row.innerHTML = `
+      <div class="subject-row-head">
+        <div class="subject-row-title">
+          ${code === "__latest__" ? "Latest entries" : escapeHtml(meta.name)}
+          <span class="subject-row-count">${groupEntries.length} ${groupEntries.length === 1 ? "entry" : "entries"}</span>
+        </div>
+      </div>
+      <div class="subject-carousel">
+        <div class="subject-track"></div>
+        <div class="subject-nav-row">
+          <button type="button" class="subject-nav subject-nav-prev" aria-label="Scroll left">‹</button>
+          <button type="button" class="subject-nav subject-nav-next" aria-label="Scroll right">›</button>
+        </div>
+        <div class="subject-mobile-scrollbar" aria-hidden="true">
+          <input type="range" class="subject-mobile-scroll-range" min="0" max="0" value="0" step="1" tabindex="-1" aria-label="Slide entries">
+        </div>
+      </div>
+    `;
+    const track = row.querySelector(".subject-track");
+    const displayEntries = code === "__latest__" ? groupEntries : sortEntriesForDisplay(groupEntries);
+    const trackFragment = document.createDocumentFragment();
+    displayEntries.forEach(entry => trackFragment.appendChild(buildCard(entry)));
+    track.appendChild(trackFragment);
+    gridFragment.appendChild(row);
+    wraps.push(row.querySelector(".subject-carousel"));
+  });
+  grid.appendChild(gridFragment);
+
+  wraps.forEach(wireSubjectCarousel);
+
+  if (!latestEntriesMode && orderedCodes.length > VISIBLE_ENTRY_SUBJECT_LIMIT) {
+    const moreWrap = document.createElement("div");
+    moreWrap.className = "entry-subject-more-wrap";
+    const moreBtn = document.createElement("button");
+    moreBtn.type = "button";
+    moreBtn.className = "entry-subject-more-btn";
+    moreBtn.textContent = showAllEntrySubjects ? "Show less" : "More";
+    moreBtn.onclick = () => {
+      // Preserve the viewport relative to this results control while render()
+      // inserts/removes subject groups above it. This is the "More" shown
+      // beneath the archive subject sections (not the filter-row More).
+      const beforeTop = moreWrap.getBoundingClientRect().top;
+      moreBtn.blur();
+
+      showAllEntrySubjects = !showAllEntrySubjects;
+      render();
+
+      // Find the newly rendered More/Show less control and compensate only
+      // for the layout displacement caused by inserting/removing groups.
+      const replacement = grid.querySelector(".entry-subject-more-wrap");
+      if (replacement) {
+        const afterTop = replacement.getBoundingClientRect().top;
+        const delta = afterTop - beforeTop;
+        if (Math.abs(delta) > 0.5) {
+          window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+        }
+      }
+    };
+    moreWrap.appendChild(moreBtn);
+    grid.appendChild(moreWrap);
+  }
+
+  restoreCarouselPositions(carouselPositions);
+  setupCardTilt();
+}
+
+const HTML_ESCAPE_MAP = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => HTML_ESCAPE_MAP[c]);
+}
+
+function guessMime(filename, fallback) {
+  const parts = (filename || "").split(".");
+  const ext = parts.length > 1 ? parts.pop().toLowerCase() : "";
+  const map = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
+  return map[ext] || fallback || "application/octet-stream";
+}
+
+
+/*
+ * Open a PDF in a real browser tab without triggering the server's
+ * Content-Disposition: attachment download flow.
+ *
+ * IMPORTANT: window.open() happens synchronously inside the user's click
+ * event. We then fetch the PDF and navigate that already-open tab to a
+ * blob: URL. This avoids Android Chrome/Brave sending the user to
+ * content://downloads/all.
+ */
+async function openPdfInNewTab(pdfUrl) {
+  const popup = window.open("about:blank", "_blank");
+
+  if (!popup) {
+    // Popup was blocked. Navigating window.location away would wipe all
+    // in-memory SPA state (filters, open forms, etc.), so just inform the
+    // user instead of forcing a full-page navigation.
+    alert("Popup blocked. Please allow popups for this site, or use the Download button instead.");
+    return;
+  }
+
+  try {
+    popup.document.title = "Opening PDF…";
+    popup.document.body.style.cssText =
+      "margin:0;display:flex;align-items:center;justify-content:center;" +
+      "height:100vh;background:#0b0f18;color:#cbd5e1;font-family:system-ui;";
+    popup.document.body.textContent = "Opening PDF…";
+
+    const response = await fetch(pdfUrl, {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`PDF request failed (${response.status})`);
+    }
+
+    const blob = await response.blob();
+
+    // Force the browser-side MIME type to PDF. The server may send
+    // application/octet-stream together with Content-Disposition: attachment.
+    const pdfBlob = new Blob([blob], { type: "application/pdf" });
+    const blobUrl = popup.URL.createObjectURL(pdfBlob);
+
+    popup.location.replace(blobUrl);
+
+    // Do not revoke the object URL on a timer: a 10-minute expiry killed
+    // the PDF out from under students who kept a study tab open longer
+    // than that. The blob URL is released naturally when the tab closes
+    // or reloads (or the browser reclaims it), so no revoke here.
+  } catch (err) {
+    console.error("Could not open PDF in new tab:", err);
+    try {
+      popup.document.body.textContent = "Couldn't open the PDF.";
+    } catch {}
+  }
+}
+
+/*
+ * Print a PDF we've already fetched (as a Blob) without re-downloading it or
+ * navigating away from the page. Loads it into a hidden iframe and invokes
+ * the browser's native print dialog once it's rendered.
+ */
+let printRequestToken = 0;
+function printPdfBlob(blob, btn, filename) {
+  const requestToken = ++printRequestToken;
+  const original = btn ? btn.innerHTML : null;
+  if (btn) {
+    btn.textContent = "…";
+    btn.disabled = true;
+  }
+
+  const resetBtn = () => {
+    if (requestToken !== printRequestToken) return;
+    if (btn) {
+      btn.innerHTML = original;
+      btn.disabled = false;
+    }
+  };
+
+  try {
+    // Destroy any existing print iframe first. Without this, clicking
+    // "Print" multiple times rapidly loads the same PDF blob into memory
+    // over and over and can crash the tab.
+    const existing = document.getElementById("pdf-print-frame");
+    if (existing) {
+      URL.revokeObjectURL(existing.src);
+      existing.remove();
+    }
+
+    const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "pdf-print-frame";
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;";
+    iframe.src = blobUrl;
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      if (iframe.isConnected) iframe.remove();
+      URL.revokeObjectURL(blobUrl);
+      resetBtn();
+    };
+
+    iframe.onload = () => {
+      try {
+        // Use the entry's own filename instead of the messy blob:https://...
+        // URL as the print dialog's document title / default save name.
+        if (filename) iframe.contentDocument.title = filename;
+        iframe.contentWindow.focus();
+
+        // Clean up as soon as the native print dialog closes, instead of
+        // relying only on a fixed timeout — a slow printer or a user who
+        // leaves the dialog open shouldn't have the PDF yanked out from
+        // under them mid-print.
+        iframe.contentWindow.addEventListener("afterprint", cleanup);
+
+        iframe.contentWindow.print();
+      } catch (err) {
+        console.error("Print failed, opening PDF in a new tab instead:", err);
+        const popup = window.open(blobUrl, "_blank", "noopener");
+        if (!popup) alert("Printing was blocked by the browser. Please allow popups or use Open PDF.");
+      }
+      resetBtn();
+      // Fallback in case "afterprint" never fires (some browsers don't
+      // support it inside an iframe). Extended from 60s to 5 minutes so a
+      // print dialog left open for a while doesn't get cleaned up under it.
+      setTimeout(cleanup, 300000);
+    };
+    iframe.onerror = cleanup;
+
+    document.body.appendChild(iframe);
+    // Guaranteed fallback: if the browser or an adblocker silently blocks
+    // the load (neither onload nor onerror fires), this still frees the
+    // iframe and blob instead of leaking them forever.
+    setTimeout(cleanup, 305000);
+  } catch (err) {
+    console.error("Could not prepare PDF for printing:", err);
+    resetBtn();
+  }
+}
+
+async function previewEntry(entry) {
+  closePreview();
+  const token = ++currentPreviewToken; // Capture the token for this specific preview request
+
+  // Keep normal browser pinch zoom available on mobile, even while a preview
+  // is open. The viewport meta tag must never lock user scaling.
+
+  const overlay = document.getElementById("previewOverlay");
+  const body = document.getElementById("previewBody");
+  const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
+  previewAbortController = new AbortController();
+
+  document.getElementById("previewTitle").textContent = entry.title;
+  body.innerHTML = `<div class="pdf-preview-loading">Loading preview…</div>`;
+  overlay.style.display = "flex";
+  document.body.classList.add("no-scroll");
+  showError("");
+  incrementActivity("preview");
+
+  let mime = guessMime(entry.filename, "");
+  // Some valid PDFs arrive with a filename that has no .pdf extension.
+  // Ask the server for its content type before choosing the renderer.
+  if (!mime) {
+    try {
+      const probe = await fetch(fileUrl, { method: "HEAD", signal: previewAbortController.signal });
+      const contentType = probe.headers.get("content-type") || "";
+      if (contentType.toLowerCase().includes("application/pdf")) mime = "application/pdf";
+      else if (contentType) mime = contentType.split(";")[0].trim().toLowerCase();
+    } catch (probeErr) {
+      if (probeErr?.name === "AbortError") return;
+    }
+  }
+
+  if (mime === "application/pdf") {
+    document.querySelector("#previewOverlay .preview-card")?.classList.add("pdf-preview-active");
+    try {
+      const response = await fetch(fileUrl, {signal: previewAbortController.signal});
+      if (!response.ok) throw new Error("Could not load the PDF.");
+      // Bail out if the user closed this preview (or opened a different
+      // one) while we were waiting on the network — otherwise this stale
+      // response could still land in the (now different) preview area.
+      if (token !== currentPreviewToken) return;
+
+      const blob = await response.blob();
+      const pdfjsLib = await loadPdfJs();
+      const data = await blob.arrayBuffer();
+      // Without cMapUrl, PDF.js can't render CID-keyed fonts often found in
+      // LaTeX-produced PDFs (common for statistics notes/papers), which made
+      // the math text in them invisible.
+      const pdf = await pdfjsLib.getDocument({
+        data,
+        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapPacked: true
+      }).promise;
+      if (token !== currentPreviewToken) {
+        pdf.destroy(); // The user clicked away while this was loading — free it immediately.
+        return;
+      }
+      activePdfDoc = pdf; // Saved so closePreview() can destroy it later.
+
+      body.innerHTML = `
+        <div class="pdf-preview-shell">
+          <div class="pdf-preview-toolbar">
+            <div class="pdf-page-controls">
+              <button type="button" class="pdf-page-btn" id="pdfPrevBtn" aria-label="Previous page">‹</button>
+              <span class="pdf-page-info" id="pdfPageInfo">Page 1 / ${pdf.numPages}</span>
+              <button type="button" class="pdf-page-btn" id="pdfNextBtn" aria-label="Next page">›</button>
+            </div>
+            <div class="pdf-toolbar-actions">
+              <div class="pdf-zoom-controls" aria-label="Zoom controls">
+                <button type="button" class="pdf-page-btn" id="pdfZoomOutBtn" aria-label="Zoom out" title="Zoom out">−</button>
+                <span class="pdf-zoom-level" id="pdfZoomLevel">100%</span>
+                <button type="button" class="pdf-page-btn" id="pdfZoomInBtn" aria-label="Zoom in" title="Zoom in">+</button>
+                <button type="button" class="pdf-page-btn" id="pdfZoomResetBtn" aria-label="Reset zoom" title="Reset zoom">1:1</button>
+              </div>
+              <button type="button" class="pdf-page-btn" id="pdfDownloadBtn" aria-label="Download" title="Download">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+              </button>
+              <button type="button" class="pdf-page-btn" id="pdfPrintBtn" aria-label="Print" title="Print">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 14H4a1 1 0 0 1-1-1v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a1 1 0 0 1-1 1h-2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="pdf-canvas-wrap" id="pdfCanvasWrap" aria-label="Scrollable PDF preview">
+            <div class="pdf-pages" id="pdfPages"></div>
+          </div>
+          <div class="pdf-open-new-tab-bottom">
+            <button type="button" class="submit-btn pdf-open-new-tab-btn">↗ Open PDF</button>
+          </div>
+        </div>`;
+
+      const pageInfo = document.getElementById("pdfPageInfo");
+      const prevBtn = document.getElementById("pdfPrevBtn");
+      const nextBtn = document.getElementById("pdfNextBtn");
+      const canvasWrap = document.getElementById("pdfCanvasWrap");
+      const pagesHost = document.getElementById("pdfPages");
+      const openNewTabBtn = body.querySelector(".pdf-open-new-tab-btn");
+      if (openNewTabBtn) {
+        openNewTabBtn.onclick = () => openPdfInNewTab(fileUrl);
+      }
+      const printBtn = document.getElementById("pdfPrintBtn");
+      if (printBtn) {
+        printBtn.onclick = () => printPdfBlob(blob, printBtn, entry.filename);
+      }
+      const downloadBtn = document.getElementById("pdfDownloadBtn");
+      if (downloadBtn) {
+        downloadBtn.onclick = () => downloadEntry(entry, downloadBtn);
+      }
+      const zoomOutBtn = document.getElementById("pdfZoomOutBtn");
+      const zoomInBtn = document.getElementById("pdfZoomInBtn");
+      const zoomResetBtn = document.getElementById("pdfZoomResetBtn");
+      const zoomLevel = document.getElementById("pdfZoomLevel");
+      let zoomFactor = 1;
+      const ZOOM_MIN = 0.5;
+      const ZOOM_MAX = 3;
+      const ZOOM_STEP = 0.25;
+      function updateZoomControls() {
+        if (zoomLevel) zoomLevel.textContent = `${Math.round(zoomFactor * 100)}%`;
+        if (zoomOutBtn) zoomOutBtn.disabled = zoomFactor <= ZOOM_MIN;
+        if (zoomInBtn) zoomInBtn.disabled = zoomFactor >= ZOOM_MAX;
+      }
+      let currentPage = 1;
+      let pageElements = [];
+      let pageMeta = [];
+      let resizeTimer = null;
+      let rendering = false;
+      const UNLOAD_DISTANCE = 6; // pages further than this from the current page get their canvas freed
+      let loadObserver = null;
+      let observer = null;
+      body._pdfRenderTasks = new Set();
+
+      function updateControls() {
+        pageInfo.textContent = `Page ${currentPage} / ${pdf.numPages}`;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= pdf.numPages;
+        pageElements.forEach((el, i) => el.classList.toggle("pdf-page-current", i + 1 === currentPage));
+      }
+
+      // Build lightweight placeholders for every page (no rendering yet) so the
+      // scroll track has the right total height and swiping feels native.
+      // Actual canvases are only painted in renderPage(), which the
+      // IntersectionObserver below calls once a placeholder nears the viewport.
+      async function renderAllPages() {
+        if (rendering) {
+          await new Promise(resolve => {
+            const wait = () => rendering ? setTimeout(wait, 20) : resolve();
+            wait();
+          });
+        }
+        rendering = true;
+
+        // Cancel any render tasks still tracked from the *previous* call
+        // before wiping pageMeta/pagesHost out from under them. The wait
+        // above only guarantees the last renderAllPages() call's own
+        // (synchronous) setup phase finished — individual per-page
+        // render tasks kicked off via the IntersectionObserver run
+        // independently and could still be active. body._pdfRenderTasks
+        // was previously only ever cleared in closePreview(), so zooming
+        // or resizing while the preview stayed open left those old tasks
+        // running in the background, burning CPU/GPU against canvases
+        // that no longer existed in the DOM, for as long as the preview
+        // stayed open at the new zoom level.
+        if (body._pdfRenderTasks) {
+          for (const task of body._pdfRenderTasks) {
+            try { task.cancel(); } catch (e) {}
+          }
+          body._pdfRenderTasks.clear();
+        }
+
+        pagesHost.innerHTML = "";
+        pageElements = [];
+        pageMeta = [];
+
+        try {
+          const availableWidth = Math.max(220, canvasWrap.clientWidth - 26);
+
+          // Most PDFs use a uniform page size, so size every placeholder off
+          // page 1's dimensions. If an individual page turns out to differ,
+          // renderPage() corrects that page's box once it actually renders.
+          const firstPage = await pdf.getPage(1);
+          if (!pagesHost.isConnected) return; // Prevent detached rendering
+          const firstBase = firstPage.getViewport({ scale: 1 });
+          const placeholderScale = Math.min(3, (availableWidth / firstBase.width) * zoomFactor);
+          const placeholderW = Math.floor(firstBase.width * placeholderScale);
+          const placeholderH = Math.floor(firstBase.height * placeholderScale);
+
+          for (let num = 1; num <= pdf.numPages; num++) {
+            const container = document.createElement("div");
+            container.className = "pdf-page pdf-page-placeholder";
+            container.dataset.page = String(num);
+            container.style.width = `${placeholderW}px`;
+            container.style.height = `${placeholderH}px`;
+            pagesHost.appendChild(container);
+            pageElements.push(container);
+            pageMeta.push({ num, container, canvas: null, rendered: false, rendering: false });
+          }
+
+          updateControls();
+        } catch (err) {
+          console.error("Could not prepare PDF pages:", err);
+          if (activePdfDoc === pdf) {
+            try { await pdf.destroy(); } catch {}
+            activePdfDoc = null;
+          }
+          throw err;
+        } finally {
+          rendering = false;
+        }
+      }
+
+      // Paints a single page's canvas into its placeholder. Safe to call
+      // repeatedly; no-ops once rendered or while already rendering.
+      async function renderPage(meta) {
+        if (!meta || meta.rendered || meta.rendering) return;
+        meta.rendering = true;
+        try {
+          const page = await pdf.getPage(meta.num);
+          const availableWidth = Math.max(220, canvasWrap.clientWidth - 26);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const scale = Math.min(3, (availableWidth / baseViewport.width) * zoomFactor);
+          const viewport = page.getViewport({ scale });
+          const rawDpr = window.devicePixelRatio || 1;
+          const isSmallViewport = window.innerWidth <= 700;
+          const maxDimension = isSmallViewport ? 2048 : 4096;
+          const maxPixels = isSmallViewport ? 6_000_000 : 16_000_000;
+          let outputScale = Math.min(rawDpr, 2, maxDimension / Math.max(viewport.width, viewport.height));
+          const estimatedPixels = viewport.width * viewport.height * outputScale * outputScale;
+          if (estimatedPixels > maxPixels) outputScale *= Math.sqrt(maxPixels / estimatedPixels);
+          outputScale = Math.max(1, Math.min(2, outputScale));
+
+          const canvas = document.createElement("canvas");
+          canvas.className = "pdf-page-canvas";
+          canvas.width = Math.max(1, Math.floor(viewport.width * outputScale));
+          canvas.height = Math.max(1, Math.floor(viewport.height * outputScale));
+          canvas.style.width = "100%";
+          canvas.style.height = "100%";
+          canvas.setAttribute("aria-label", `PDF page ${meta.num}`);
+
+          const ctx = canvas.getContext("2d", { alpha: false });
+          const renderTask = page.render({
+            canvasContext: ctx,
+            viewport,
+            transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
+          });
+          meta.renderTask = renderTask;
+          body._pdfRenderTasks?.add(renderTask);
+          await renderTask.promise;
+          body._pdfRenderTasks?.delete(renderTask);
+
+          meta.container.style.width = `${Math.floor(viewport.width)}px`;
+          meta.container.style.height = `${Math.floor(viewport.height)}px`;
+          meta.container.classList.remove("pdf-page-placeholder");
+          meta.container.innerHTML = "";
+          meta.container.appendChild(canvas);
+          const textLayer = document.createElement("div");
+          textLayer.className = "pdf-text-layer";
+          textLayer.setAttribute("aria-label", `Selectable text for PDF page ${meta.num}`);
+          meta.container.appendChild(textLayer);
+          try {
+            const textContent = await page.getTextContent();
+            if (pdfjsLib.renderTextLayer) {
+              pdfjsLib.renderTextLayer({textContent, container:textLayer, viewport, textDivs:[]});
+            }
+          } catch (textErr) {
+            console.warn(`Could not build text layer for PDF page ${meta.num}:`, textErr);
+          }
+          meta.canvas = canvas;
+          meta.rendered = true;
+        } catch (err) {
+          if (err?.name === "RenderingCancelledException") {
+            // Expected during normal memory sweeping (unloadPage() cancels
+            // in-flight renders); not a real error.
+            meta.rendering = false;
+            return;
+          }
+          console.error(`Could not render PDF page ${meta.num}:`, err);
+          if (token === currentPreviewToken && meta.container?.isConnected) {
+            meta.container.classList.remove("pdf-page-placeholder");
+            meta.container.innerHTML = `<div class="preview-fallback" style="padding:24px 12px;">Page ${meta.num} could not be rendered.<br/><small>The PDF may be damaged.</small></div>`;
+          }
+          meta.rendering = false;
+        } finally {
+          meta.rendering = false;
+        }
+      }
+
+      // Frees a rendered page's canvas memory and swaps it back to an empty
+      // placeholder of the same size, so scroll position doesn't jump.
+      function unloadPage(meta) {
+        if (meta.renderTask) {
+          try { meta.renderTask.cancel(); } catch (e) {}
+          body._pdfRenderTasks?.delete(meta.renderTask);
+          meta.renderTask = null;
+        }
+        if (meta.canvas) {
+          meta.canvas.width = 0;
+          meta.canvas.height = 0;
+        }
+        meta.container.innerHTML = "";
+        meta.container.classList.add("pdf-page-placeholder");
+        meta.canvas = null;
+        meta.rendered = false;
+        meta.rendering = false;
+      }
+
+      // Keeps memory bounded on long documents: only pages within
+      // UNLOAD_DISTANCE of the current page stay painted.
+      function sweepUnrendered() {
+        for (const meta of pageMeta) {
+          if (meta.rendered && Math.abs(meta.num - currentPage) > UNLOAD_DISTANCE) {
+            unloadPage(meta);
+          }
+        }
+      }
+
+      async function applyZoom(nextZoom) {
+        const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nextZoom));
+        if (Math.abs(clamped - zoomFactor) < 0.001) return;
+        zoomFactor = clamped;
+        updateZoomControls();
+        const keepPage = currentPage;
+        loadObserver?.disconnect();
+        observer?.disconnect();
+        if (body._pdfZoomTimer) clearTimeout(body._pdfZoomTimer);
+        body._pdfZoomTimer = setTimeout(async () => {
+          body._pdfZoomTimer = null;
+          await renderAllPages();
+          pageElements.forEach(el => {
+            loadObserver.observe(el);
+            observer.observe(el);
+          });
+          setTimeout(() => goToPage(Math.min(keepPage, pageElements.length)), 0);
+        }, 150);
+      }
+
+      function goToPage(num) {
+        const meta = pageMeta[num - 1];
+        if (!meta) return;
+        currentPage = num;
+        updateControls();
+        renderPage(meta); // in case it's outside the preload margin (e.g. jumping via buttons)
+        meta.container.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      updateZoomControls();
+      if (zoomOutBtn) zoomOutBtn.onclick = () => applyZoom(zoomFactor - ZOOM_STEP);
+      if (zoomInBtn) zoomInBtn.onclick = () => applyZoom(zoomFactor + ZOOM_STEP);
+      if (zoomResetBtn) zoomResetBtn.onclick = () => applyZoom(1);
+
+      prevBtn.onclick = () => goToPage(Math.max(1, currentPage - 1));
+      nextBtn.onclick = () => goToPage(Math.min(pageElements.length, currentPage + 1));
+
+      // Lazily paints pages once they scroll near the viewport, instead of
+      // rendering the whole document up front. rootMargin gives a generous
+      // preload buffer above/below so pages are ready just before they're seen.
+      loadObserver = new IntersectionObserver((entries) => {
+        for (const item of entries) {
+          if (!item.isIntersecting) continue;
+          const meta = pageMeta[Number(item.target.dataset.page) - 1];
+          renderPage(meta);
+        }
+      }, { root: canvasWrap, rootMargin: "1000px 0px 1000px 0px", threshold: 0.01 });
+
+      // Tracks which page is centered for the toolbar indicator, and triggers
+      // freeing far-away pages so long PDFs don't keep growing memory use.
+      observer = new IntersectionObserver((entries) => {
+        let best = null;
+        for (const item of entries) {
+          if (!item.isIntersecting) continue;
+          if (!best || item.intersectionRatio > best.intersectionRatio) best = item;
+        }
+        if (best) {
+          currentPage = Number(best.target.dataset.page);
+          updateControls();
+          sweepUnrendered();
+        }
+      }, { root: canvasWrap, threshold: [0.15, 0.4, 0.65, 0.9] });
+
+      const onPdfKeydown = (event) => {
+        if (!document.getElementById("previewOverlay")?.contains(body)) return;
+        if (!(event.ctrlKey || event.metaKey)) return;
+        if (event.key === "+" || event.key === "=") { event.preventDefault(); applyZoom(zoomFactor + ZOOM_STEP); }
+        else if (event.key === "-") { event.preventDefault(); applyZoom(zoomFactor - ZOOM_STEP); }
+        else if (event.key === "0") { event.preventDefault(); applyZoom(1); }
+      };
+      document.addEventListener("keydown", onPdfKeydown);
+      body._pdfKeydownHandler = onPdfKeydown;
+
+      // Mouse-wheel zoom inside the PDF preview.
+      // Ctrl/Cmd + wheel follows the normal browser zoom gesture without
+      // interfering with ordinary vertical/horizontal PDF scrolling.
+      const onPdfWheel = (event) => {
+        if (!document.getElementById("previewOverlay")?.contains(body)) return;
+        if (!(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        applyZoom(zoomFactor + direction * ZOOM_STEP);
+      };
+      canvasWrap.addEventListener("wheel", onPdfWheel, { passive: false });
+      body._pdfWheelHandler = onPdfWheel;
+
+      await renderAllPages();
+      pageElements.forEach(el => {
+        loadObserver.observe(el);
+        observer.observe(el);
+      });
+
+      let lastWidth = canvasWrap.clientWidth;
+      const onResize = () => {
+        if (canvasWrap.clientWidth === lastWidth) return; // Ignore vertical-only resizing (mobile URL bar)
+        lastWidth = canvasWrap.clientWidth;
+        clearTimeout(body._pdfResizeTimer);
+        body._pdfResizeTimer = setTimeout(async () => {
+          const keepPage = currentPage;
+          loadObserver.disconnect();
+          observer.disconnect();
+          await renderAllPages();
+          pageElements.forEach(el => {
+            loadObserver.observe(el);
+            observer.observe(el);
+          });
+          setTimeout(() => goToPage(Math.min(keepPage, pageElements.length)), 0);
+        }, 180);
+      };
+      window.addEventListener("resize", onResize);
+      body._pdfResizeHandler = onResize;
+      body._pdfObserver = observer;
+      body._pdfLoadObserver = loadObserver;
+    } catch (err) {
+      console.error("PDF preview error:", err);
+      body.innerHTML = `
+        <div class="preview-fallback">
+          Couldn't render this PDF inside the preview.
+          <br/>
+          <div class="preview-pdf-actions">
+            <button type="button" class="submit-btn pdf-open-new-tab-btn">↗ Open PDF</button>
+            <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download</button>
+          </div>
+        </div>`;
+      const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+      if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
+      const openNewTabBtn = body.querySelector(".pdf-open-new-tab-btn");
+      if (openNewTabBtn) {
+        openNewTabBtn.onclick = () => openPdfInNewTab(fileUrl);
+      }
+    }
+    return;
+  }
+
+  if (previewAbortController) previewAbortController.abort();
+  previewAbortController = new AbortController();
+
+  try {
+    const response = await fetch(fileUrl, { signal: previewAbortController.signal });
+    if (!response.ok) throw new Error("Could not load a preview for this file.");
+    const blob = await response.blob();
+    if (token !== currentPreviewToken) return; // closed while downloading
+    const actualMime = guessMime(entry.filename, blob.type);
+    const url = URL.createObjectURL(blob);
+
+    if (actualMime.startsWith("image/")) {
+      body.innerHTML = `
+        <div class="image-preview-shell">
+          <div class="image-preview-toolbar" aria-label="Image zoom controls">
+            <button type="button" class="pdf-page-btn" id="imageZoomOutBtn" aria-label="Zoom out" title="Zoom out">−</button>
+            <span class="image-zoom-level" id="imageZoomLevel">100%</span>
+            <button type="button" class="pdf-page-btn" id="imageZoomInBtn" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" class="pdf-page-btn" id="imageZoomResetBtn" aria-label="Reset zoom" title="Reset zoom">1:1</button>
+          </div>
+          <div class="image-preview-wrap" id="imagePreviewWrap"></div>
+        </div>`;
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = entry.title || entry.filename || "Preview";
+      document.getElementById("imagePreviewWrap").appendChild(img);
+      let imageZoom = 1;
+      const imageZoomLevel = document.getElementById("imageZoomLevel");
+      const imageZoomOut = document.getElementById("imageZoomOutBtn");
+      const imageZoomIn = document.getElementById("imageZoomInBtn");
+      const imageZoomReset = document.getElementById("imageZoomResetBtn");
+      const updateImageZoom = () => {
+        img.style.transform = `scale(${imageZoom})`;
+        if (imageZoomLevel) imageZoomLevel.textContent = `${Math.round(imageZoom * 100)}%`;
+        if (imageZoomOut) imageZoomOut.disabled = imageZoom <= 0.5;
+        if (imageZoomIn) imageZoomIn.disabled = imageZoom >= 3;
+      };
+      const setImageZoom = (value) => { imageZoom = Math.max(0.5, Math.min(3, value)); updateImageZoom(); };
+      imageZoomOut.onclick = () => setImageZoom(imageZoom - 0.25);
+      imageZoomIn.onclick = () => setImageZoom(imageZoom + 0.25);
+
+      // Mouse-wheel zoom for image previews.
+      const imagePreviewWrap = document.getElementById("imagePreviewWrap");
+      const onImageWheel = (event) => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        setImageZoom(imageZoom + direction * 0.25);
+      };
+      imagePreviewWrap.addEventListener("wheel", onImageWheel, { passive: false });
+      body._imageWheelHandler = onImageWheel;
+      imageZoomReset.onclick = () => setImageZoom(1);
+      updateImageZoom();
+      activeObjectUrl = url;
+      img.onload = () => { URL.revokeObjectURL(url); if (activeObjectUrl === url) activeObjectUrl = null; };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        if (activeObjectUrl === url) activeObjectUrl = null;
+        if (token !== currentPreviewToken) return;
+        body.innerHTML = `
+          <div class="preview-fallback">
+            Couldn't display this image.<br/>
+            <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download instead</button>
+          </div>`;
+        const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+        if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
+      };
+    } else {
+      URL.revokeObjectURL(url);
+      body.innerHTML = `
+        <div class="preview-fallback">
+          Preview isn't supported for this file type yet.<br/>
+          <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download instead</button>
+        </div>`;
+      const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+      if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
+    }
+  } catch (err) {
+    if (err?.name === "AbortError") return; // preview was closed; nothing to show
+    body.innerHTML = `
+      <div class="preview-fallback">
+        Couldn't load a preview for this file.<br/>
+        <button class="submit-btn" id="fallbackDlBtn" style="width:auto;padding:9px 18px;">⬇ Download instead</button>
+      </div>`;
+    const fallbackBtnGeneric = document.getElementById("fallbackDlBtn");
+      if (fallbackBtnGeneric) fallbackBtnGeneric.onclick = () => downloadEntry(entry, fallbackBtnGeneric);
+  }
+}
+
+/* ===== Offline Library (IndexedDB) =====
+   This is not download history. It stores actual file blobs inside the PWA
+   so saved files can be opened again without an internet connection. */
+const OFFLINE_DB_NAME = "statArchiveOfflineLibrary";
+const OFFLINE_DB_VERSION = 1;
+const OFFLINE_STORE = "files";
+
+function openOfflineDb() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("Offline storage is not supported by this browser."));
+      return;
+    }
+    const request = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(OFFLINE_STORE)) {
+        db.createObjectStore(OFFLINE_STORE, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not open offline storage."));
+  });
+}
+
+async function offlineDbAction(mode, action) {
+  const db = await openOfflineDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OFFLINE_STORE, mode);
+      const store = tx.objectStore(OFFLINE_STORE);
+      let result;
+      try { result = action(store); } catch (err) { reject(err); return; }
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error || new Error("Offline storage operation failed."));
+      tx.onabort = () => reject(tx.error || new Error("Offline storage operation was cancelled."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function getOfflineFiles() {
+  const db = await openOfflineDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OFFLINE_STORE, "readonly");
+      const req = tx.objectStore(OFFLINE_STORE).getAll();
+      req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function getOfflineFile(id) {
+  const db = await openOfflineDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(OFFLINE_STORE, "readonly");
+      const req = tx.objectStore(OFFLINE_STORE).get(String(id));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function putOfflineFile(record) {
+  return offlineDbAction("readwrite", store => store.put(record));
+}
+
+async function deleteOfflineFile(id) {
+  return offlineDbAction("readwrite", store => store.delete(String(id)));
+}
+
+async function clearOfflineFiles() {
+  return offlineDbAction("readwrite", store => store.clear());
+}
+
+async function loadOfflineLibraryState() {
+  try {
+    const records = await getOfflineFiles();
+    offlineEntryIds.clear();
+    records.forEach(r => offlineEntryIds.add(String(r.id)));
+    updateOfflineLibraryCount(records.length);
+  } catch (err) {
+    console.warn("Offline library unavailable:", err);
+    updateOfflineLibraryCount(0);
+  }
+}
+
+function updateOfflineLibraryCount(count = offlineEntryIds.size) {
+  const badge = document.getElementById("offlineLibraryCount");
+  if (badge) badge.textContent = String(count);
+  const saved = document.getElementById("offlineSavedCount");
+  if (saved) saved.textContent = String(count);
+}
+
+async function updateOfflineStorageInfo(records) {
+  const el = document.getElementById("offlineStorageInfo");
+  if (!el) return;
+  const bytes = (records || []).reduce((sum, r) => sum + Number(r?.blob?.size || r?.size || 0), 0);
+  let text = `${formatSize(bytes)} stored`;
+  try {
+    if (navigator.storage?.estimate) {
+      const estimate = await navigator.storage.estimate();
+      if (estimate?.quota) {
+        const pct = estimate.usage ? Math.min(100, (estimate.usage / estimate.quota) * 100) : 0;
+        text += ` · ${pct.toFixed(pct >= 10 ? 0 : 1)}% browser storage used`;
+      }
+    }
+  } catch (_) {}
+  el.textContent = text;
+}
+
+function offlineRecordLabel(record) {
+  const subject = record.subjectName || record.subject || "Other";
+  return [subject, record.type, record.year].filter(Boolean).join(" · ");
+}
+
+let offlineSearchTerm = "";
+let offlineSubjectFilter = "All";
+let offlineTypeFilter = "All";
+
+function offlinePinned(record) {
+  return record?.pinned === true;
+}
+
+function offlineSavedDate(record) {
+  const n = Number(record?.savedAt || 0);
+  if (!n) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, { day:"numeric", month:"short", year:"numeric" }).format(new Date(n));
+  } catch (_) {
+    return "";
+  }
+}
+
+function renderOfflineSubjectFilters(records) {
+  const wrap = document.getElementById("offlineSubjectFilters");
+  if (!wrap) return;
+
+  const subjects = [...new Set(
+    (records || [])
+      .map(r => String(r.subjectName || r.subject || "Other").trim())
+      .filter(Boolean)
+  )].sort((a,b) => a.localeCompare(b));
+
+  const options = ["All", ...subjects];
+  if (!options.includes(offlineSubjectFilter)) offlineSubjectFilter = "All";
+
+  wrap.innerHTML = options.map(subject => `
+    <button type="button"
+      class="offline-filter${offlineSubjectFilter === subject ? " active" : ""}"
+      data-offline-subject="${escapeHtml(subject)}">
+      ${escapeHtml(subject === "All" ? "All subjects" : subject)}
+    </button>
+  `).join("");
+}
+
+function renderOfflineTypeFilters(records) {
+  const wrap = document.getElementById("offlineTypeFilters");
+  if (!wrap) return;
+  const types = [...new Set((records || []).map(r => String(r.type || "").trim()).filter(Boolean))];
+  const typeRank = (type) => {
+    const t = String(type || "").trim().toLowerCase();
+    if (t === "book") return 0;
+    if (t === "notes" || t === "note") return 1;
+    if (t === "previous year question" || t === "pyq") return 2;
+    if (t === "mid-term question" || t === "mid term question" || t === "mtq") return 3;
+    return 100;
+  };
+  types.sort((a,b) => typeRank(a) - typeRank(b) || a.localeCompare(b));
+  const options = ["All", ...types];
+  if (!options.includes(offlineTypeFilter)) offlineTypeFilter = "All";
+  wrap.innerHTML = options.map(type => `
+    <button type="button" class="offline-filter${offlineTypeFilter === type ? " active" : ""}"
+      data-offline-filter="${escapeHtml(type)}">${escapeHtml(type === "All" ? "All types" : type)}</button>
+  `).join("");
+}
+
+
+function offlineCompactMeta(record) {
+  const type = String(record?.type || "").trim();
+  const yearRaw = String(record?.year || "").trim();
+  const parts = [];
+
+  // Offline cards always keep TYPE and YEAR together on the same line.
+  // Example: Notes · 2026
+  if (type) parts.push(type);
+  if (/^(19|20)\d{2}$/.test(yearRaw)) parts.push(yearRaw);
+
+  return parts.join(" · ");
+}
+
+async function renderOfflineLibrary() {
+  const list = document.getElementById("offlineLibraryList");
+  const clearBtn = document.getElementById("clearOfflineLibraryBtn");
+  if (!list) return;
+
+  let records = [];
+  try {
+    records = await getOfflineFiles();
+  } catch (err) {
+    list.innerHTML = `<div class="offline-empty">Offline storage could not be opened on this device.</div>`;
+    return;
+  }
+
+  records.sort((a, b) => {
+    const pinDiff = Number(offlinePinned(b)) - Number(offlinePinned(a));
+    if (pinDiff) return pinDiff;
+    return (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0);
+  });
+
+  offlineEntryIds.clear();
+  records.forEach(r => offlineEntryIds.add(String(r.id)));
+  updateOfflineLibraryCount(records.length);
+  updateOfflineStorageInfo(records);
+
+  const subjectCount = new Set(records.map(r => r.subjectName || r.subject || "Other")).size;
+  const subjectEl = document.getElementById("offlineSubjectCount");
+  if (subjectEl) subjectEl.textContent = String(records.length ? subjectCount : 0);
+
+  const totalBytes = records.reduce((sum, r) => sum + Number(r?.blob?.size || r?.size || 0), 0);
+  const sizeEl = document.getElementById("offlineStoredSize");
+  if (sizeEl) sizeEl.textContent = formatSize(totalBytes);
+
+  renderOfflineSubjectFilters(records);
+  renderOfflineTypeFilters(records);
+  if (clearBtn) clearBtn.style.display = records.length ? "inline-block" : "none";
+
+  if (!records.length) {
+    list.innerHTML = `<div class="offline-empty"><strong style="color:var(--text)">No offline files yet.</strong><br/>Open any archive card and tap <b>⇩ Offline</b>. The actual file will be stored inside Stat Archive on this device.</div>`;
+    return;
+  }
+
+  const q = offlineSearchTerm.trim().toLowerCase();
+  const visible = records.filter(record => {
+    const subjectName = String(record.subjectName || record.subject || "Other");
+    if (offlineSubjectFilter !== "All" && subjectName !== offlineSubjectFilter) return false;
+    if (offlineTypeFilter !== "All" && String(record.type || "") !== offlineTypeFilter) return false;
+    if (!q) return true;
+    const haystack = [
+      record.title, record.filename, record.subjectName, record.subject,
+      record.type, record.year, record.level
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(q);
+  });
+
+  if (!visible.length) {
+    list.innerHTML = `<div class="offline-no-results">No saved files match this search or filter.</div>`;
+    return;
+  }
+
+  const groups = new Map();
+  visible.forEach(record => {
+    const subject = record.subjectName || record.subject || "Other";
+    if (!groups.has(subject)) groups.set(subject, []);
+    groups.get(subject).push(record);
+  });
+
+  list.innerHTML = [...groups.entries()].map(([subject, files]) => `
+    <section class="offline-subject-group">
+      <div class="offline-subject-head">
+        <span>${escapeHtml(subject)}</span>
+        <span>${files.length} ${files.length === 1 ? "file" : "files"}</span>
+      </div>
+      <div class="offline-subject-files">
+        ${files.map(record => `
+          <div class="offline-file${offlinePinned(record) ? " is-pinned" : ""}" data-offline-id="${escapeHtml(String(record.id))}">
+            <div class="offline-file-head">
+              <div>
+                <div class="offline-file-title-row">
+                  <button type="button" class="offline-pin-btn${offlinePinned(record) ? " is-pinned" : ""}"
+                    title="${offlinePinned(record) ? "Unpin file" : "Pin file"}"
+                    aria-label="${offlinePinned(record) ? "Unpin file" : "Pin file"}">${offlinePinned(record) ? "★" : "☆"}</button>
+                  <div class="offline-file-title">${escapeHtml(record.title || record.filename || "Untitled")}${/^(19|20)\d{2}$/.test(String(record.year || "").trim()) ? ` : ${escapeHtml(String(record.year).trim())}` : ""}</div>
+                </div>
+                <div class="offline-file-meta">
+                  ${offlineSavedDate(record) ? `<span class="offline-file-saved">· Saved ${escapeHtml(offlineSavedDate(record))}</span>` : ""}
+                </div>
+              </div>
+              <span class="offline-file-size">${escapeHtml(formatSize(Number(record.blob?.size || record.size || 0)))}</span>
+            </div>
+            <div class="offline-file-actions">
+              <button type="button" class="offline-open-btn">⊙ Open offline</button>
+              <button type="button" class="offline-remove-btn">Remove</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+async function toggleOfflinePin(id) {
+  const record = await getOfflineFile(id);
+  if (!record) return;
+  record.pinned = !offlinePinned(record);
+  await putOfflineFile(record);
+  await renderOfflineLibrary();
+}
+
+function openOfflineLibrary(focusId = null) {
+  const overlay = document.getElementById("offlineLibraryOverlay");
+  if (!overlay) return;
+  overlay.style.display = "flex";
+  document.body.classList.add("no-scroll");
+  renderOfflineLibrary().then(() => {
+    if (focusId != null) {
+      const el = overlay.querySelector(`[data-offline-id="${CSS.escape(String(focusId))}"]`);
+      if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  });
+}
+
+function closeOfflineLibrary() {
+  const overlay = document.getElementById("offlineLibraryOverlay");
+  if (!overlay) return;
+  overlay.style.display = "none";
+  document.body.classList.remove("no-scroll");
+}
+
+async function saveEntryOffline(entry, btn) {
+  if (!entry || entry.driveUrl) return;
+
+  if (offlineEntryIds.has(String(entry.id))) {
+    openOfflineLibrary(entry.id);
+    return;
+  }
+
+  const original = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.textContent = "Saving…";
+    btn.disabled = true;
+  }
+  showError("");
+
+  try {
+    const response = await fetch(`${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`);
+    if (!response.ok) throw new Error("Couldn't save that file for offline use.");
+
+    const blob = await response.blob();
+    const meta = subjectMeta(entry.subject);
+    await putOfflineFile({
+      id: String(entry.id),
+      title: entry.title || entry.filename || "Untitled",
+      subject: entry.subject || "",
+      subjectName: meta?.name || entry.subject || "",
+      type: entry.type || "",
+      year: entry.year || "",
+      filename: entry.filename || "file",
+      size: Number(entry.size || blob.size || 0),
+      level: entry.level || currentLevel,
+      mime: blob.type || response.headers.get("content-type") || "application/octet-stream",
+      savedAt: Date.now(),
+      blob
+    });
+
+    offlineEntryIds.add(String(entry.id));
+    // Saving a file into the Offline Library is a successful file download,
+    // so it contributes to the global Downloads activity figure.
+    incrementActivity("download");
+    updateOfflineLibraryCount();
+    if (btn) {
+      btn.innerHTML = "✓ Offline";
+      btn.classList.add("is-saved");
+      btn.title = "Already saved offline — open Offline library";
+    }
+
+    // Ask the browser to make this site's storage less likely to be evicted.
+    try { if (navigator.storage?.persist) await navigator.storage.persist(); } catch (_) {}
+  } catch (err) {
+    showError(err?.message || "Couldn't save that file for offline use.");
+    if (btn) btn.innerHTML = original;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+let statArchiveReturningFromOfflineFile = false;
+let statArchiveReturnOfflineId = null;
+
+async function openOfflineFile(id) {
+  const record = await getOfflineFile(id);
+  if (!record?.blob) return;
+
+  // Opening a PDF/image may temporarily background the PWA. Mark this so
+  // Android's Back button returns to the Offline Library instead of causing
+  // our normal "app resumed" hard refresh.
+  statArchiveReturningFromOfflineFile = true;
+  statArchiveReturnOfflineId = String(id);
+
+  const url = URL.createObjectURL(record.blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 600000);
+}
+
+async function removeOfflineFile(id) {
+  await deleteOfflineFile(id);
+  offlineEntryIds.delete(String(id));
+  updateOfflineLibraryCount();
+  await renderOfflineLibrary();
+  render(); // refresh card button labels
+}
+
+
+async function downloadEntry(entry, btn) {
+  const original = btn ? btn.innerHTML : null;
+
+  if (btn) {
+    btn.textContent = "…";
+    btn.disabled = true;
+    document.body.classList.remove("cursor-hover");
+  }
+
+  showError("");
+
+  try {
+    const response = await fetch(
+      `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`
+    );
+
+    if (!response.ok) throw new Error("Couldn't download that file.");
+
+    // Count only successful file fetches as downloads.
+    incrementActivity("download");
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = entry.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 600000);
+  } catch (err) {
+    showError(err?.message || "Couldn't download that file.");
+  } finally {
+    if (btn) {
+      btn.innerHTML = original;
+      btn.disabled = false;
+    }
+  }
+}
+
+let editingEntryId = null;
+let editingOriginalTitle = "";
+let editingOriginalSubjectCode = "";
+
+function showEditEntryError(msg) {
+  const el = document.getElementById("editEntryErrorBanner");
+  el.textContent = msg;
+  el.style.display = msg ? "flex" : "none";
+}
+
+/* ===== Drive-link mode for the Edit form ===== */
+let editDriveLinkMode = false;
+
+(function setupEditDriveToggle(){
+  const onBtn = document.getElementById("editDriveToggleBtn");
+  const offBtn = document.getElementById("editDriveToggleOffBtn");
+  const driveField = document.getElementById("editDriveLinkField");
+  const driveInput = document.getElementById("editDriveLinkInput");
+  const fileInput = document.getElementById("editFileInput");
+  const fileLabel = document.getElementById("editFileLabel");
+  const fileHint = document.getElementById("editFileHint");
+  const typeSelect = document.getElementById("editTypeSelect");
+
+  if (!onBtn || !offBtn || !driveField || !driveInput || !fileInput) return;
+
+  const DRIVE_ALLOWED_TYPES = ["Notes", "Book", "Others"];
+
+  function isAllowedType() {
+    return typeSelect ? DRIVE_ALLOWED_TYPES.includes(typeSelect.value) : true;
+  }
+
+  function setEditDriveMode(on, value = "") {
+    editDriveLinkMode = !!on;
+    if (editDriveLinkMode) {
+      driveInput.value = value || driveInput.value || "";
+    }
+    driveField.style.display = editDriveLinkMode ? "block" : "none";
+    onBtn.style.display = (!editDriveLinkMode && isAllowedType()) ? "inline-flex" : "none";
+    offBtn.style.display = editDriveLinkMode ? "inline-flex" : "none";
+    fileInput.style.display = editDriveLinkMode ? "none" : "";
+    if (fileLabel) fileLabel.style.display = editDriveLinkMode ? "none" : "";
+    if (fileHint) fileHint.style.display = editDriveLinkMode ? "none" : "";
+
+    if (editDriveLinkMode) {
+      fileInput.value = "";
+    }
+  }
+
+  function syncForType() {
+    const allowed = isAllowedType();
+    if (!allowed && editDriveLinkMode) {
+      // A Drive-backed entry cannot silently remain a Drive entry after the
+      // user changes it to a type that does not support Drive links. Switch
+      // to file mode and require a replacement file on submit.
+      setEditDriveMode(false);
+      showEditEntryError("Google Drive links are only available for Notes, Book, and Others. Choose a replacement file for this type.");
+    } else {
+      onBtn.style.display = (!editDriveLinkMode && allowed) ? "inline-flex" : "none";
+      offBtn.style.display = editDriveLinkMode ? "inline-flex" : "none";
+    }
+  }
+
+  onBtn.addEventListener("click", () => setEditDriveMode(true));
+  offBtn.addEventListener("click", () => {
+    driveInput.value = "";
+    setEditDriveMode(false);
+  });
+  typeSelect?.addEventListener("change", syncForType);
+
+  // Expose a tiny internal API for open/close/reset without creating
+  // duplicate listeners every time an entry is edited.
+  window.__statArchiveEditDrive = {
+    setMode: setEditDriveMode,
+    sync: syncForType,
+    allowedTypes: DRIVE_ALLOWED_TYPES,
+    clear: () => {
+      editDriveLinkMode = false;
+      driveInput.value = "";
+      setEditDriveMode(false);
+    }
+  };
+})();
+
+function populateEditSubjectOptions(selectedCode) {
+  const sel = document.getElementById("editSubjectSelect");
+  if (!sel) return;
+  sel.innerHTML = "";
+  [...subjects].sort((a,b) => a.name.localeCompare(b.name, undefined, {sensitivity:"base"})).forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s.id || s.code;
+    opt.dataset.code = s.code || "";
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+  const match = [...sel.options].find(o => (o.dataset.code || o.value) === selectedCode);
+  if (match) sel.value = match.value;
+}
+
+function updateEditEntryFields() {
+  const type = document.getElementById("editTypeSelect").value;
+  const yearField = document.getElementById("editYearField");
+  const yearLabel = document.getElementById("editYearLabel");
+  const titleField = document.getElementById("editTitleField");
+  const titleLabel = document.getElementById("editTitleLabel");
+  const titleInput = document.getElementById("editTitleInput");
+  if (YEAR_VISIBLE_TYPES.includes(type)) {
+    yearField.style.display = "block";
+    if (yearLabel) {
+      yearLabel.textContent = YEAR_REQUIRED_TYPES.includes(type) ? "Year (required)" : "Year (optional)";
+    }
+  } else {
+    yearField.style.display = "none";
+  }
+  // Question cards do not display a title, but keeping the existing title is
+  // useful if the type is later changed back, so the field remains editable.
+  titleField.style.display = "block";
+  titleLabel.textContent = "Name / title";
+  titleInput.placeholder = "Entry name";
+  if (type === "Notes") {
+    titleLabel.textContent = "Title (Preserve the 'Subject — Notes:' prefix)";
+    titleInput.placeholder = "e.g., Probability Theory — Notes: Module 1";
+  }
+  document.getElementById("editFileHint").textContent =
+    `Leave empty to keep the current file. New ${type} files must be under ${formatSize(maxBytesForType(type))}.`;
+
+  const fileInput = document.getElementById("editFileInput");
+  if (fileInput.files.length > 0 && fileInput.files[0].size > maxBytesForType(type)) {
+    showEditEntryError(`The selected replacement file is too large for ${type}. Choose a smaller file or change the type back.`);
+  }
+}
+
+function getContributorLatest3Ids() {
+  if (!session || archiveRole !== "contributor") return new Set();
+
+  const userId = String(session.user?.id || "");
+  if (!userId) return new Set();
+
+  // Work from the full entries list for the currently selected course level.
+  // A contributor may edit only their own three newest entries.
+  const ownEntries = entries
+    .filter(entry =>
+      entry &&
+      String(entry.uploadedBy || "") === userId &&
+      String(entry.level || currentLevel) === String(currentLevel)
+    )
+    .sort((a, b) => {
+      const ta = Date.parse(a.uploadedAt || "") || 0;
+      const tb = Date.parse(b.uploadedAt || "") || 0;
+      if (tb !== ta) return tb - ta;
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    })
+    .slice(0, 3);
+
+  return new Set(ownEntries.map(entry => String(entry.id)));
+}
+
+function canEditEntry(entry) {
+  // Never expose or allow entry editing without an active signed-in session.
+  // archiveRole can briefly remain stale while Supabase finishes SIGNED_OUT.
+  if (!session || !entry) return false;
+
+  if (archiveRole === "admin") return true;
+  if (archiveRole !== "contributor") return false;
+
+  // Prefer the backend permission when present, while also calculating the
+  // same rule locally. This keeps the UI correct with both the current Worker
+  // and an older Worker response that omitted contributor_editable.
+  if (entry.contributorEditable === true) return true;
+  return getContributorLatest3Ids().has(String(entry.id));
+}
+
+function openEditEntry(entry) {
+  if (!(session && canEditEntry(entry))) {
+    showError("Contributors can edit only the 3 newest entries. Older entries require Admin permission.");
+    return;
+  }
+  editingEntryId = entry.id;
+  editingOriginalTitle = entry.title || "";
+  editingOriginalSubjectCode = entry.subject || "";
+  showEditEntryError("");
+  document.getElementById("editEntryForm").reset();
+  populateEditSubjectOptions(editingOriginalSubjectCode);
+  document.getElementById("editTypeSelect").value = canonicalEntryType(entry.type);
+  document.getElementById("editTitleInput").value = entry.title || "";
+  document.getElementById("editYearInput").value = entry.year || "";
+
+  // Existing Drive-backed entries reopen in Drive mode with their current
+  // link already populated. Normal R2/file entries reopen in file mode.
+  if (window.__statArchiveEditDrive) {
+    if (entry.driveUrl && window.__statArchiveEditDrive.allowedTypes.includes(canonicalEntryType(entry.type))) {
+      window.__statArchiveEditDrive.setMode(true, entry.driveUrl);
+    } else {
+      window.__statArchiveEditDrive.clear();
+      window.__statArchiveEditDrive.sync();
+    }
+  }
+  updateEditEntryFields();
+  document.getElementById("editEntryOverlay").style.display = "flex";
+  document.body.classList.add("no-scroll");
+}
+
+function closeEditEntry() {
+  if (isEditing) return;
+  document.getElementById("editEntryOverlay").style.display = "none";
+  document.body.classList.remove("no-scroll");
+  document.getElementById("editEntryForm").reset();
+  if (window.__statArchiveEditDrive) window.__statArchiveEditDrive.clear();
+  editingEntryId = null;
+  editingOriginalTitle = "";
+  editingOriginalSubjectCode = "";
+  showEditEntryError("");
+}
+
+document.getElementById("closeEditEntryBtn").onclick = closeEditEntry;
+document.getElementById("editEntryOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "editEntryOverlay") closeEditEntry();
+});
+document.getElementById("editSubjectSelect").addEventListener("change", () => {
+  const input = document.getElementById("editTitleInput");
+  const selected = document.getElementById("editSubjectSelect").selectedOptions[0];
+  const newSubjectName = selected?.textContent || "";
+  const oldSubjectName = subjectMeta(editingOriginalSubjectCode).name;
+  const currentType = document.getElementById("editTypeSelect").value;
+  if (input && (
+      input.value.trim() === editingOriginalTitle.trim() ||
+      input.value.trim() === `${oldSubjectName} — ${canonicalEntryType(entries.find(item => String(item.id) === String(editingEntryId))?.type || "")}`
+    )) {
+    input.value = `${newSubjectName} — ${currentType}`;
+  }
+});
+
+document.getElementById("editTypeSelect").addEventListener("change", () => {
+  const input = document.getElementById("editTitleInput");
+  const oldEntry = entries.find(item => String(item.id) === String(editingEntryId));
+  const oldType = canonicalEntryType(oldEntry?.type || "");
+  const newType = document.getElementById("editTypeSelect").value;
+  const selectedSubject = document.getElementById("editSubjectSelect")?.selectedOptions?.[0];
+  const subjectName = selectedSubject?.textContent || subjectMeta(editingOriginalSubjectCode).name;
+  if (input && (input.value.trim() === editingOriginalTitle.trim() ||
+      input.value.trim() === `${subjectName} — ${oldType}`)) {
+    input.value = `${subjectName} — ${newType}`;
+  }
+  updateEditEntryFields();
+  window.__statArchiveEditDrive?.sync();
+});
+document.getElementById("editEntryForm").addEventListener("input", () => showEditEntryError(""));
+
+// Fix: give immediate feedback on oversized replacement files instead of
+// waiting until the user hits submit.
+document.getElementById("editFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const selectedType = document.getElementById("editTypeSelect").value;
+  const typeLimit = maxBytesForType(selectedType);
+  if (file.size > typeLimit) {
+    showEditEntryError(`That file is ${formatSize(file.size)}. ${selectedType} files must be under ${formatSize(typeLimit)}.`);
+    e.target.value = "";
+  } else {
+    showEditEntryError("");
+  }
+});
+
+document.getElementById("editEntryForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (isEditing) return;
+  isEditing = true;
+  try {
+  const entry = entries.find(item => String(item.id) === String(editingEntryId));
+  if (!(session && canEditEntry(entry))) {
+    showEditEntryError("Contributors can edit only the 3 newest entries. Older entries require Admin permission.");
+    return;
+  }
+  if (!entry) {
+    showEditEntryError("Entry not found. Refresh and try again.");
+    return;
+  }
+  const type = document.getElementById("editTypeSelect").value;
+  const title = document.getElementById("editTitleInput").value.trim();
+  let year = document.getElementById("editYearInput").value.trim();
+  const file = document.getElementById("editFileInput").files[0];
+  const subjectSelect = document.getElementById("editSubjectSelect");
+  const selectedSubject = subjectSelect?.selectedOptions?.[0];
+  if (!selectedSubject?.value) {
+    showEditEntryError("Choose a subject.");
+    return;
+  }
+
+  // A few legacy/built-in subjects are represented only by their code in the
+  // UI and therefore do not yet have a Supabase UUID. Before PATCHing the
+  // entry, create the real subject row and use its generated UUID.
+  let selectedSubjectId = selectedSubject.value;
+  const selectedSubjectCode = selectedSubject.dataset.code || selectedSubject.value;
+  const selectedSubjectMeta = subjects.find(s => s.code === selectedSubjectCode || s.id === selectedSubjectId);
+  if (selectedSubjectMeta && !selectedSubjectMeta.id) {
+    try {
+      const { data: createdSubject, error: subjectError } = await sb.from("subjects").insert({
+        name: selectedSubjectMeta.name,
+        code: selectedSubjectMeta.code,
+        created_by: session.user.id,
+        level: currentLevel
+      }).select("id,name,code,created_by").single();
+      if (subjectError) throw subjectError;
+      selectedSubjectId = createdSubject.id;
+      selectedSubjectMeta.id = createdSubject.id;
+      selectedSubjectMeta.created_by = createdSubject.created_by || selectedSubjectMeta.created_by;
+      await loadSubjectsFromWorker();
+      populateEditSubjectOptions(selectedSubjectCode);
+    } catch (err) {
+      showEditEntryError(err?.message || "Could not prepare that subject for editing.");
+      return;
+    }
+  }
+
+  const editDriveUrl = normalizeDriveUrl(document.getElementById("editDriveLinkInput")?.value || "");
+  if (editDriveLinkMode) {
+    if (!editDriveUrl) {
+      showEditEntryError("Paste the Google Drive share link.");
+      return;
+    }
+    if (!isLikelyDriveLink(editDriveUrl)) {
+      showEditEntryError("That doesn't look like a Google Drive link. Copy the \"Share\" link from Drive.");
+      return;
+    }
+    if (!window.__statArchiveEditDrive.allowedTypes.includes(type)) {
+      showEditEntryError("Google Drive links are only available for Notes, Book, and Others.");
+      return;
+    }
+  }
+
+  if (!editDriveLinkMode && entry.driveUrl && !file) {
+    showEditEntryError("This entry currently uses Google Drive. Keep the Drive link or choose a replacement file.");
+    return;
+  }
+
+  if ((type === "Others" || type === "Book") && !title) {
+    showEditEntryError(type === "Book" ? "Add a title for the book." : "Add a title describing the file.");
+    return;
+  }
+  if (YEAR_REQUIRED_TYPES.includes(type)) {
+    if (!/^\d{4}$/.test(year)) {
+      showEditEntryError("Enter a valid 4-digit year.");
+      return;
+    }
+  } else if (YEAR_OPTIONAL_TYPES.includes(type) && year && !/^\d{4}$/.test(year)) {
+    showEditEntryError("Enter a valid 4-digit year, or leave the year blank.");
+    return;
+  }
+
+  // Editing must not create a second PYQ or MTQ for the same subject and year.
+  if (
+    YEAR_REQUIRED_TYPES.includes(type) &&
+    hasDuplicateQuestionEntry(selectedSubjectCode, type, year, entry.id)
+  ) {
+    showEditEntryError(`A ${type} for ${year} already exists for this subject.`);
+    return;
+  }
+
+  if (file) {
+    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
+    if (!allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      showEditEntryError("Invalid file type. Only PDF and standard image files are allowed.");
+      return;
+    }
+    if (file.size > maxBytesForType(type)) {
+      showEditEntryError(`That file is ${formatSize(file.size)}. ${type} files must be under ${formatSize(maxBytesForType(type))}.`);
+      return;
+    }
+  }
+
+  const btn = document.getElementById("editEntrySubmitBtn");
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+  showEditEntryError("");
+  try {
+    const form = new FormData();
+    if (!YEAR_VISIBLE_TYPES.includes(type)) year = "";
+    form.append("title", title);
+    form.append("type", type);
+    form.append("year", year);
+    form.append("subject_id", selectedSubjectId);
+    if (editDriveLinkMode) {
+      form.append("drive_url", editDriveUrl);
+    } else if (file) {
+      // The Worker clears an old Drive URL automatically when a replacement
+      // file is supplied, so no stale Drive link survives the switch.
+      form.append("file", file);
+    }
+    await workerFetch(`/entries?id=${encodeURIComponent(entry.id)}`, {
+      method: "PATCH",
+      body: form
+    }, true);
+    pendingCarouselPositions = captureCarouselPositions();
+    entries = await loadEntries();
+    totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
+    isEditing = false;
+    closeEditEntry();
+    render();
+  } catch (err) {
+    console.error(err);
+    showEditEntryError(err?.message || "Couldn't save changes.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save changes";
+  }
+  } finally {
+    isEditing = false;
+  }
+});
+
+async function deleteEntry(entry, btn) {
+  if (!session) {
+    showError("Sign in to remove entries.");
+    return;
+  }
+
+  const allowedByUi = !!session && archiveRole === "admin";
+
+  if (!allowedByUi) {
+    showError("Only an Admin can delete archive entries.");
+    return;
+  }
+
+  if (
+    !confirm(
+      `Delete "${entry.title}"? This permanently removes the stored file.`
+    )
+  ) {
+    return;
+  }
+
+  const original = btn.textContent;
+  btn.textContent = "…";
+  btn.disabled = true;
+  document.body.classList.remove("cursor-hover");
+  showError("");
+
+  try {
+    await workerFetch(
+      `/entries?id=${encodeURIComponent(entry.id)}`,
+      { method: "DELETE" },
+      true
+    );
+
+    // Preserve the current horizontal position so deleting one card does not
+    // force you to slide back to the last card again.
+    pendingCarouselPositions = captureCarouselPositions();
+    entries = entries.filter(e => e.id !== entry.id);
+    totalStorageBytes = entries.reduce((sum, item) => sum + (Number.isFinite(Number(item.size)) && Number(item.size) > 0 ? Number(item.size) : 0), 0);
+    render();
+
+  } catch (err) {
+    console.error(err);
+    showError(
+      err?.message ||
+      "Couldn't delete that entry."
+    );
+
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+}
+
+let searchTimeout;
+function handleSearchInputEvent(e) {
+  // Moved out of the debounce below and based on the raw (un-trimmed) value:
+  // previously, typing only spaces trimmed to "" and hid the ✕ button even
+  // though the input still had text, and the button also used to only
+  // update once the 250ms debounce fired, which felt sluggish.
+  document.getElementById("searchClear").style.display = e.target.value.length ? "block" : "none";
+
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    searchQ = e.target.value.trim().toLowerCase();
+    render();
+  }, 250);
+}
+document.getElementById("searchInput").addEventListener("input", handleSearchInputEvent);
+// type="search" inputs fire a native "search" event (e.g. clicking the
+// built-in clear icon or pressing Escape) that does NOT also fire "input"
+// in some browsers, leaving searchQ and the ✕ button out of sync.
+document.getElementById("searchInput").addEventListener("search", handleSearchInputEvent);
+document.getElementById("searchForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = document.getElementById("searchInput");
+  clearTimeout(searchTimeout);
+  searchQ = input.value.trim().toLowerCase();
+  input.blur();
+  render();
+});
+document.getElementById("searchClear").onclick = () => {
+  clearTimeout(searchTimeout);
+  const input = document.getElementById("searchInput");
+  input.value = ""; searchQ = "";
+  document.getElementById("searchClear").style.display = "none";
+  render(); input.focus();
+};
+
+// Fix: on browser back/forward navigation the input value can be restored
+// by the browser (bfcache) without an "input" event firing, leaving the
+// clear (✕) button hidden even though there's text in the field.
+document.getElementById("searchClear").style.display =
+  document.getElementById("searchInput").value.length ? "block" : "none";
+
+// Add event listener for grid actions using delegation (Fix: memory bloat).
+document.getElementById("grid").addEventListener("click", (e) => {
+  const btn = e.target.closest(".action-btn");
+  if (!btn) return;
+  const card = btn.closest(".card");
+  const entry = entries.find(ent => String(ent.id) === card.dataset.id);
+  if (!entry) return;
+  if (btn.classList.contains("pv-btn")) previewEntry(entry);
+  else if (btn.classList.contains("dl-btn")) downloadEntry(entry, btn);
+  else if (btn.classList.contains("offline-btn")) saveEntryOffline(entry, btn);
+  else if (btn.classList.contains("drive-btn")) {
+    incrementActivity("preview");
+    window.open(entry.driveUrl, "_blank", "noopener");
+  }
+  else if (btn.classList.contains("edit-btn")) openEditEntry(entry);
+  else if (btn.classList.contains("del-btn")) deleteEntry(entry, btn);
+});
+
+document.getElementById("latestEntriesBtn").onclick = () => {
+  if (!(session && (archiveRole === "admin" || archiveRole === "contributor"))) return;
+  latestEntriesMode = !latestEntriesMode;
+  if (latestEntriesMode) filterSubjects.clear();
+  renderSubjectFilters();
+  updateAuthUI();
+  render();
+};
+
+document.getElementById("openFormBtn").onclick = () => {
+  if (!session) { showError("Sign in to file a new entry."); return; }
+  showFormError("");
+  document.getElementById("overlay").style.display = "flex";
+  document.body.classList.add("no-scroll");
+};
+function closeAndResetUploadForm() {
+  if (isUploading) return;
+  document.getElementById("overlay").style.display = "none";
+  document.body.classList.remove("no-scroll");
+  showFormError("");
+  document.getElementById("uploadForm").reset();
+  updateFileSizeHint();
+
+  // Also drop back to file-upload mode (Drive-link mode should not
+  // persist across separate "File a new entry" sessions).
+  if (typeof driveLinkMode !== "undefined") {
+    driveLinkMode = false;
+    const driveField = document.getElementById("driveLinkField");
+    const onBtn = document.getElementById("driveToggleBtn");
+    const fileInput = document.getElementById("fileInput");
+    const fileLabel = document.querySelector('label[for="fileInput"]');
+    const fileSizeHint = document.getElementById("fileSizeHint");
+    if (driveField) driveField.style.display = "none";
+    if (onBtn) onBtn.style.display = "inline-flex";
+    if (fileInput) fileInput.style.display = "";
+    if (fileLabel) fileLabel.style.display = "";
+    if (fileSizeHint) fileSizeHint.style.display = "";
+  }
+}
+document.getElementById("closeFormBtn").onclick = closeAndResetUploadForm;
+document.getElementById("overlay").addEventListener("click", (e) => {
+  if (e.target.id === "overlay") { closeAndResetUploadForm(); }
+});
+
+const YEAR_REQUIRED_TYPES = ["Previous Year Question", "Mid-Term Question"];
+const YEAR_OPTIONAL_TYPES = ["Notes", "Others"];
+const YEAR_VISIBLE_TYPES = [...YEAR_REQUIRED_TYPES, ...YEAR_OPTIONAL_TYPES];
+
+function updateFileSizeHint() {
+  const type = document.getElementById("typeSelect").value;
+  document.getElementById("fileSizeHint").textContent =
+    `Up to ${formatSize(maxBytesForType(type))} for ${type}.`;
+
+  const titleField = document.getElementById("titleField");
+  const titleInput = document.getElementById("titleInput");
+  if (type === "Others" || type === "Book") {
+    titleField.style.display = "";
+    titleInput.placeholder = type === "Book" ? "Name of the book" : "Describe what this file is";
+  } else {
+    titleField.style.display = "none";
+  }
+
+  const subtitleField = document.getElementById("subtitleField");
+  if (type === "Notes") {
+    subtitleField.style.display = "";
+  } else {
+    subtitleField.style.display = "none";
+  }
+
+  const yearField = document.getElementById("yearField");
+  const yearLabel = document.getElementById("yearLabel");
+  if (YEAR_VISIBLE_TYPES.includes(type)) {
+    yearField.style.display = "";
+    if (yearLabel) {
+      yearLabel.textContent = YEAR_REQUIRED_TYPES.includes(type) ? "Year (required)" : "Year (optional)";
+    }
+  } else {
+    yearField.style.display = "none";
+  }
+
+  const fileInput = document.getElementById("fileInput");
+  if (fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const typeLimit = maxBytesForType(type);
+    if (file.size > typeLimit) {
+      showFormError(`Current file is too large (${formatSize(file.size)}). Limit for ${type} is ${formatSize(typeLimit)}.`);
+      fileInput.value = "";
+    } else {
+      showFormError("");
+    }
+  }
+}
+document.getElementById("typeSelect").addEventListener("change", updateFileSizeHint);
+updateFileSizeHint();
+
+// Android may temporarily background the PWA while the native file chooser is open.
+// Keep a flag so the normal "app resumed" hard-refresh does not close the upload form.
+window.statArchiveNativePickerActive = false;
+
+const archiveFileInput = document.getElementById("fileInput");
+archiveFileInput?.addEventListener("click", () => {
+  window.statArchiveNativePickerActive = true;
+});
+archiveFileInput?.addEventListener("pointerdown", () => {
+  window.statArchiveNativePickerActive = true;
+});
+
+// Fix: give immediate feedback on oversized files instead of waiting until
+// the user hits submit.
+document.getElementById("fileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const selectedType = document.getElementById("typeSelect").value;
+  const typeLimit = maxBytesForType(selectedType);
+  if (file.size > typeLimit) {
+    showFormError(`File is too large (${formatSize(file.size)}). Limit for ${selectedType} is ${formatSize(typeLimit)}.`);
+    e.target.value = "";
+  } else {
+    showFormError("");
+  }
+
+  setTimeout(() => {
+    window.statArchiveNativePickerActive = false;
+  }, 700);
+});
+
+function closePreview() {
+  currentPreviewToken++; // Invalidate any in-flight asynchronous loads
+  printRequestToken++;   // Invalidate stale print UI callbacks
+
+  const previewBody = document.getElementById("previewBody");
+  if (previewBody?._pdfRenderTasks) {
+    for (const task of previewBody._pdfRenderTasks) {
+      try { task.cancel(); } catch {}
+    }
+    previewBody._pdfRenderTasks.clear();
+    previewBody._pdfRenderTasks = null;
+  }
+  if (activePdfDoc) {
+    try { activePdfDoc.destroy(); } catch (e) { console.warn("PDF destroy failed:", e); }
+    activePdfDoc = null;
+  }
+
+  if (activeObjectUrl) {
+    URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = null;
+  }
+
+  if (previewAbortController) {
+    previewAbortController.abort();
+    previewAbortController = null;
+  }
+
+  const body = document.getElementById("previewBody");
+  if (body?._pdfResizeHandler) {
+    window.removeEventListener("resize", body._pdfResizeHandler);
+    body._pdfResizeHandler = null;
+  }
+  if (body?._pdfResizeTimer) {
+    clearTimeout(body._pdfResizeTimer);
+    body._pdfResizeTimer = null;
+  }
+  if (body?._pdfZoomTimer) {
+    clearTimeout(body._pdfZoomTimer);
+    body._pdfZoomTimer = null;
+  }
+  if (body?._pdfObserver) {
+    body._pdfObserver.disconnect();
+    body._pdfObserver = null;
+  }
+  if (body?._pdfLoadObserver) {
+    body._pdfLoadObserver.disconnect();
+    body._pdfLoadObserver = null;
+  }
+  if (body?._pdfKeydownHandler) {
+    document.removeEventListener("keydown", body._pdfKeydownHandler);
+    body._pdfKeydownHandler = null;
+  }
+  if (body?._pdfWheelHandler) {
+    const canvasWrap = document.getElementById("pdfCanvasWrap");
+    canvasWrap?.removeEventListener("wheel", body._pdfWheelHandler);
+    body._pdfWheelHandler = null;
+  }
+  if (body?._imageWheelHandler) {
+    const imagePreviewWrap = document.getElementById("imagePreviewWrap");
+    imagePreviewWrap?.removeEventListener("wheel", body._imageWheelHandler);
+    body._imageWheelHandler = null;
+  }
+  document.getElementById("previewOverlay").style.display = "none";
+  document.querySelector("#previewOverlay .preview-card")?.classList.remove("pdf-preview-active");
+  document.body.classList.remove("no-scroll");
+  body.innerHTML = "";
+
+  // Restore normal pinch-zoom for the rest of the site.
+  const viewportMeta = document.getElementById("viewportMeta");
+  if (viewportMeta) {
+    viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0");
+  }
+}
+
+document.getElementById("closePreviewBtn").onclick = closePreview;
+document.getElementById("previewOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "previewOverlay") closePreview();
+});
+
+function showLoginError(msg) {
+  const el = document.getElementById("loginErrorBanner");
+  el.textContent = msg;
+  el.style.display = msg ? "flex" : "none";
+}
+
+function showFormError(msg) {
+  const el = document.getElementById("formErrorBanner");
+  el.textContent = msg;
+  el.style.display = msg ? "flex" : "none";
+}
+
+document.getElementById("loginForm").addEventListener("input", () => showLoginError(""));
+document.getElementById("togglePasscodeBtn")?.addEventListener("click", () => {
+  const input = document.getElementById("passcodeInput");
+  const btn = document.getElementById("togglePasscodeBtn");
+  if (!input || !btn) return;
+
+  const visible = input.type === "text";
+  const eyeIcon = `
+    <svg class="password-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+      <circle cx="12" cy="12" r="2.7"></circle>
+    </svg>`;
+  const eyeOffIcon = `
+    <svg class="password-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="m3 3 18 18"></path>
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17.6 17.6 0 0 1-3.1 3.8"></path>
+      <path d="M6.3 6.4C3.8 8.2 2.5 12 2.5 12s3.5 6 9.5 6c1.3 0 2.5-.3 3.6-.8"></path>
+      <path d="M9.9 9.9a2.7 2.7 0 0 0 3.8 3.8"></path>
+    </svg>`;
+
+  input.type = visible ? "password" : "text";
+  // Reversed visual state: hidden = eye-off, visible = eye.
+  btn.innerHTML = visible ? eyeOffIcon : eyeIcon;
+  btn.setAttribute("aria-label", visible ? "Show passcode" : "Hide passcode");
+  btn.setAttribute("title", visible ? "Show passcode" : "Hide passcode");
+});
+const initialPasscodeToggle = document.getElementById("togglePasscodeBtn");
+if (initialPasscodeToggle) {
+  initialPasscodeToggle.innerHTML = `
+    <svg class="password-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="m3 3 18 18"></path>
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17.6 17.6 0 0 1-3.1 3.8"></path>
+      <path d="M6.3 6.4A10.9 10.9 0 0 0 2.5 12s3.5 6 9.5 6c1.3 0 2.5-.3 3.6-.8"></path>
+      <path d="M9.9 9.9a2.7 2.7 0 0 0 3.8 3.8"></path>
+    </svg>`;
+}
+document.getElementById("uploadForm").addEventListener("input", () => showFormError(""));
+
+document.getElementById("authBtn").onclick = async () => {
+  if (session) {
+    const btn = document.getElementById("authBtn");
+
+    // Make the browser read-only immediately. Do not rebuild the archive grid;
+    // removing the few privileged controls is much cheaper on large archives.
+    signingOut = true;
+    session = null;
+    archiveRole = "viewer";
+    latestEntriesMode = false;
+    clearLoginTime();
+    applySignedOutUI();
+    updateAuthUI();
+
+    btn.disabled = true;
+    let signOutSucceeded = false;
+    try {
+      const { error } = await sb.auth.signOut();
+      signOutSucceeded = !error;
+      if (error) console.warn("Sign out returned an error.", error);
+    } catch (err) {
+      console.warn("Network failed during manual sign out.", err);
+    } finally {
+      btn.disabled = false;
+      signingOut = false;
+
+      // Fully reload the page after a successful sign-out so every piece of
+      // authenticated/archive UI is rebuilt from a clean signed-out session.
+      if (signOutSucceeded) {
+        window.location.reload();
+      }
+    }
+  } else {
+    showLoginError("");
+    document.getElementById("loginOverlay").style.display = "flex";
+    document.body.classList.add("no-scroll");
+    document.getElementById("passcodeInput").focus();
+  }
+};
+function clearLoginModalState() {
+  const form = document.getElementById("loginForm");
+  const input = document.getElementById("passcodeInput");
+  const error = document.getElementById("loginErrorBanner");
+  if (form) form.reset();
+  if (input) input.value = "";
+  if (error) { error.textContent = ""; error.style.display = "none"; }
+
+  // form.reset() only restores default *values*, not the passcode
+  // field's type — if the previous person had clicked the eye icon to
+  // reveal it, the field (and its eye-icon button) stayed in "visible"
+  // mode here even after the value itself was cleared, so the next
+  // person to open this modal on a shared device would land on an
+  // already-revealed (if currently empty) passcode field instead of a
+  // masked one.
+  if (input) input.type = "password";
+  const toggleBtn = document.getElementById("togglePasscodeBtn");
+  if (toggleBtn) {
+    toggleBtn.innerHTML = `
+    <svg class="password-eye-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="m3 3 18 18"></path>
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17.6 17.6 0 0 1-3.1 3.8"></path>
+      <path d="M6.3 6.4A10.9 10.9 0 0 0 2.5 12s3.5 6 9.5 6c1.3 0 2.5-.3 3.6-.8"></path>
+      <path d="M9.9 9.9a2.7 2.7 0 0 0 3.8 3.8"></path>
+    </svg>`;
+    toggleBtn.setAttribute("aria-label", "Show passcode");
+    toggleBtn.setAttribute("title", "Show passcode");
+  }
+}
+document.getElementById("closeLoginBtn").onclick = () => {
+  clearLoginModalState();
+  document.getElementById("loginOverlay").style.display = "none";
+  document.body.classList.remove("no-scroll");
+};
+document.getElementById("loginOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "loginOverlay") { clearLoginModalState(); document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
+});
+document.getElementById("closeContributorDisclaimerBtn").onclick = () => { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); };
+document.getElementById("ackContributorDisclaimerBtn").onclick = () => { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); };
+document.getElementById("contributorDisclaimerOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "contributorDisclaimerOverlay") { document.getElementById("contributorDisclaimerOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
+});
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  showLoginError("");
+  const passcode = document.getElementById("passcodeInput").value;
+  if (!passcode) { showLoginError("Enter the passcode first."); return; }
+  const roleChoice = document.getElementById("loginRoleSelect").value;
+  const loginEmail = (LOGIN_EMAILS[currentLevel] || LOGIN_EMAILS.msc)[roleChoice] || (LOGIN_EMAILS[currentLevel] || LOGIN_EMAILS.msc).contributor;
+  const btn = document.getElementById("loginSubmitBtn");
+  btn.disabled = true;
+  btn.textContent = "Signing in…";
+  try {
+    justSignedIn = true;
+    const { error } = await sb.auth.signInWithPassword({ email: loginEmail, password: passcode });
+    if (error) throw error;
+    markLoginTime();
+    scheduleAutoSignOut();
+    document.getElementById("loginOverlay").style.display = "none";
+    document.body.classList.remove("no-scroll");
+    // Clear any stale page-level banner (e.g. "You've been signed out
+    // after..." from an earlier auto-sign-out) now that the user has
+    // successfully re-authenticated — this is a different banner from
+    // the login modal's own error banner, which clearLoginModalState()
+    // below already handles, so it was never being cleared on sign-in.
+    showError("");
+    // Same reset as the cancel paths (clearLoginModalState) — otherwise
+    // a passcode revealed via the eye icon right before submitting would
+    // still be showing in "visible" mode the next time this modal opens.
+    clearLoginModalState();
+    // No manual render() here: the global sb.auth.onAuthStateChange listener
+    // fires right after sign-in, reloads fresh data, and calls render()
+    // itself. Calling it again here caused a visible UI stutter.
+  } catch (err) {
+    justSignedIn = false;
+    showLoginError(err?.message ? `Sign-in failed: ${err.message}` : "Incorrect passcode. Ask your senior batch for the current one.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Sign in";
+  }
+});
+
+/* ===== Drive-link mode toggle for large files ===== */
+let driveLinkMode = false;
+
+(function setupDriveToggle(){
+  const onBtn = document.getElementById("driveToggleBtn");
+  const offBtn = document.getElementById("driveToggleOffBtn");
+  const driveField = document.getElementById("driveLinkField");
+  const fileInput = document.getElementById("fileInput");
+  const fileLabel = document.querySelector('label[for="fileInput"]');
+  const fileSizeHint = document.getElementById("fileSizeHint");
+  const typeSelect = document.getElementById("typeSelect");
+
+  if (!onBtn || !offBtn || !driveField || !fileInput) return;
+
+  // Google Drive links are available for every entry type, so users can
+  // choose Drive instead of uploading a local file for any category.
+  const DRIVE_ALLOWED_TYPES = ["Notes", "Book", "Others"];
+
+  function isDriveAllowedForCurrentType() {
+    return typeSelect ? DRIVE_ALLOWED_TYPES.includes(typeSelect.value) : true;
+  }
+
+  function setDriveMode(on) {
+    driveLinkMode = on;
+    driveField.style.display = on ? "block" : "none";
+    onBtn.style.display = (on || !isDriveAllowedForCurrentType()) ? "none" : "inline-flex";
+
+    // Hide (rather than just disable) the file input/label/hint in Drive
+    // mode so the form doesn't look like it still wants a file too.
+    fileInput.style.display = on ? "none" : "";
+    if (fileLabel) fileLabel.style.display = on ? "none" : "";
+    if (fileSizeHint) fileSizeHint.style.display = on ? "none" : "";
+
+    if (on) {
+      fileInput.value = "";
+    } else {
+      document.getElementById("driveLinkInput").value = "";
+    }
+  }
+
+  // Keep the toggle link's visibility in sync with the selected Type, and
+  // drop back to file-upload mode if the user switches to a type that
+  // doesn't allow Drive links while Drive mode is active.
+  function syncDriveToggleForType() {
+    const allowed = isDriveAllowedForCurrentType();
+    if (!allowed && driveLinkMode) {
+      setDriveMode(false);
+    } else {
+      onBtn.style.display = (driveLinkMode || !allowed) ? "none" : "inline-flex";
+    }
+  }
+
+  onBtn.addEventListener("click", () => setDriveMode(true));
+  offBtn.addEventListener("click", () => setDriveMode(false));
+
+  typeSelect?.addEventListener("change", syncDriveToggleForType);
+
+  // Reset to file-upload mode whenever the form is (re)opened, then
+  // re-check the toggle against whatever Type is currently selected.
+  document.getElementById("openFormBtn")?.addEventListener("click", () => {
+    setDriveMode(false);
+    syncDriveToggleForType();
+  });
+
+  // Initial state on page load.
+  syncDriveToggleForType();
+})();
+
+function normalizeDriveUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+function isLikelyDriveLink(url) {
+  try {
+    const u = new URL(normalizeDriveUrl(url));
+    return /(^|\.)drive\.google\.com$/i.test(u.hostname) || /(^|\.)docs\.google\.com$/i.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function hasDuplicateQuestionEntry(subjectCode, type, year, excludeEntryId = null) {
+  if (!YEAR_REQUIRED_TYPES.includes(type)) return false;
+
+  const normalizedSubject = String(subjectCode || "").trim();
+  const normalizedYear = String(year || "").trim();
+
+  return entries.some(entry =>
+    String(entry?.id || "") !== String(excludeEntryId || "") &&
+    String(entry?.subject || "").trim() === normalizedSubject &&
+    canonicalEntryType(entry?.type) === type &&
+    String(entry?.year || "").trim() === normalizedYear &&
+    String(entry?.level || currentLevel) === String(currentLevel)
+  );
+}
+
+let isUploading = false;
+document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  // Mashing Enter can queue multiple submit events before the button gets
+  // disabled; this lock makes sure only one upload ever runs at a time.
+  if (isUploading) return;
+  isUploading = true;
+  showFormError("");
+
+  if (!session) {
+    showFormError("Sign in to file a new entry.");
+    isUploading = false;
+    return;
+  }
+
+  const file = document.getElementById("fileInput").files[0];
+  const driveUrl = normalizeDriveUrl(document.getElementById("driveLinkInput").value);
+  const selectedType = document.getElementById("typeSelect").value;
+
+  if (driveLinkMode) {
+    if (!driveUrl) {
+      showFormError("Paste the Google Drive share link.");
+      isUploading = false;
+      return;
+    }
+    if (!isLikelyDriveLink(driveUrl)) {
+      showFormError("That doesn't look like a Google Drive link. Copy the \"Share\" link from Drive.");
+      isUploading = false;
+      return;
+    }
+  } else {
+    if (!file) {
+      showFormError("Choose a file to file into the archive.");
+      isUploading = false;
+      return;
+    }
+
+    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
+    const isValidType = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!isValidType) {
+      showFormError("Invalid file type. Only PDF and standard image files are allowed.");
+      isUploading = false;
+      return;
+    }
+
+    const typeLimit = maxBytesForType(selectedType);
+
+    if (file.size > typeLimit) {
+      showFormError(
+        `That file is ${formatSize(file.size)}. ${selectedType} files must be under ${formatSize(typeLimit)}. Use the Google Drive link option instead.`
+      );
+      isUploading = false;
+      return;
+    }
+  }
+
+  const selected = document.getElementById("subjectSelect").selectedOptions[0];
+
+  if (!selected?.value) {
+    showFormError("Choose a subject.");
+    isUploading = false;
+    return;
+  }
+
+  let selectedSubjectId = selected.value;
+  const selectedSubjectCode = selected.dataset.code || selected.value;
+  const selectedSubjectMeta = subjects.find(s => s.code === selectedSubjectCode || s.id === selectedSubjectId);
+  if (selectedSubjectMeta && !selectedSubjectMeta.id) {
+    try {
+      const { data: createdSubject, error: subjectError } = await sb.from("subjects").insert({
+        name: selectedSubjectMeta.name,
+        code: selectedSubjectMeta.code,
+        created_by: session.user.id,
+        level: currentLevel
+      }).select("id,name,code,created_by").single();
+      if (subjectError) throw subjectError;
+      selectedSubjectId = createdSubject.id;
+      await loadSubjectsFromWorker();
+      renderSubjectFilters();
+      renderSubjectOptions();
+    } catch (err) {
+      showFormError(err?.message || "Could not prepare that subject for filing.");
+      isUploading = false;
+      return;
+    }
+  }
+
+  if ((selectedType === "Others" || selectedType === "Book") && !document.getElementById("titleInput").value.trim()) {
+    showFormError(
+      selectedType === "Book"
+        ? "Add a title for the book."
+        : "Add a title describing the file when Type is \"Others\"."
+    );
+    isUploading = false;
+    return;
+  }
+
+  const yearVal = document.getElementById("yearInput").value.trim();
+  if (YEAR_REQUIRED_TYPES.includes(selectedType)) {
+    if (!yearVal) {
+      showFormError(`Add a year for ${selectedType}.`);
+      isUploading = false;
+      return;
+    }
+    // A year field that only checked for "non-empty" let text like "abcd"
+    // through, which parses to NaN and breaks chronological sorting.
+    if (!/^\d{4}$/.test(yearVal)) {
+      showFormError("Enter a valid 4-digit year.");
+      isUploading = false;
+      return;
+    }
+  } else if (YEAR_OPTIONAL_TYPES.includes(selectedType) && yearVal && !/^\d{4}$/.test(yearVal)) {
+    // Year is optional for these types, but if something was typed it should
+    // still be a real year, not garbage that breaks chronological sorting.
+    showFormError("Enter a valid 4-digit year, or leave the year blank.");
+    isUploading = false;
+    return;
+  }
+
+  // A subject can have only one PYQ and one MTQ for each year.
+  if (
+    YEAR_REQUIRED_TYPES.includes(selectedType) &&
+    hasDuplicateQuestionEntry(selectedSubjectCode, selectedType, yearVal)
+  ) {
+    showFormError(`A ${selectedType} for ${yearVal} already exists for this subject.`);
+    isUploading = false;
+    return;
+  }
+
+  const submitBtn =
+    document.getElementById("submitBtn");
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Filing…";
+
+  try {
+    if (
+      archiveRole !== "admin" &&
+      archiveRole !== "contributor"
+    ) {
+      throw new Error(
+        "This account is not allowed to upload."
+      );
+    }
+
+    const form = new FormData();
+
+    if (driveLinkMode) {
+      form.append("drive_url", driveUrl);
+    } else {
+      form.append("file", file);
+    }
+
+    const subjectName = selected.textContent;
+
+    const subtitleValue = document
+      .getElementById("subtitleInput")
+      .value
+      .trim();
+
+    const baseTitle =
+      document
+        .getElementById("titleInput")
+        .value
+        .trim() ||
+        `${subjectName} — ${selectedType}`;
+
+    form.append(
+      "title",
+      selectedType === "Notes" && subtitleValue
+        ? `${baseTitle}: ${subtitleValue}`
+        : baseTitle
+    );
+
+    form.append(
+      "subject_id",
+      selectedSubjectId
+    );
+
+    form.append(
+      "type",
+      document.getElementById("typeSelect").value
+    );
+
+    let finalYear = document.getElementById("yearInput").value.trim();
+    if (!YEAR_VISIBLE_TYPES.includes(selectedType)) {
+      finalYear = "";
+    }
+    form.append(
+      "year",
+      finalYear
+    );
+
+    form.append(
+      "level",
+      currentLevel
+    );
+
+    await workerFetch(
+      "/upload",
+      {
+        method: "POST",
+        body: form
+      },
+      true
+    );
+
+    entries = await loadEntries();
+    totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
+
+    isUploading = false;
+    closeAndResetUploadForm();
+
+    render();
+
+  } catch (err) {
+    console.error(err);
+
+    showFormError(
+      err?.message
+        ? `Upload failed: ${err.message}`
+        : "Upload failed."
+    );
+
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Add to archive";
+    isUploading = false;
+  }
+
+});
+
+/* Single global resize listener for all subject carousels' arrow visibility,
+   instead of one listener per carousel per render() call. */
+let carouselLastViewportWidth = Math.round(window.innerWidth);
+window.addEventListener("resize", () => {
+  const currentWidth = Math.round(window.innerWidth);
+  if (Math.abs(currentWidth - carouselLastViewportWidth) < 2) return;
+  carouselLastViewportWidth = currentWidth;
+
+  document.querySelectorAll(".subject-carousel").forEach(wrap => {
+    refreshCarouselNav(wrap);
+
+    // Recalculate mobile slider dimensions only on a real width change
+    // (rotation / desktop-mode change), not while the browser chrome moves.
+    const track = wrap.querySelector(".subject-track");
+    const mobileRange = wrap.querySelector(".subject-mobile-scroll-range");
+    const mobileScrollbar = wrap.querySelector(".subject-mobile-scrollbar");
+
+    if (track && mobileRange) {
+      const max = Math.max(0, track.scrollWidth - track.clientWidth);
+      mobileRange.max = String(Math.max(1, Math.round(max)));
+      mobileRange.disabled = max <= 4;
+      if (mobileScrollbar) mobileScrollbar.classList.toggle("is-disabled", max <= 4);
+    }
+  });
+});
+
+// Fonts swapping in after the initial paint can change card widths slightly,
+// which can flip a row from "no overflow" to "has overflow" (or back). Re-run
+// the same check once fonts are ready so an arrow that should appear isn't
+// stuck hidden until the next manual resize.
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    document.querySelectorAll(".subject-carousel").forEach(refreshCarouselNav);
+  }).catch(() => {});
+}
+
+let archiveRefreshInFlight = false;
+async function refreshArchiveSilently() {
+  if (archiveRefreshInFlight || document.visibilityState !== "visible" || isLoadingArchive) return;
+  const uploadOverlay = document.getElementById("overlay");
+  if (uploadOverlay && getComputedStyle(uploadOverlay).display !== "none") return;
+  archiveRefreshInFlight = true;
+  try {
+    const entrySignature = list => list.map(e => [
+      e.id,
+      e.title,
+      e.subject,
+      e.type,
+      e.year,
+      e.filename,
+      e.size,
+      e.uploadedAt,
+      e.driveUrl || ""
+    ].join(":")).join("|");
+
+    const subjectSignature = list => list.map(s => [
+      s.id || "",
+      s.code || "",
+      s.name || "",
+      s.created_by || ""
+    ].join(":")).join("|");
+
+    const oldEntrySignature = entrySignature(entries);
+    const oldSubjectSignature = subjectSignature(subjects);
+
+    const freshEntries = await loadEntries();
+    await loadSubjectsFromWorker();
+
+    const newEntrySignature = entrySignature(freshEntries);
+    const newSubjectSignature = subjectSignature(subjects);
+    const entriesChanged = oldEntrySignature !== newEntrySignature;
+    const subjectsChanged = oldSubjectSignature !== newSubjectSignature;
+
+    entries = freshEntries;
+    totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
+
+    // If subjects changed while the mobile "More" panel is open, that panel
+    // contains a snapshot of the old subject DOM. Remove it before rebuilding.
+    if (subjectsChanged) {
+      mobileSubjectListOpen = false;
+      document.getElementById("subjectFilterExpanded")?.remove();
+    }
+
+    renderSubjectFilters();
+    renderSubjectOptions();
+
+    if (entriesChanged || subjectsChanged) {
+      // Background sync must never throw the reader back to the top.
+      const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      render();
+
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
+      });
+    }
+  } catch (err) {
+    console.warn("Background archive refresh failed:", err);
+  } finally {
+    archiveRefreshInFlight = false;
+  }
+}
+// Hard-refresh when connectivity returns. A full reload is intentional here:
+// it re-runs the app boot, picks up the newest deployed HTML through the
+// network-first service worker, and restores live archive/activity data.
+let statArchiveWasOffline = !navigator.onLine;
+window.addEventListener("offline", () => {
+  statArchiveWasOffline = true;
+});
+window.addEventListener("online", () => {
+  if (!statArchiveWasOffline) return;
+  statArchiveWasOffline = false;
+  setTimeout(() => window.location.reload(), 180);
+});
+
+// Treat reopening the app after it has been in the background as a fresh launch.
+// The flag exists only in this page instance, so the reload does not loop.
+let statArchiveWentToBackground = false;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    statArchiveWentToBackground = true;
+    return;
+  }
+
+  if (document.visibilityState === "visible" && statArchiveReturningFromOfflineFile) {
+    statArchiveWentToBackground = false;
+    statArchiveReturningFromOfflineFile = false;
+
+    const returnId = statArchiveReturnOfflineId;
+    statArchiveReturnOfflineId = null;
+
+    // Keep/reopen the library exactly where the user came from.
+    setTimeout(() => openOfflineLibrary(returnId), 40);
+    return;
+  }
+
+  if (document.visibilityState === "visible" && window.statArchiveNativePickerActive) {
+    // Returning from Android's file chooser is not an app reopen.
+    // Preserve the upload modal and selected subject/type.
+    statArchiveWentToBackground = false;
+    setTimeout(() => {
+      window.statArchiveNativePickerActive = false;
+    }, 900);
+    return;
+  }
+
+  if (document.visibilityState === "visible" && statArchiveWentToBackground && navigator.onLine) {
+    // Reopening/resuming the app should update live data without reloading
+    // the whole page. Mobile browsers can trigger viewport/visibility changes
+    // while scrolling; a hard reload here made the page appear to refresh.
+    statArchiveWentToBackground = false;
+    refreshArchiveSilently();
+    loadActivityStats().catch(() => {});
+  }
+});
+
+// If Android/Chrome restores the PWA from the back-forward cache,
+// refresh live data without reloading the whole page.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && navigator.onLine) {
+    refreshArchiveSilently();
+    loadActivityStats().catch(() => {});
+  }
+});
+
+
+/* Offline library controls */
+document.getElementById("offlineLibraryBtn")?.addEventListener("click", () => openOfflineLibrary());
+document.getElementById("closeOfflineLibraryBtn")?.addEventListener("click", closeOfflineLibrary);
+document.getElementById("offlineLibraryOverlay")?.addEventListener("click", (e) => {
+  if (e.target.id === "offlineLibraryOverlay") closeOfflineLibrary();
+});
+document.getElementById("offlineLibraryList")?.addEventListener("click", async (e) => {
+  const file = e.target.closest(".offline-file");
+  if (!file) return;
+  const id = file.dataset.offlineId;
+  try {
+    if (e.target.closest(".offline-pin-btn")) await toggleOfflinePin(id);
+    else if (e.target.closest(".offline-open-btn")) await openOfflineFile(id);
+    else if (e.target.closest(".offline-remove-btn")) await removeOfflineFile(id);
+  } catch (err) {
+    showError(err?.message || "Offline file action failed.");
+  }
+});
+
+document.getElementById("offlineSearchInput")?.addEventListener("input", (e) => {
+  offlineSearchTerm = e.target.value || "";
+  renderOfflineLibrary();
+});
+document.getElementById("offlineSubjectFilters")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-offline-subject]");
+  if (!btn) return;
+  offlineSubjectFilter = btn.dataset.offlineSubject || "All";
+  renderOfflineLibrary();
+});
+document.getElementById("offlineTypeFilters")?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-offline-filter]");
+  if (!btn) return;
+  offlineTypeFilter = btn.dataset.offlineFilter || "All";
+  renderOfflineLibrary();
+});
+document.getElementById("clearOfflineLibraryBtn")?.addEventListener("click", async () => {
+  if (!confirm("Remove every file saved inside the Offline library on this device?")) return;
+  try {
+    await clearOfflineFiles();
+    offlineEntryIds.clear();
+    updateOfflineLibraryCount(0);
+    await renderOfflineLibrary();
+    render();
+  } catch (err) {
+    showError(err?.message || "Couldn't clear the Offline library.");
+  }
+});
+
+/* Bootstraps the application data */
+init();
+
+/* ===== Subtle mouse spotlight ===== */
+
+
+/* ===== Cursor from uploaded reference ===== */
+(function setupReferenceCursor(){
+  const ring=document.getElementById("cursorRing");
+  const dot=document.getElementById("cursorDot");
+
+  if(!ring || !dot) return;
+
+  const finePointer=window.matchMedia("(pointer: fine)");
+  const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  if(!finePointer.matches || reducedMotion.matches){
+    ring.style.display="none";
+    dot.style.display="none";
+    return;
+  }
+
+  let mx=innerWidth/2;
+  let my=innerHeight/2;
+  let rx=mx;
+  let ry=my;
+  let lastSpark=0;
+
+  const spotlight = document.getElementById("mouseSpotlight");
+  let cursorActive = false;
+  let lastY=innerHeight*.7;
+  let nudgeCooldown=0;
+
+  // Perf note: this used to be three separate pointermove listeners, each
+  // writing dot/ring position independently (the dot's left/top was even
+  // written twice per move). Position via left/top also forces a layout
+  // pass on a position:fixed element every single mouse pixel of movement.
+  // Merged into one listener, and dot/ring now move via transform (like
+  // the spotlight already did) so the browser can handle it on the
+  // compositor thread instead of running layout on every move.
+  window.addEventListener("pointermove",e=>{
+    mx=e.clientX;
+    my=e.clientY;
+
+    const dotTransform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
+    dot.style.transform = dotTransform;
+    ring.style.transform = dotTransform;
+    if (!cursorActive) { cursorActive = true; }
+
+    if (!document.body.classList.contains("mouse-active")) {
+      document.body.classList.add("mouse-active");
+    }
+    if (spotlight) {
+      spotlight.style.transform = dotTransform;
+    }
+
+    const darkTheme =
+      document.body.getAttribute("data-theme") !== "light";
+
+    const sparkInterval = darkTheme ? 38 : 55;
+
+    if(performance.now()-lastSpark>sparkInterval){
+      lastSpark=performance.now();
+
+      const s=document.createElement("i");
+      s.className="cursor-spark";
+      s.style.left=mx+"px";
+      s.style.top=my+"px";
+
+      const a=Math.random()*Math.PI*2;
+      const d=darkTheme
+        ? 14+Math.random()*24
+        : 10+Math.random()*20;
+
+      s.style.setProperty(
+        "--dx",
+        Math.cos(a)*d+"px"
+      );
+
+      s.style.setProperty(
+        "--dy",
+        Math.sin(a)*d+"px"
+      );
+
+      const colors = darkTheme
+        ? ["#63f3ff","#8c7cff","#b88cff","#48d8ff"]
+        : ["var(--mint-dark)","var(--peach)","var(--butter)"];
+
+      s.style.background =
+        colors[Math.floor(Math.random()*colors.length)];
+
+      s.style.color=s.style.background;
+
+      document.body.appendChild(s);
+      if (document.querySelectorAll(".cursor-spark").length > 30) document.querySelector(".cursor-spark")?.remove();
+      s.addEventListener("animationend", () => s.remove(), {once:true});
+      setTimeout(()=>s.remove(), darkTheme ? 1200 : 1400);
+    }
+
+    if(
+      e.clientY<90 &&
+      lastY>180 &&
+      performance.now()>nudgeCooldown
+    ){
+      nudgeCooldown=
+        performance.now()+5000;
+
+      const pulse=
+        document.getElementById("statPulse");
+
+      if(pulse){
+        pulse.animate(
+          [
+            { transform: "translateY(0)" },
+            { transform: "translateY(-4px) rotate(.2deg)" },
+            { transform: "translateY(0)" }
+          ],
+          { duration:500, easing:"ease-out" }
+        );
+      }
+    }
+    lastY=e.clientY;
+  },{passive:true});
+
+  document.addEventListener("pointerover",e=>{
+    if(
+      e.target.closest(
+        "button,.pill,.action-btn,a"
+      )
+    ){
+      document.body.classList.add("cursor-hover");
+    }
+  });
+
+  document.addEventListener("pointerout",e=>{
+    const btn = e.target.closest("button,.pill,.action-btn,a");
+    if(btn && (!e.relatedTarget || !btn.contains(e.relatedTarget))){
+      document.body.classList.remove("cursor-hover");
+    }
+  });
+
+})();
+
+
+/* Prevent file drops from navigating away and block background touch scrolling on iOS Safari while a modal is open. */
+document.querySelectorAll(".overlay").forEach(overlay => {
+  overlay.addEventListener("dragover", e => e.preventDefault());
+  overlay.addEventListener("drop", e => e.preventDefault());
+  overlay.addEventListener("touchmove", e => {
+    if (!e.target.closest(".form-card,.preview-card")) e.preventDefault();
+  }, {passive:false});
+});
+
+/* ===== Modal focus trapping (accessibility) =====
+   Without this, tabbing through the Sign In / Upload / Preview modals falls
+   through to the background page. If a user hits Enter after tabbing onto a
+   background element, it could trigger unrelated actions and corrupt UI
+   state. This keeps Tab/Shift+Tab cycling within whichever modal is open. */
+(function setupFocusTrap(){
+  const overlayIds = ["loginOverlay", "contributorDisclaimerOverlay", "overlay", "previewOverlay", "editEntryOverlay"];
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const openOverlay = overlayIds
+        .map(id => document.getElementById(id))
+        .find(el => el && getComputedStyle(el).display !== "none");
+
+      if (openOverlay) {
+        if (openOverlay.id === "previewOverlay") closePreview();
+        else if (openOverlay.id === "loginOverlay") { clearLoginModalState(); document.getElementById("loginOverlay").style.display = "none"; document.body.classList.remove("no-scroll"); }
+        else if (openOverlay.id === "overlay") closeAndResetUploadForm();
+        else if (openOverlay.id === "editEntryOverlay") closeEditEntry();
+        else if (openOverlay.id === "contributorDisclaimerOverlay") { openOverlay.style.display = "none"; document.body.classList.remove("no-scroll"); }
+      }
+      return;
+    }
+
+    if (e.key !== "Tab") return;
+
+    const openOverlay = overlayIds
+      .map(id => document.getElementById(id))
+      .find(el => el && getComputedStyle(el).display !== "none");
+    if (!openOverlay) return;
+
+    const focusable = Array.from(
+      openOverlay.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(el => el.offsetParent !== null);
+    if (!focusable.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    } else if (!openOverlay.contains(document.activeElement)) {
+      // Focus somehow ended up outside the modal — pull it back in.
+      e.preventDefault();
+      first.focus();
+    }
+  });
+})();
+
+/* ===== Functional Dark / Light theme buttons ===== */
+(function setupThemeButtons(){
+  const darkBtn = document.getElementById("themeDarkBtn");
+  const lightBtn = document.getElementById("themeLightBtn");
+
+  if (!darkBtn || !lightBtn) return;
+
+  let savedTheme = "dark";
+
+  try{
+    savedTheme =
+      localStorage.getItem("statArchiveTheme") || "dark";
+  }catch(e){}
+
+  function applyTheme(theme){
+    const value = theme === "light" ? "light" : "dark";
+
+    // Keep the theme attribute synchronized on both <html> and <body>.
+    // The CSS contains theme variables on :root/html, so changing only
+    // <body> could leave the light palette active after switching to Dark.
+    document.documentElement.setAttribute("data-theme", value);
+    document.body.setAttribute("data-theme", value);
+    document.documentElement.setAttribute("data-active-theme", value);
+
+    darkBtn.classList.toggle("active", value === "dark");
+    lightBtn.classList.toggle("active", value === "light");
+
+    darkBtn.setAttribute("aria-pressed", value === "dark" ? "true" : "false");
+    lightBtn.setAttribute("aria-pressed", value === "light" ? "true" : "false");
+
+    try{
+      localStorage.setItem("statArchiveTheme", value);
+    }catch(e){}
+  }
+
+  darkBtn.addEventListener("click", function(){
+    applyTheme("dark");
+  });
+
+  lightBtn.addEventListener("click", function(){
+    applyTheme("light");
+  });
+
+  // Fix: without this, changing the theme in one tab left other open tabs
+  // on the stale theme until they were manually refreshed.
+  window.addEventListener("storage", function(e){
+    if (e.key === "statArchiveTheme" && e.newValue) {
+      applyTheme(e.newValue);
+    }
+  });
+
+  applyTheme(savedTheme);
+})();
+
+/* ===== Functional M.Sc / B.Sc level toggle ===== */
+(function setupLevelButtons(){
+  const mscBtn = document.getElementById("levelMscBtn");
+  const bscBtn = document.getElementById("levelBscBtn");
+
+  if (!mscBtn || !bscBtn) return;
+
+  // currentLevel was already read from localStorage at script load time
+  // (see its declaration near the top), so just sync the UI to it here.
+  setLevelUI(currentLevel);
+
+  mscBtn.addEventListener("click", function(){
+    switchLevel("msc");
+  });
+
+  bscBtn.addEventListener("click", function(){
+    switchLevel("bsc");
+  });
+
+  // Keep other open tabs in sync, same as the theme toggle does.
+  window.addEventListener("storage", function(e){
+    if (e.key === "statArchiveLevel" && e.newValue) {
+      switchLevel(e.newValue);
+    }
+  });
+})();
+
+/* application section */
+
+(function(){
+  let tooltip = null;
+  let activeTitle = null;
+
+  function ensureTooltip(){
+    if (tooltip) return tooltip;
+    tooltip = document.createElement("div");
+    tooltip.id = "entry-full-title-tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    document.body.appendChild(tooltip);
+    return tooltip;
+  }
+
+  function positionTooltip(target){
+    if (!tooltip || !target) return;
+    const r = target.getBoundingClientRect();
+    const gap = 10;
+    tooltip.style.left = "0px";
+    tooltip.style.top = "0px";
+    tooltip.style.maxWidth = Math.min(420, window.innerWidth - 24) + "px";
+
+    const tr = tooltip.getBoundingClientRect();
+    let left = Math.max(12, Math.min(r.left, window.innerWidth - tr.width - 12));
+    let top = r.top - tr.height - gap;
+
+    if (top < 12) top = Math.min(window.innerHeight - tr.height - 12, r.bottom + gap);
+
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  }
+
+  document.addEventListener("pointerover", function(e){
+    const title = e.target.closest(".card-title[data-full-title], .card-type[data-full-title]");
+    if (!title || title === activeTitle) return;
+    activeTitle = title;
+    const full = title.dataset.fullTitle || title.textContent.trim();
+    if (!full) return;
+    ensureTooltip().textContent = full;
+    tooltip.classList.add("show");
+    positionTooltip(title);
+  });
+
+  document.addEventListener("pointermove", function(e){
+    if (!activeTitle || !tooltip) return;
+    if (!activeTitle.isConnected) { activeTitle = null; tooltip.classList.remove("show"); return; }
+    const title = e.target.closest(".card-title[data-full-title], .card-type[data-full-title]");
+    if (title === activeTitle) positionTooltip(activeTitle);
+  });
+
+  document.addEventListener("pointerout", function(e){
+    if (!activeTitle) return;
+    const leaving = e.target.closest(".card-title[data-full-title], .card-type[data-full-title]");
+    if (!leaving || leaving !== activeTitle) return;
+    if (e.relatedTarget && leaving.contains(e.relatedTarget)) return;
+    activeTitle = null;
+    if (tooltip) tooltip.classList.remove("show");
+  });
+
+  document.addEventListener("focusin", function(e){
+    const title = e.target.closest(".card-title[data-full-title], .card-type[data-full-title]");
+    if (!title) return;
+    activeTitle = title;
+    const full = title.dataset.fullTitle || title.textContent.trim();
+    ensureTooltip().textContent = full;
+    tooltip.classList.add("show");
+    positionTooltip(title);
+  });
+
+  document.addEventListener("focusout", function(e){
+    if (e.target.matches(".card-title[data-full-title], .card-type[data-full-title]")) {
+      activeTitle = null;
+      if (tooltip) tooltip.classList.remove("show");
+    }
+  });
+
+  window.addEventListener("scroll", function(){
+    if (activeTitle) positionTooltip(activeTitle);
+  }, true);
+
+  window.addEventListener("resize", function(){
+    if (activeTitle) positionTooltip(activeTitle);
+  });
+})();
+
+/* application section */
+
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}
+
+/* application section */
+
+(function(){
+  let replayTimer = null;
+
+  function isPhoneLayout(){
+    return window.innerWidth <= 700 ||
+           window.matchMedia("(max-width: 700px)").matches;
+  }
+
+  function replayMobileHero(){
+    if (!isPhoneLayout()) return;
+
+    const curve = document.querySelector(".gaussian-curve");
+    if (!curve || typeof curve.getTotalLength !== "function") return;
+
+    try {
+      const length = Math.max(1, Math.ceil(curve.getTotalLength()));
+
+      // Kill every competing CSS/keyframe animation first.
+      curve.style.setProperty("animation", "none", "important");
+      curve.style.setProperty("transition", "none", "important");
+      curve.style.setProperty("stroke-dasharray", `${length} ${length}`, "important");
+      curve.style.setProperty("stroke-dashoffset", String(length), "important");
+      curve.style.setProperty("opacity", "1", "important");
+
+      // Force Android/Chrome to paint the fully-hidden stroke before starting.
+      void curve.getBoundingClientRect();
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          curve.style.setProperty(
+            "transition",
+            "stroke-dashoffset 3.2s cubic-bezier(.22,.61,.36,1)",
+            "important"
+          );
+          curve.style.setProperty("stroke-dashoffset", "0", "important");
+        });
+      });
+
+      // Replay dots independently using transitions too.
+      document.querySelectorAll(".data-dot").forEach((dot) => {
+        const cs = getComputedStyle(dot);
+        const fall = cs.getPropertyValue("--fall").trim() || "0px";
+        const delayText = cs.getPropertyValue("--delay").trim() || "0s";
+
+        dot.style.setProperty("animation", "none", "important");
+        dot.style.setProperty("transition", "none", "important");
+        dot.style.setProperty("transform", "translateY(0)", "important");
+        dot.style.setProperty("opacity", "0", "important");
+
+        void dot.getBoundingClientRect();
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            dot.style.setProperty(
+              "transition",
+              `transform 1.05s cubic-bezier(.22,.61,.36,1) ${delayText}, opacity .28s ease ${delayText}`,
+              "important"
+            );
+            dot.style.setProperty("transform", `translateY(${fall})`, "important");
+            dot.style.setProperty("opacity", ".95", "important");
+          });
+        });
+      });
+    } catch (err) {
+      console.warn("Hero animation failed:", err);
+    }
+  }
+
+  function scheduleReplay(delay){
+    clearTimeout(replayTimer);
+    replayTimer = setTimeout(replayMobileHero, delay);
+  }
+
+  // Run only on a genuine page load/refresh.
+  // Do not replay on resize, scroll-driven mobile viewport changes,
+  // pageshow, or app resume.
+  if (document.readyState === "complete") {
+    scheduleReplay(100);
+  } else {
+    window.addEventListener("load", () => scheduleReplay(100), {once:true});
+  }
+})();
+
+/* application section */
+
+document.addEventListener("pointerdown", (e) => {
+  const panel = document.getElementById("subjectFilterExpanded");
+  if (!panel || !panel.classList.contains("open")) return;
+  const row = document.getElementById("subjectFilterRow");
+  if (row && row.contains(e.target)) return;
+
+  panel.remove();
+  const more = row?.querySelector(".subject-more-pill");
+  if (more) more.textContent = "More";
+}, {passive:true});
+
+/* application section */
+
+(() => {
+  const modalSelectors = [
+    "#overlay",
+    "#authOverlay",
+    "#editOverlay",
+    "#subjectOverlay",
+    "#offlineLibraryOverlay",
+    "#pdfViewerOverlay",
+    ".modal-overlay",
+    "[role='dialog']"
+  ];
+
+  let lastFocused = null;
+  let activeModal = null;
+
+  const visible = el => !!el && (
+    el.getClientRects().length > 0 &&
+    getComputedStyle(el).visibility !== "hidden"
+  );
+
+  const focusables = root => [...root.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), ' +
+    'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter(visible);
+
+  function findOpenModal() {
+    const candidates = [...document.querySelectorAll(modalSelectors.join(","))];
+    return candidates.reverse().find(el => visible(el) &&
+      getComputedStyle(el).display !== "none" &&
+      el.getAttribute("aria-hidden") !== "true");
+  }
+
+  function enhanceModal(modal) {
+    if (!modal) return;
+    if (!modal.hasAttribute("role")) modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+
+    const title = modal.querySelector("h1,h2,h3,.modal-title,.offline-library-title");
+    if (title) {
+      if (!title.id) title.id = "dialog-title-" + Math.random().toString(36).slice(2,9);
+      if (!modal.hasAttribute("aria-labelledby")) {
+        modal.setAttribute("aria-labelledby", title.id);
+      }
+    }
+  }
+
+  function syncModalFocus() {
+    const modal = findOpenModal();
+    if (modal === activeModal) return;
+
+    if (modal) {
+      lastFocused = document.activeElement instanceof HTMLElement
+        ? document.activeElement : null;
+      activeModal = modal;
+      enhanceModal(modal);
+      requestAnimationFrame(() => {
+        const items = focusables(modal);
+        const preferred = modal.querySelector(
+          '[autofocus], input:not([type="hidden"]), select, textarea, button'
+        );
+        (preferred && visible(preferred) ? preferred : items[0] || modal).focus?.();
+      });
+    } else if (activeModal) {
+      activeModal = null;
+      if (lastFocused && document.contains(lastFocused)) {
+        requestAnimationFrame(() => lastFocused.focus());
+      }
+    }
+  }
+
+  // Observe existing app modals instead of changing their visual behavior.
+  const observer = new MutationObserver(syncModalFocus);
+  observer.observe(document.documentElement, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["style", "class", "hidden", "aria-hidden"]
+  });
+
+  document.addEventListener("keydown", e => {
+    const modal = findOpenModal();
+    if (!modal) return;
+
+    if (e.key === "Tab") {
+      const items = focusables(modal);
+      if (!items.length) {
+        e.preventDefault();
+        modal.tabIndex = -1;
+        modal.focus();
+        return;
+      }
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+      return;
+    }
+
+    if (e.key === "Escape") {
+      const close = modal.querySelector(
+        '[data-close], .modal-close, .close-btn, .offline-close, ' +
+        'button[aria-label*="Close" i], button[title*="Close" i]'
+      );
+      if (close && !close.disabled) {
+        e.preventDefault();
+        close.click();
+      }
+    }
+  }, true);
+
+  function labelIconButtons(root = document) {
+    root.querySelectorAll("button").forEach(btn => {
+      if (btn.hasAttribute("aria-label")) return;
+      const text = (btn.textContent || "").trim();
+      const title = (btn.getAttribute("title") || "").trim();
+      if (title) {
+        btn.setAttribute("aria-label", title);
+      } else if (text === "×" || text === "✕") {
+        btn.setAttribute("aria-label", "Close");
+      } else if (text === "✎") {
+        btn.setAttribute("aria-label", "Edit");
+      }
+    });
+  }
+
+  function enhanceForms(root = document) {
+    root.querySelectorAll("input,select,textarea").forEach(el => {
+      if (el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby")) return;
+      if (el.id) {
+        const label = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+        if (label) return;
+      }
+      const placeholder = el.getAttribute("placeholder");
+      const name = el.getAttribute("name");
+      if (placeholder) el.setAttribute("aria-label", placeholder);
+      else if (name) el.setAttribute("aria-label", name.replace(/[-_]+/g, " "));
+    });
+  }
+
+  // Announce existing status/toast regions when their content changes.
+  document.querySelectorAll(
+    ".toast, #toast, .status-message, #statusMessage, .upload-status"
+  ).forEach(el => {
+    if (!el.hasAttribute("role")) el.setAttribute("role", "status");
+    if (!el.hasAttribute("aria-live")) el.setAttribute("aria-live", "polite");
+  });
+
+  labelIconButtons();
+  enhanceForms();
+
+  const dynamicObserver = new MutationObserver(records => {
+    for (const record of records) {
+      record.addedNodes.forEach(node => {
+        if (!(node instanceof Element)) return;
+        labelIconButtons(node);
+        enhanceForms(node);
+      });
+    }
+    syncModalFocus();
+  });
+  dynamicObserver.observe(document.body, {subtree:true, childList:true});
+
+  syncModalFocus();
+})();
