@@ -1200,11 +1200,6 @@ body{
     .cursor-dot,.cursor-ring{display:none!important}
     .mouse-spotlight{display:none!important}
   }
-/* =========================================================
-   TWA / ANDROID PHONE RESPONSIVE FALLBACK
-   Some Android TWA environments expose a wider CSS viewport.
-   Treat coarse-pointer devices up to 1100px as mobile/tablet.
-   ========================================================= */
 
   @media(max-width:700px){
     .auth-actions{flex-wrap:wrap}
@@ -2010,7 +2005,6 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
   min-height:0;
   margin-bottom:8px;
 }
-@media (pointer: coarse) and (max-width: 1100px) {
 
 /* component / responsive rules */
 
@@ -2078,24 +2072,14 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
     align-items:center;
     overflow:hidden;
     box-sizing:border-box;
-  html,
-  body {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-}
+  }
 
   .hero-copy{
     width:auto;
     min-width:0;
     max-width:min(52vw, 790px);
     flex:none;
-  .page {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 24px 12px 56px !important;
-    box-sizing: border-box !important;
-}
+  }
 
   .hero-probability{
     position:relative;
@@ -2106,15 +2090,7 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
     height:clamp(210px, 15vw, 270px);
     min-width:0;
     margin:0;
-  /* Hero becomes the phone layout */
-  .header {
-    min-height: 500px !important;
-    height: auto !important;
-    padding: 28px 20px 220px !important;
-    display: block !important;
-    box-sizing: border-box !important;
-    border-radius: 18px !important;
-}
+  }
 }
 
 /* component / responsive rules */
@@ -2129,12 +2105,7 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
     font:600 12px 'JetBrains Mono',monospace;
     cursor:pointer;
     transition:background .15s ease,border-color .15s ease;
-  .hero-copy {
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    flex: none !important;
-}
+  }
   .entry-subject-more-btn:hover{background:rgba(148,163,184,.15);border-color:rgba(148,163,184,.45);}
 
   /* Make the More / Show less control clearly visible on the light theme. */
@@ -2150,26 +2121,15 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
     color:#fff;
     box-shadow:0 8px 20px rgba(52,125,115,.24);
   }
-  .hero-probability {
-    position: absolute !important;
-    left: 12px !important;
-    right: 12px !important;
-    top: auto !important;
-    bottom: 12px !important;
 
 /* component / responsive rules */
-    width: auto !important;
-    max-width: none !important;
-    height: 195px !important;
 
 .offline-library-count{
     display:inline-flex;align-items:center;justify-content:center;
     min-width:18px;height:18px;margin-left:5px;padding:0 5px;border-radius:999px;
     background:rgba(94,231,247,.12);color:var(--cyan);
     font:700 9px 'JetBrains Mono',monospace;
-    margin: 0 !important;
-    transform: none !important;
-}
+  }
   .offline-library-card{max-width:780px}
   .offline-library-intro{
     margin:-4px 0 14px;color:var(--muted);font-size:12.5px;line-height:1.6
@@ -2302,12 +2262,7 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
     .offline-vault-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
     .offline-vault-stat{padding:9px 8px}
     .offline-vault-stat strong{font-size:12px}
-  .probability-svg {
-    width: calc(100% - 6px) !important;
-    height: 160px !important;
-    left: 3px !important;
-    right: 3px !important;
-}
+  }
 
 /* component / responsive rules */
 
@@ -2333,9 +2288,7 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
   .hero-probability{
     height:195px !important;
     margin-top:14px !important;
-  h1 {
-    font-size: clamp(34px, 11vw, 48px) !important;
-}
+  }
   .probability-svg{
     top:29px !important;
     left:3px !important;
@@ -2351,11 +2304,7 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
   .offline-file-actions .offline-share-btn,
   .offline-file-actions .offline-remove-btn{
     flex:1 1 0 !important;
-  .sub {
-    max-width: 100% !important;
-    font-size: 13px !important;
-    line-height: 1.6 !important;
-}
+  }
 
 /* component / responsive rules */
 
@@ -2367,22 +2316,12 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
   }
   .authbar button{
     flex:0 0 auto;align-self:center
-  /* Sign-in bar */
-  .authbar {
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
+  }
 
   /* JS below drives the mobile curve using its real SVG path length. */
   .gaussian-curve{
     opacity:1 !important;
-  /* Statistics cards */
-  #archiveSummary,
-  .archive-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    max-width: none !important;
-}
+  }
 }
 
 /* component / responsive rules */
@@ -2415,15 +2354,7 @@ body[data-theme="light"] .action-btn.edit-btn{color:#a45d45;}
   .probability-svg{
     top:17px !important;
     height:149px !important;
-  /* Search + filters */
-  .toolbar,
-  .filter-row,
-  .subject-row,
-  .grid {
-    width: 100% !important;
-    max-width: none !important;
-    box-sizing: border-box !important;
-}
+  }
 }
 
 /* Offline Library belongs to the installed PWA only.
@@ -2468,10 +2399,7 @@ html.stat-archive-pwa .offline-btn{
     box-shadow:none !important;
     -webkit-backdrop-filter:none !important;
     backdrop-filter:none !important;
-  .search-wrap,
-  .search-box {
-    width: 100% !important;
-}
+  }
   #subjectFilterExpanded .pill{
     margin:0 !important;
     transform:none !important;
@@ -2500,14 +2428,10 @@ html.stat-archive-pwa .offline-btn{
   }
   #subjectFilterExpanded .subject-delete{
     flex:0 0 auto;
-  /* Archive cards */
-  .grid {
-    grid-template-columns: 1fr !important;
-}
+  }
 }
 
 /* component / responsive rules */
-@media (pointer: coarse) and (max-width: 430px) {
 
 /* Keep the subject label background only as wide as the subject name. */
 .card .stamp{
@@ -2533,12 +2457,9 @@ html.stat-archive-pwa .offline-btn{
   .subject-row{
     max-width:none !important;
     width:100%;
-  .page {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-}
+  }
 
-#archiveSummary,
+  #archiveSummary,
   .archive-summary{
     max-width:none !important;
     width:100% !important;
@@ -2553,7 +2474,5 @@ html.stat-archive-pwa .offline-btn{
   .page{
     padding-left:30px !important;
     padding-right:30px !important;
-  .archive-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-}
+  }
 }
