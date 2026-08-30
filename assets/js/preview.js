@@ -1169,22 +1169,21 @@ async function previewEntry(entry) {
         onPdfWheel;
 
 
- // ===== Mobile PDF touch controls =====
-// 1 finger  = pan / scroll PDF
-// 2 fingers = pinch zoom
+// ===== Mobile PDF touch controls =====
+// One finger = native scrolling
+// Two fingers = custom pinch zoom
 
 let pinchActive = false;
 let pinchStartDistance = 0;
 let pinchStartZoom = 1;
 let pinchLastZoom = 1;
 
-let panActive = false;
-let panLastX = 0;
-let panLastY = 0;
-
 
 const pinchDistance = touches => {
-  if (!touches || touches.length < 2) {
+  if (
+    !touches ||
+    touches.length < 2
+  ) {
     return 0;
   }
 
@@ -1196,45 +1195,36 @@ const pinchDistance = touches => {
     touches[0].clientY -
     touches[1].clientY;
 
-  return Math.hypot(dx, dy);
+  return Math.hypot(
+    dx,
+    dy
+  );
 };
 
 
-const onPdfTouchStart = event => {
+const onPdfTouchStart =
+  event => {
 
-  /*
-   * ONE FINGER
-   */
-  if (event.touches.length === 1) {
-
-    event.preventDefault();
-
-    pinchActive = false;
-    panActive = true;
-
-    panLastX =
-      event.touches[0].clientX;
-
-    panLastY =
-      event.touches[0].clientY;
-
-    return;
-  }
-
-
-  /*
-   * TWO FINGERS
-   */
-  if (event.touches.length === 2) {
-
-    event.preventDefault();
-
-    panActive = false;
+    /*
+     * One finger:
+     * do absolutely nothing.
+     *
+     * Browser/WebView handles scrolling.
+     */
+    if (
+      event.touches.length !== 2
+    ) {
+      return;
+    }
 
     pinchStartDistance =
-      pinchDistance(event.touches);
+      pinchDistance(
+        event.touches
+      );
 
-    if (pinchStartDistance <= 0) {
+    if (
+      pinchStartDistance <= 0
+    ) {
       return;
     }
 
@@ -1244,25 +1234,34 @@ const onPdfTouchStart = event => {
     pinchLastZoom =
       zoomFactor;
 
-    pinchActive = true;
-  }
-};
+    pinchActive =
+      true;
+  };
 
 
-const onPdfTouchMove = event => {
+const onPdfTouchMove =
+  event => {
 
-  /*
-   * TWO-FINGER PINCH
-   */
-  if (
-    event.touches.length === 2 &&
-    pinchActive
-  ) {
+    /*
+     * Never block a one-finger gesture.
+     * This is what allows normal scrolling.
+     */
+    if (
+      event.touches.length !== 2 ||
+      !pinchActive
+    ) {
+      return;
+    }
 
+    /*
+     * Only two-finger pinch is intercepted.
+     */
     event.preventDefault();
 
     const distance =
-      pinchDistance(event.touches);
+      pinchDistance(
+        event.touches
+      );
 
     if (
       distance <= 0 ||
@@ -1272,138 +1271,86 @@ const onPdfTouchMove = event => {
     }
 
     const ratio =
-      distance / pinchStartDistance;
+      distance /
+      pinchStartDistance;
 
     let nextZoom =
-      pinchStartZoom * ratio;
+      pinchStartZoom *
+      ratio;
 
-    nextZoom = Math.max(
-      ZOOM_MIN,
-      Math.min(
-        ZOOM_MAX,
-        nextZoom
-      )
-    );
+    nextZoom =
+      Math.max(
+        ZOOM_MIN,
+        Math.min(
+          ZOOM_MAX,
+          nextZoom
+        )
+      );
 
     if (
       Math.abs(
         nextZoom -
         pinchLastZoom
-      ) >= 0.04
+      ) < 0.04
     ) {
-
-      pinchLastZoom =
-        nextZoom;
-
-      applyZoom(nextZoom);
+      return;
     }
 
-    return;
-  }
+    pinchLastZoom =
+      nextZoom;
+
+    applyZoom(
+      nextZoom
+    );
+  };
 
 
-  /*
-   * ONE-FINGER DRAG
-   */
-  if (
-    event.touches.length === 1 &&
-    panActive
-  ) {
+const onPdfTouchEnd =
+  event => {
 
-    event.preventDefault();
+    if (
+      event.touches.length >= 2
+    ) {
+      return;
+    }
 
-    const touch =
-      event.touches[0];
+    pinchActive =
+      false;
 
-    const dx =
-      touch.clientX -
-      panLastX;
-
-    const dy =
-      touch.clientY -
-      panLastY;
-
-    canvasWrap.scrollLeft -= dx;
-    canvasWrap.scrollTop -= dy;
-
-    panLastX =
-      touch.clientX;
-
-    panLastY =
-      touch.clientY;
-  }
-};
+    pinchStartDistance =
+      0;
+  };
 
 
-const onPdfTouchEnd = event => {
+const onPdfTouchCancel =
+  () => {
 
-  /*
-   * Pinch finished but one finger
-   * is still touching the PDF.
-   */
-  if (event.touches.length === 1) {
+    pinchActive =
+      false;
 
-    pinchActive = false;
-    pinchStartDistance = 0;
-
-    panActive = true;
-
-    panLastX =
-      event.touches[0].clientX;
-
-    panLastY =
-      event.touches[0].clientY;
-
-    return;
-  }
-
-
-  if (event.touches.length === 0) {
-
-    pinchActive = false;
-    pinchStartDistance = 0;
-
-    panActive = false;
-  }
-};
-
-
-const onPdfTouchCancel = () => {
-  pinchActive = false;
-  pinchStartDistance = 0;
-  panActive = false;
-};
+    pinchStartDistance =
+      0;
+  };
 
 
 /*
- * Important:
- * browser must not take over these gestures.
+ * CRITICAL:
+ *
+ * Allow native one-finger scrolling.
+ * Do NOT use touch-action:none here.
  */
-canvasWrap.style.touchAction = "none";
-canvasWrap.style.webkitUserSelect = "none";
-canvasWrap.style.userSelect = "none";
-
-
-/*
- * Disable PDF text-selection layer on touch devices.
- * Otherwise it can capture the one-finger drag.
- */
-body
-  .querySelectorAll(".pdf-text-layer")
-  .forEach(layer => {
-    layer.style.pointerEvents = "none";
-    layer.style.userSelect = "none";
-    layer.style.webkitUserSelect = "none";
-  });
+canvasWrap.style.touchAction =
+  "pan-x pan-y";
 
 
 canvasWrap.addEventListener(
   "touchstart",
   onPdfTouchStart,
   {
-    passive: false
+    passive: true
   }
 );
+
 
 canvasWrap.addEventListener(
   "touchmove",
@@ -1413,19 +1360,21 @@ canvasWrap.addEventListener(
   }
 );
 
+
 canvasWrap.addEventListener(
   "touchend",
   onPdfTouchEnd,
   {
-    passive: false
+    passive: true
   }
 );
+
 
 canvasWrap.addEventListener(
   "touchcancel",
   onPdfTouchCancel,
   {
-    passive: false
+    passive: true
   }
 );
       body._pdfTouchStartHandler =
