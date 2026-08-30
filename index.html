@@ -329,6 +329,35 @@
         </svg>
       </button>
     </div>
+    <label
+  for="rememberPasscodeCheckbox"
+  style="
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:10px 0 12px;
+    cursor:pointer;
+    font-size:13px;
+    color:var(--muted);
+    user-select:none;
+  "
+>
+  <input
+    type="checkbox"
+    id="rememberPasscodeCheckbox"
+    style="
+      width:16px;
+      height:16px;
+      margin:0;
+      accent-color:var(--cyan);
+      cursor:pointer;
+    "
+  />
+
+  <span>
+    Remember passcode on this device
+  </span>
+</label>
     <div class="error-banner" id="loginErrorBanner" style="margin-top:12px;"></div>
     <button type="submit" class="submit-btn" id="loginSubmitBtn">Sign in</button>
     <p class="small">Browsing, previewing, and downloading don't need this — sign in is only required for archive management.</p>
