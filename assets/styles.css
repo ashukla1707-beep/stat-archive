@@ -2918,13 +2918,13 @@ body[data-theme="light"]
 
 /* Subject name becomes the larger size */
 .subject-row-name{
-  font-size:13.25px !important;
+  font-size:14.50px !important;
 }
 
 
 /* Mid-Term / Previous Year / Notes / Book becomes smaller */
 .card.card-no-title .card-type{
-  font-size:14.25px !important;
+  font-size:13.25px !important;
 }
 
 
@@ -2938,11 +2938,11 @@ body[data-theme="light"]
 @media(max-width:700px){
 
   .subject-row-name{
-    font-size:13.25px !important;
+    font-size:14.25px !important;
   }
 
   .card.card-no-title .card-type{
-    font-size:14.5px !important;
+    font-size:13px !important;
   }
 
 }
