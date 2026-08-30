@@ -2959,3 +2959,94 @@ body[data-theme="light"]
     font-size:12px !important;
   }
 }
+/* =========================================================
+   SAME FILTER WIDTH IN LIGHT AND DARK MOBILE THEMES
+   ========================================================= */
+
+body[data-theme="light"] .pill{
+  font-family:'JetBrains Mono', monospace !important;
+}
+
+
+/* Mobile filter sizing should be identical in both themes */
+@media(max-width:700px){
+
+  body[data-theme="light"] .pill,
+  body:not([data-theme="light"]) .pill{
+    font-family:'JetBrains Mono', monospace !important;
+    font-size:10.5px !important;
+    letter-spacing:.02em !important;
+  }
+
+}
+/* =========================================================
+   OFFLINE SAVED BUTTON + MOBILE SLIDER COLORS
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   DARK THEME
+   Saved Offline button = CYAN
+   --------------------------------------------------------- */
+
+body:not([data-theme="light"]) .offline-btn.is-saved{
+  color:var(--cyan) !important;
+}
+
+
+/* ---------------------------------------------------------
+   LIGHT THEME
+   Saved Offline button = DARK PURPLE
+   --------------------------------------------------------- */
+
+body[data-theme="light"] .offline-btn.is-saved{
+  color:#4b365f !important;
+}
+
+
+/* =========================================================
+   MOBILE ENTRY SLIDER
+   DARK THEME = LIGHT / NEUTRAL COLOR
+   ========================================================= */
+
+@media(max-width:700px){
+
+  /* Chrome / Android / Safari */
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-webkit-slider-thumb{
+    background:#d8dee8 !important;
+  }
+
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-webkit-slider-runnable-track{
+    background:rgba(216,222,232,.20) !important;
+  }
+
+
+  /* Firefox */
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-moz-range-thumb{
+    background:#d8dee8 !important;
+  }
+
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-moz-range-progress{
+    background:#d8dee8 !important;
+  }
+
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-moz-range-track{
+    background:rgba(216,222,232,.20) !important;
+  }
+
+}
