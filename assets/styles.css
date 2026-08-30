@@ -2849,3 +2849,71 @@ body[data-theme="light"]
 .subject-row:not([data-subject-code="__latest__"]) .stamp{
   display:none !important;
 }
+/* =========================================================
+   SUBJECT HEADING BADGE
+   Move the old card subject-chip look to the section title
+   ========================================================= */
+
+.subject-row-title{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:9px !important;
+}
+
+
+/* The actual subject name */
+.subject-row-title > span:first-child,
+.subject-row-title .subject-name{
+  display:inline-flex;
+  align-items:center;
+
+  padding:5px 9px;
+
+  border-radius:6px;
+
+  background:rgba(94,231,247,.065);
+
+  color:var(--cyan);
+
+  font:700 11px 'JetBrains Mono',monospace;
+
+  letter-spacing:.06em;
+}
+
+
+/* Keep the entry count separate */
+.subject-row-count{
+  margin-left:4px;
+}
+
+
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+body[data-theme="light"]
+.subject-row-title > span:first-child,
+body[data-theme="light"]
+.subject-row-title .subject-name{
+  background:#e0ece8;
+
+  color:#245e57;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .subject-row-title > span:first-child,
+  .subject-row-title .subject-name{
+    padding:5px 8px;
+
+    font-size:10.5px;
+
+    line-height:1.35;
+  }
+
+}
