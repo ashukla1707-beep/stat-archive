@@ -1921,7 +1921,37 @@ async function downloadEntry(
     const blob =
       await response.blob();
 
+/*
+ * Android APK:
+ * use native Save As picker.
+ */
+if (
+  hasAndroidBridge() &&
+  typeof window.AndroidBridge.saveFile ===
+    "function"
+) {
 
+  const filename =
+    safeOfflineShareFilename(entry);
+
+  const mime =
+    blob.type ||
+    response.headers.get(
+      "content-type"
+    ) ||
+    "application/octet-stream";
+
+  const base64 =
+    await blobToBase64(blob);
+
+  window.AndroidBridge.saveFile(
+    base64,
+    filename,
+    mime
+  );
+
+  return;
+}
     const url =
       URL.createObjectURL(
         blob
