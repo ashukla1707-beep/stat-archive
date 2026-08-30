@@ -1706,23 +1706,7 @@ function safeOfflineShareFilename(record) {
 
   return title + extension;
 }
-  const fallback =
-    "stat-archive-file";
-
-  const raw =
-    String(
-      record?.filename ||
-      record?.title ||
-      fallback
-    ).trim() ||
-    fallback;
-
-
-  return raw.replace(
-    /[\\/:*?"<>|]+/g,
-    "_"
-  );
-}
+ 
 
 
 /* =========================================================
