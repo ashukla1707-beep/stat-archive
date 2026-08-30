@@ -390,7 +390,7 @@
       <input type="text" id="yearInput" name="year" placeholder="e.g. 2026" />
     </div>
     <label for="fileInput">File</label>
-    <input type="file" id="fileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
+   <input type="file" id="fileInput" name="file" accept=".pdf,application/pdf" />
     <div class="hint" id="fileSizeHint">Previous Year Question &amp; Mid-Term Question: up to 1 MB. Notes &amp; Book: up to 20 MB. Others: up to 10 MB.</div>
 
     <button type="button" id="driveToggleBtn" class="drive-toggle-btn">File larger than the limit? Add a Google Drive link instead ↗</button>
@@ -449,7 +449,7 @@
     </div>
 
     <label id="editFileLabel" for="editFileInput">Replace file (optional)</label>
-    <input type="file" id="editFileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" />
+    <input type="file" id="editFileInput" name="file" accept=".pdf,application/pdf" />
     <div class="hint" id="editFileHint">Leave empty to keep the current file.</div>
     <div class="error-banner" id="editEntryErrorBanner" style="margin-top:12px;"></div>
     <button type="submit" class="submit-btn" id="editEntrySubmitBtn">Save changes</button>
