@@ -2575,33 +2575,31 @@ if (
 /* =========================================================
    ANDROID SAVED PASSCODE
 
-   Stored independently for:
+   Credentials are stored independently for:
 
    MSc + Contributor
    MSc + Admin
    BSc + Contributor
    BSc + Admin
 
-   management.js never stores the password in localStorage.
+   Saving is OPTIONAL. The checkbox is OFF by default.
+   A credential is saved only after Supabase confirms a
+   successful login while "Remember passcode on this device"
+   is checked.
 
-   MainActivity.java is responsible for encrypted native
-   credential storage through AndroidBridge.
+   management.js never stores the passcode in localStorage.
+   MainActivity.java performs encrypted native storage.
    ========================================================= */
 
-
-let androidAutofilledPasscode =
-  "";
+let androidAutofilledPasscode = "";
 
 
 function getCurrentCredentialLevel() {
 
   const level =
-    String(
-      currentLevel || ""
-    )
+    String(currentLevel || "")
       .trim()
       .toLowerCase();
-
 
   return level === "bsc"
     ? "bsc"
@@ -2623,18 +2621,78 @@ function getCurrentCredentialRole() {
       .trim()
       .toLowerCase();
 
-
   return role === "admin"
     ? "admin"
     : "contributor";
 }
 
 
+function getRememberPasscodeCheckbox() {
+
+  return document.getElementById(
+    "rememberPasscodeCheckbox"
+  );
+}
+
+
+function getRememberPasscodeLabel() {
+
+  return document.querySelector(
+    'label[for="rememberPasscodeCheckbox"]'
+  );
+}
+
+
+function hasAndroidCredentialBridge() {
+
+  return !!(
+    window.AndroidBridge &&
+    typeof window.AndroidBridge.getSavedPasscode === "function" &&
+    typeof window.AndroidBridge.savePasscode === "function" &&
+    typeof window.AndroidBridge.clearSavedPasscode === "function"
+  );
+}
+
+
 /*
- * Reads the correct saved passcode from Android.
+ * The remember option is an APK-only feature.
+ * Hide it in the normal website/PWA so users are not
+ * shown a checkbox that cannot actually save anything.
+ */
+function updateRememberPasscodeAvailability() {
+
+  const label =
+    getRememberPasscodeLabel();
+
+  const checkbox =
+    getRememberPasscodeCheckbox();
+
+  const available =
+    hasAndroidCredentialBridge();
+
+  if (label) {
+    label.style.display = available
+      ? "flex"
+      : "none";
+  }
+
+  if (checkbox) {
+    checkbox.disabled = !available;
+
+    if (!available) {
+      checkbox.checked = false;
+    }
+  }
+}
+
+
+/*
+ * Read the saved passcode for the currently selected
+ * MSc/BSc + Contributor/Admin combination.
  *
- * On normal web/PWA this function simply does nothing
- * because AndroidBridge is not available.
+ * If a passcode exists, the checkbox is shown as checked.
+ * If none exists, the field stays empty and the checkbox
+ * stays unchecked.
  */
 function loadAndroidSavedPasscode() {
 
@@ -2643,25 +2701,27 @@ function loadAndroidSavedPasscode() {
       "passcodeInput"
     );
 
+  const checkbox =
+    getRememberPasscodeCheckbox();
 
   if (!input) {
     return;
   }
 
+  androidAutofilledPasscode = "";
 
-  androidAutofilledPasscode =
-    "";
+  updateRememberPasscodeAvailability();
 
+  if (!hasAndroidCredentialBridge()) {
 
-  if (
-    !window.AndroidBridge ||
-    typeof window.AndroidBridge.getSavedPasscode !==
-      "function"
-  ) {
+    input.value = "";
+
+    if (checkbox) {
+      checkbox.checked = false;
+    }
 
     return;
   }
-
 
   try {
 
@@ -2674,16 +2734,28 @@ function loadAndroidSavedPasscode() {
           ) || ""
       );
 
-
     input.value =
       saved;
-
 
     androidAutofilledPasscode =
       saved;
 
+    if (checkbox) {
+      checkbox.checked =
+        !!saved;
+    }
 
   } catch (err) {
+
+    input.value = "";
+
+    androidAutofilledPasscode =
+      "";
+
+    if (checkbox) {
+      checkbox.checked =
+        false;
+    }
 
     console.warn(
       "Could not read saved Android passcode.",
@@ -2694,10 +2766,12 @@ function loadAndroidSavedPasscode() {
 
 
 /*
- * Saves/replaces the password only after Supabase
- * has confirmed that the entered password is valid.
+ * Save/replace a credential only after Supabase has
+ * confirmed the password is valid.
  */
 function saveAndroidPasscode(
+  level,
+  role,
   passcode
 ) {
 
@@ -2705,30 +2779,21 @@ function saveAndroidPasscode(
     return;
   }
 
-
-  if (
-    !window.AndroidBridge ||
-    typeof window.AndroidBridge.savePasscode !==
-      "function"
-  ) {
-
+  if (!hasAndroidCredentialBridge()) {
     return;
   }
-
 
   try {
 
     window.AndroidBridge
       .savePasscode(
-        getCurrentCredentialLevel(),
-        getCurrentCredentialRole(),
+        level,
+        role,
         passcode
       );
 
-
     androidAutofilledPasscode =
       passcode;
-
 
   } catch (err) {
 
@@ -2740,22 +2805,50 @@ function saveAndroidPasscode(
 }
 
 
-/*
- * Detect only a genuine invalid-password response.
- *
- * A network outage/server error must NOT erase
- * a correctly stored password.
- */
-function isInvalidLoginCredentialError(
-  err
+function clearAndroidSavedPasscode(
+  level = getCurrentCredentialLevel(),
+  role = getCurrentCredentialRole()
 ) {
 
-  const message =
-    String(
-      err?.message || ""
-    )
-      .toLowerCase();
+  if (!hasAndroidCredentialBridge()) {
 
+    androidAutofilledPasscode =
+      "";
+
+    return;
+  }
+
+  try {
+
+    window.AndroidBridge
+      .clearSavedPasscode(
+        level,
+        role
+      );
+
+  } catch (err) {
+
+    console.warn(
+      "Could not clear Android passcode.",
+      err
+    );
+  }
+
+  androidAutofilledPasscode =
+    "";
+}
+
+
+/*
+ * Detect only a genuine invalid-password response.
+ * A network/server failure must not erase a valid
+ * remembered credential.
+ */
+function isInvalidLoginCredentialError(err) {
+
+  const message =
+    String(err?.message || "")
+      .toLowerCase();
 
   return (
     message.includes(
@@ -2769,14 +2862,13 @@ function isInvalidLoginCredentialError(
 
 
 /*
- * If the server password was changed in the future,
- * the old automatically restored Android credential
- * will fail. Remove that stale saved copy.
- *
- * A manually typed wrong password does not erase
- * the previously stored credential.
+ * If a previously remembered passcode is later changed
+ * on the server, Supabase will reject the old autofilled
+ * value. Remove that stale native copy automatically.
  */
 function clearInvalidAndroidPasscode(
+  level,
+  role,
   attemptedPasscode,
   err
 ) {
@@ -2789,72 +2881,47 @@ function clearInvalidAndroidPasscode(
     return;
   }
 
-
   if (
     !androidAutofilledPasscode ||
     attemptedPasscode !==
       androidAutofilledPasscode
   ) {
-
     return;
   }
 
+  clearAndroidSavedPasscode(
+    level,
+    role
+  );
+
+  const input =
+    document.getElementById(
+      "passcodeInput"
+    );
+
+  const checkbox =
+    getRememberPasscodeCheckbox();
 
   if (
-    !window.AndroidBridge ||
-    typeof window.AndroidBridge.clearSavedPasscode !==
-      "function"
+    input &&
+    input.value === attemptedPasscode
   ) {
 
-    return;
+    input.value =
+      "";
   }
 
+  if (checkbox) {
 
-  try {
-
-    window.AndroidBridge
-      .clearSavedPasscode(
-        getCurrentCredentialLevel(),
-        getCurrentCredentialRole()
-      );
-
-
-    androidAutofilledPasscode =
-      "";
-
-
-    const input =
-      document.getElementById(
-        "passcodeInput"
-      );
-
-
-    if (
-      input &&
-      input.value ===
-        attemptedPasscode
-    ) {
-
-      input.value =
-        "";
-    }
-
-
-  } catch (clearErr) {
-
-    console.warn(
-      "Could not clear old Android passcode.",
-      clearErr
-    );
+    checkbox.checked =
+      false;
   }
 }
 
 
 /*
- * Contributor and Admin each get their own password.
- *
- * Switching the dropdown automatically switches the
- * stored password used by the APK.
+ * Switching Contributor/Admin loads the correct separate
+ * remembered credential for that role.
  */
 document
   .getElementById(
@@ -2869,6 +2936,36 @@ document
       loadAndroidSavedPasscode();
     }
   );
+
+
+/*
+ * If the user unchecks "Remember passcode" while a
+ * credential is already saved, remove that saved copy
+ * immediately from Android.
+ */
+getRememberPasscodeCheckbox()
+  ?.addEventListener(
+    "change",
+    e => {
+
+      if (
+        e.target.checked
+      ) {
+        return;
+      }
+
+      clearAndroidSavedPasscode();
+
+      /*
+       * Keep any currently typed passcode in the field.
+       * Unchecking means "do not remember it", not
+       * "erase what I am currently typing".
+       */
+    }
+  );
+
+
+updateRememberPasscodeAvailability();
 
 
 document
@@ -3265,11 +3362,8 @@ document
 
 
       /*
-       * Important:
-       * capture level + role before the async login.
-       *
-       * These are the credentials that were actually
-       * used for this authentication attempt.
+       * Capture the exact course level and role used
+       * for this login attempt.
        */
       const loginLevel =
         getCurrentCredentialLevel();
@@ -3331,35 +3425,34 @@ document
         /*
          * Supabase accepted the password.
          *
-         * Save or replace the native Android credential.
+         * Save/replace it ONLY if the user selected:
+         *
+         * "Remember passcode on this device"
          */
-        if (
-          window.AndroidBridge &&
-          typeof window.AndroidBridge.savePasscode ===
-            "function"
-        ) {
-
-          try {
-
-            window.AndroidBridge
-              .savePasscode(
-                loginLevel,
-                roleChoice,
-                passcode
-              );
+        const rememberPasscode =
+          !!getRememberPasscodeCheckbox()
+            ?.checked;
 
 
-            androidAutofilledPasscode =
-              passcode;
+        if (rememberPasscode) {
 
+          saveAndroidPasscode(
+            loginLevel,
+            roleChoice,
+            passcode
+          );
 
-          } catch (saveErr) {
+        } else {
 
-            console.warn(
-              "Could not save Android passcode.",
-              saveErr
-            );
-          }
+          /*
+           * If this slot had previously been remembered
+           * but the user now signs in without Remember
+           * enabled, make sure it is removed.
+           */
+          clearAndroidSavedPasscode(
+            loginLevel,
+            roleChoice
+          );
         }
 
 
@@ -3397,76 +3490,18 @@ document
 
 
         /*
-         * Only delete the stored password if:
+         * If a previously remembered password becomes
+         * invalid because you changed that password later,
+         * remove the stale saved copy.
          *
-         * 1. the failed password was restored automatically, and
-         * 2. Supabase specifically says credentials are invalid.
-         *
-         * Network failures do not delete it.
+         * Network/server failures do NOT remove it.
          */
-        const message =
-          String(
-            err?.message || ""
-          )
-            .toLowerCase();
-
-
-        const invalidCredential =
-          message.includes(
-            "invalid login credentials"
-          ) ||
-          message.includes(
-            "invalid credentials"
-          );
-
-
-        if (
-          invalidCredential &&
-          androidAutofilledPasscode &&
-          passcode ===
-            androidAutofilledPasscode &&
-          window.AndroidBridge &&
-          typeof window.AndroidBridge.clearSavedPasscode ===
-            "function"
-        ) {
-
-          try {
-
-            window.AndroidBridge
-              .clearSavedPasscode(
-                loginLevel,
-                roleChoice
-              );
-
-
-            androidAutofilledPasscode =
-              "";
-
-
-            const input =
-              document.getElementById(
-                "passcodeInput"
-              );
-
-
-            if (
-              input &&
-              input.value === passcode
-            ) {
-
-              input.value =
-                "";
-            }
-
-
-          } catch (clearErr) {
-
-            console.warn(
-              "Could not clear old Android passcode.",
-              clearErr
-            );
-          }
-        }
+        clearInvalidAndroidPasscode(
+          loginLevel,
+          roleChoice,
+          passcode,
+          err
+        );
 
 
         showLoginError(
@@ -3487,10 +3522,6 @@ document
       }
     }
   );
-
-
-/* ===== Drive-link mode toggle for large files ===== */
-
 let driveLinkMode =
   false;
 
