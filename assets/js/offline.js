@@ -1704,7 +1704,17 @@ function safeOfflineShareFilename(record) {
   }
 
 
-  return title + extension;
+  const year =
+  String(
+    record?.year || ""
+  ).trim();
+
+const yearSuffix =
+  /^(19|20)\d{2}$/.test(year)
+    ? ` - ${year}`
+    : "";
+
+return title + yearSuffix + extension;
 }
  
 
