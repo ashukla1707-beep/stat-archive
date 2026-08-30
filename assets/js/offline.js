@@ -372,7 +372,133 @@ function offlineSavedDate(record) {
    OFFLINE SUBJECT FILTERS
    ========================================================= */
 
+let offlineSubjectsExpanded = false;
+
 function renderOfflineSubjectFilters(records) {
+  const wrap =
+    document.getElementById(
+      "offlineSubjectFilters"
+    );
+
+  if (!wrap) return;
+
+
+  /*
+   * Get unique subjects
+   * and keep them alphabetical.
+   */
+  const subjects =
+    [...new Set(
+      (records || [])
+        .map(record =>
+          String(
+            record.subjectName ||
+            record.subject ||
+            "Other"
+          ).trim()
+        )
+        .filter(Boolean)
+    )]
+    .sort((a, b) =>
+      a.localeCompare(
+        b,
+        undefined,
+        {
+          sensitivity: "base",
+          numeric: true
+        }
+      )
+    );
+
+
+  /*
+   * If selected subject no longer exists,
+   * return to All subjects.
+   */
+  if (
+    offlineSubjectFilter !== "All" &&
+    !subjects.includes(
+      offlineSubjectFilter
+    )
+  ) {
+    offlineSubjectFilter = "All";
+  }
+
+
+  /*
+   * Normally show only first 3 subjects.
+   */
+  const visibleSubjects =
+    offlineSubjectsExpanded
+      ? subjects
+      : subjects.slice(0, 3);
+
+
+  const buttons = [];
+
+
+  /*
+   * All subjects
+   */
+  buttons.push(`
+    <button
+      type="button"
+      class="offline-filter${
+        offlineSubjectFilter === "All"
+          ? " active"
+          : ""
+      }"
+      data-offline-subject="All">
+      All subjects
+    </button>
+  `);
+
+
+  /*
+   * Individual subject buttons
+   */
+  visibleSubjects.forEach(subject => {
+
+    buttons.push(`
+      <button
+        type="button"
+        class="offline-filter${
+          offlineSubjectFilter === subject
+            ? " active"
+            : ""
+        }"
+        data-offline-subject="${escapeHtml(subject)}">
+        ${escapeHtml(subject)}
+      </button>
+    `);
+
+  });
+
+
+  /*
+   * More / Less
+   */
+  if (subjects.length > 3) {
+
+    buttons.push(`
+      <button
+        type="button"
+        class="offline-filter offline-subject-more-btn"
+        data-offline-subject-more="true">
+        ${
+          offlineSubjectsExpanded
+            ? "Less"
+            : "More"
+        }
+      </button>
+    `);
+
+  }
+
+
+  wrap.innerHTML =
+    buttons.join("");
+}
   const wrap =
     document.getElementById(
       "offlineSubjectFilters"
