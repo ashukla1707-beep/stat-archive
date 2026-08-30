@@ -2839,3 +2839,13 @@ body[data-theme="light"]
   }
 
 }
+/* =========================================================
+   REMOVE REPEATED SUBJECT NAME FROM NORMAL ENTRY CARDS
+
+   Keep the subject badge only inside "Latest entries",
+   because that section mixes cards from different subjects.
+   ========================================================= */
+
+.subject-row:not([data-subject-code="__latest__"]) .stamp{
+  display:none !important;
+}
