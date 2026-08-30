@@ -3141,3 +3141,127 @@ body[data-theme="light"] .offline-btn.is-saved{
   }
 
 }
+@media(max-width:700px){
+
+  .subject-row-title{
+    display:flex !important;
+    align-items:center !important;
+    flex-wrap:nowrap !important;
+    gap:8px !important;
+    width:100%;
+  }
+
+  .subject-row-name{
+    flex:0 1 auto !important;
+    width:auto !important;
+    max-width:calc(100% - 90px);
+  }
+
+  .subject-row-count{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+    margin-left:auto !important;
+  }
+
+}
+/* =========================================================
+   FINAL COMPACT SPACING FIX
+   Reduce unused vertical space between filters and entries
+   ========================================================= */
+
+.toolbar{
+  gap:6px !important;
+  margin-bottom:8px !important;
+}
+
+.archive-filter-section{
+  padding-bottom:8px !important;
+}
+
+.archive-filter-section + .archive-filter-section{
+  padding-top:10px !important;
+}
+
+.archive-filter-label{
+  margin-bottom:7px !important;
+}
+
+.archive-type-filter-section{
+  padding-bottom:8px !important;
+}
+
+.archive-action-row{
+  margin-top:8px !important;
+  padding-top:12px !important;
+}
+
+#permissionHint{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}
+
+.archive-entries-divider{
+  margin-top:8px !important;
+  margin-bottom:14px !important;
+  padding-top:12px !important;
+}
+
+
+/* Desktop can be even tighter */
+@media(min-width:701px){
+
+  .toolbar{
+    gap:5px !important;
+    margin-bottom:6px !important;
+  }
+
+  .archive-filter-section{
+    padding-bottom:6px !important;
+  }
+
+  .archive-filter-section + .archive-filter-section{
+    padding-top:9px !important;
+  }
+
+  .archive-action-row{
+    margin-top:6px !important;
+    padding-top:10px !important;
+  }
+
+  .archive-entries-divider{
+    margin-top:6px !important;
+    margin-bottom:12px !important;
+    padding-top:10px !important;
+  }
+
+}
+
+
+/* Mobile */
+@media(max-width:700px){
+
+  .toolbar{
+    gap:6px !important;
+    margin-bottom:10px !important;
+  }
+
+  .archive-filter-section{
+    padding-bottom:9px !important;
+  }
+
+  .archive-filter-section + .archive-filter-section{
+    padding-top:10px !important;
+  }
+
+  .archive-action-row{
+    margin-top:8px !important;
+    padding-top:12px !important;
+  }
+
+  .archive-entries-divider{
+    margin-top:10px !important;
+    margin-bottom:14px !important;
+    padding-top:12px !important;
+  }
+
+}
