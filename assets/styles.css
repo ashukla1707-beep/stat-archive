@@ -3543,3 +3543,14 @@ body:not([data-theme="light"])
 #offlineLibraryTitle{
   font-weight:800 !important;
 }
+#offlineLibraryTitle{
+  font-size:22px !important;
+  font-weight:900 !important;
+  line-height:1.2;
+}
+
+@media(max-width:700px){
+  #offlineLibraryTitle{
+    font-size:19px !important;
+  }
+}
