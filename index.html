@@ -252,8 +252,17 @@
       <input id="searchInput" type="search" placeholder="Search by title, filename, year, or subject…" />
       <button type="button" class="search-clear" id="searchClear" style="display: none;" aria-label="Clear search" title="Clear search">✕</button>
     </form>
-    <div class="filter-row" id="subjectFilterRow"></div>
-    <div class="filter-row" id="typeFilterRow"></div>
+
+    <div class="archive-filter-section">
+      <div class="archive-filter-label">Subjects</div>
+      <div class="filter-row" id="subjectFilterRow"></div>
+    </div>
+
+    <div class="archive-filter-section archive-type-filter-section">
+      <div class="archive-filter-label">Types</div>
+      <div class="filter-row" id="typeFilterRow"></div>
+    </div>
+
     <div class="archive-action-row">
       <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry" style="display:none">+ File a new entry</button>
       <button class="latest-btn" id="latestEntriesBtn" type="button" style="display:none">↕ Latest entries</button>
@@ -265,6 +274,11 @@
   </div>
 
   <div class="error-banner" id="errorBanner"></div>
+
+  <div class="archive-entries-divider" id="archiveEntriesDivider">
+    <span>Archive entries</span>
+    <i aria-hidden="true"></i>
+  </div>
 
   <div id="emptyState" class="empty-state" style="display:none;"></div>
   <div class="grid" id="grid"></div>
