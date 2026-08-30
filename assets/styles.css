@@ -767,7 +767,7 @@ body{
   }
 
   @media(prefers-reduced-motion:reduce){
-    *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+    *,*:before,*:after{scroll-behavior:auto!important;transition:none!important}
   }
 
 
@@ -1563,8 +1563,8 @@ body{
   100%{transform:translateY(var(--fall));opacity:.95}
 }
 @media (prefers-reduced-motion: reduce){
-  .data-dot{animation:none;transform:translateY(var(--fall));opacity:.95}
-  .gaussian-curve{animation:none;stroke-dasharray:none;stroke-dashoffset:0;opacity:1}
+  .data-dot{animation:dotFallOnce .78s cubic-bezier(.22,.61,.36,1) var(--delay) forwards !important}
+  .gaussian-curve{animation:curveDrawOnce 3.4s cubic-bezier(.22,.61,.36,1) .15s forwards !important;stroke-dasharray:1000 !important;opacity:1 !important}
 }
 .curve-title{
   position:absolute;
@@ -1737,8 +1737,8 @@ body[data-theme="light"] .axis-mid{color:#347d73}
   /* Desktop-site mode on phones: finish the curve quickly so the graph
      cannot remain visibly half-drawn after the browser switches viewport mode. */
   .gaussian-curve{
-    animation:curveDrawOnce 1.2s cubic-bezier(.22,.61,.36,1) forwards;
-    stroke-dasharray:1400;
+    animation:curveDrawOnce 3.4s cubic-bezier(.22,.61,.36,1) forwards;
+    stroke-dasharray:1000;
   }
 }
 
@@ -1844,15 +1844,14 @@ body[data-theme="light"] .axis-mid{color:#347d73}
      The layout is now safely stacked, so the animation can run without
      causing the text/graph overlap that existed in the earlier mobile CSS. */
   .gaussian-curve{
-    /* One authoritative mobile animation declaration prevents media-query
-       conflicts from restoring a partially-completed stroke. */
+    /* One authoritative mobile animation declaration. */
     animation-name:curveDrawOnce !important;
-    animation-duration:1.55s !important;
+    animation-duration:3.4s !important;
     animation-timing-function:cubic-bezier(.22,.61,.36,1) !important;
-    animation-delay:0s !important;
+    animation-delay:.15s !important;
     animation-iteration-count:1 !important;
-    animation-fill-mode:both !important;
-    stroke-dasharray:1400 !important;
+    animation-fill-mode:forwards !important;
+    stroke-dasharray:1000 !important;
   }
   .data-dot{
     animation:dotFallOnce .78s cubic-bezier(.22,.61,.36,1) var(--delay) forwards !important;
