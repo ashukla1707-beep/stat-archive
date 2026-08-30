@@ -2924,7 +2924,7 @@ body[data-theme="light"]
 
 /* Mid-Term / Previous Year / Notes / Book becomes smaller */
 .card.card-no-title .card-type{
-  font-size:13.5px !important;
+  font-size:13px !important;
 }
 
 
@@ -2938,11 +2938,24 @@ body[data-theme="light"]
 @media(max-width:700px){
 
   .subject-row-name{
-    font-size:14px !important;
+    font-size:13.25px !important;
   }
 
   .card.card-no-title .card-type{
     font-size:14.5px !important;
   }
 
+}
+/* Make entry-count badge easier to read */
+
+.subject-row-count{
+  font-size:12.5px !important;
+  padding:4px 10px !important;
+  line-height:1.2;
+}
+
+@media(max-width:700px){
+  .subject-row-count{
+    font-size:12px !important;
+  }
 }
