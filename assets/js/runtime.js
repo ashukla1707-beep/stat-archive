@@ -187,12 +187,48 @@ document.getElementById("offlineSearchInput")?.addEventListener("input", (e) => 
   offlineSearchTerm = e.target.value || "";
   renderOfflineLibrary();
 });
-document.getElementById("offlineSubjectFilters")?.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-offline-subject]");
-  if (!btn) return;
-  offlineSubjectFilter = btn.dataset.offlineSubject || "All";
-  renderOfflineLibrary();
-});
+document
+  .getElementById("offlineSubjectFilters")
+  ?.addEventListener(
+    "click",
+    event => {
+
+      /*
+       * More / Less
+       */
+      const moreBtn =
+        event.target.closest(
+          "[data-offline-subject-more]"
+        );
+
+      if (moreBtn) {
+
+        offlineSubjectsExpanded =
+          !offlineSubjectsExpanded;
+
+        renderOfflineLibrary();
+
+        return;
+      }
+
+
+      /*
+       * Normal subject filter
+       */
+      const btn =
+        event.target.closest(
+          "[data-offline-subject]"
+        );
+
+      if (!btn) return;
+
+      offlineSubjectFilter =
+        btn.dataset.offlineSubject ||
+        "All";
+
+      renderOfflineLibrary();
+    }
+  );
 document.getElementById("offlineTypeFilters")?.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-offline-filter]");
   if (!btn) return;
