@@ -90,7 +90,60 @@ function escapeRegExp(value) {
 }
 
 const offlineEntryIds = new Set();
+/* =========================================================
+   REMEMBER PREVIEWED / DOWNLOADED ENTRIES ON THIS DEVICE
+   ========================================================= */
 
+function readEntryActionHistory(key) {
+
+  try {
+
+    const stored =
+      JSON.parse(
+        localStorage.getItem(key) || "[]"
+      );
+
+    return new Set(
+      Array.isArray(stored)
+        ? stored.map(String)
+        : []
+    );
+
+  } catch {
+
+    return new Set();
+  }
+}
+
+
+function saveEntryActionHistory(
+  key,
+  set
+) {
+
+  try {
+
+    localStorage.setItem(
+      key,
+      JSON.stringify(
+        [...set]
+      )
+    );
+
+  } catch {}
+}
+
+
+const previewedEntryIds =
+  readEntryActionHistory(
+    "statArchivePreviewedEntries"
+  );
+
+
+const downloadedEntryIds =
+  readEntryActionHistory(
+    "statArchiveDownloadedEntries"
+  );
 function buildCard(entry) {
   const meta = subjectMeta(entry.subject);
   // Entry deletion is Admin-only. Contributors may edit their allowed
@@ -138,8 +191,27 @@ function buildCard(entry) {
 
     <div class="card-actions">
       ${entry.driveUrl
-        ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
-        : `<button class="action-btn pv-btn">⊙ Preview</button><button class="action-btn dl-btn">⬇ Download</button><button class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}" title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}">${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}</button>`
+      ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
+: `
+  <button
+    class="action-btn pv-btn${previewedEntryIds.has(String(entry.id)) ? " is-previewed" : ""}"
+  >
+    ⊙ Preview
+  </button>
+
+  <button
+    class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"
+  >
+    ⬇ Download
+  </button>
+
+  <button
+    class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}"
+    title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}"
+  >
+    ${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}
+  </button>
+`
       }
       ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
       ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="Delete entry" aria-label="Delete entry">🗑</button>` : ""}
