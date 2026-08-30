@@ -1621,6 +1621,91 @@ async function openOfflineFile(id) {
    ========================================================= */
 
 function safeOfflineShareFilename(record) {
+
+  const fallback = "stat-archive-file";
+
+  /*
+   * Use the Stat Archive ENTRY TITLE
+   * as the downloaded/shared filename.
+   */
+  let title =
+    String(
+      record?.title ||
+      fallback
+    ).trim() ||
+    fallback;
+
+
+  /*
+   * Get the original extension.
+   * Example:
+   * original-file.pdf  ->  .pdf
+   */
+  const originalFilename =
+    String(
+      record?.filename || ""
+    ).trim();
+
+  let extension = "";
+
+  const dotIndex =
+    originalFilename.lastIndexOf(".");
+
+  if (
+    dotIndex > 0 &&
+    dotIndex <
+      originalFilename.length - 1
+  ) {
+    extension =
+      originalFilename.slice(dotIndex);
+  }
+
+
+  /*
+   * If no extension is available but
+   * MIME says PDF, use .pdf.
+   */
+  if (
+    !extension &&
+    String(
+      record?.mime || ""
+    )
+      .toLowerCase()
+      .includes("pdf")
+  ) {
+    extension = ".pdf";
+  }
+
+
+  /*
+   * Remove characters Android/Windows
+   * cannot safely use in filenames.
+   */
+  title =
+    title.replace(
+      /[\\/:*?"<>|]+/g,
+      "_"
+    );
+
+
+  /*
+   * Avoid duplicate extension if the
+   * entry title already contains it.
+   */
+  if (
+    extension &&
+    title
+      .toLowerCase()
+      .endsWith(
+        extension.toLowerCase()
+      )
+  ) {
+    return title;
+  }
+
+
+  return title + extension;
+}
   const fallback =
     "stat-archive-file";
 
@@ -1857,9 +1942,8 @@ async function downloadEntry(
 
     a.href =
       url;
-
-    a.download =
-      entry.filename;
+a.download =
+  safeOfflineShareFilename(entry);
 
 
     document.body.appendChild(
