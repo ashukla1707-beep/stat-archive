@@ -2912,3 +2912,37 @@ body[data-theme="light"]
   }
 
 }
+/* =========================================================
+   SWAP SUBJECT NAME AND ENTRY TYPE FONT SIZES
+   ========================================================= */
+
+/* Subject name becomes the larger size */
+.subject-row-name{
+  font-size:16px !important;
+}
+
+
+/* Mid-Term / Previous Year / Notes / Book becomes smaller */
+.card.card-no-title .card-type{
+  font-size:14.5px !important;
+}
+
+
+/* Keep normal titled-card type text unchanged */
+.card:not(.card-no-title) .card-type{
+  font-size:11.5px;
+}
+
+
+/* Mobile */
+@media(max-width:700px){
+
+  .subject-row-name{
+    font-size:16px !important;
+  }
+
+  .card.card-no-title .card-type{
+    font-size:14.5px !important;
+  }
+
+}
