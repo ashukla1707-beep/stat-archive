@@ -1853,7 +1853,6 @@ body[data-theme="light"] .axis-mid{color:#347d73}
     animation-iteration-count:1 !important;
     animation-fill-mode:both !important;
     stroke-dasharray:1400 !important;
-    stroke-dashoffset:1000 !important;
   }
   .data-dot{
     animation:dotFallOnce .78s cubic-bezier(.22,.61,.36,1) var(--delay) forwards !important;
