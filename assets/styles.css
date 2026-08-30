@@ -3381,3 +3381,21 @@ body:not([data-theme="light"]) .subject-row-name{
 body[data-theme="light"] .subject-row-name{
   color:#245e57 !important;
 }
+/* =========================================================
+   LIGHT SUBJECT COLOR + MOBILE FIT
+   ========================================================= */
+
+body[data-theme="light"] .subject-row-name{
+  color:#4b365f !important;
+}
+
+@media(max-width:700px){
+
+  .subject-row-name{
+    font-size:12px !important;
+    max-width:calc(100% - 88px) !important;
+    white-space:normal !important;
+    line-height:1.3;
+  }
+
+}
