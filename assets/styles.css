@@ -3399,3 +3399,144 @@ body[data-theme="light"] .subject-row-name{
   }
 
 }
+/* =========================================================
+   OFFLINE LIBRARY
+   Rounded container + fixed header while content scrolls
+   ========================================================= */
+
+.offline-library-card{
+  width:min(1120px, calc(100vw - 48px)) !important;
+  max-width:1120px !important;
+
+  max-height:calc(100vh - 32px) !important;
+  max-height:calc(100dvh - 32px) !important;
+
+  display:flex !important;
+  flex-direction:column !important;
+
+  overflow:hidden !important;
+
+  border-radius:24px !important;
+}
+
+
+/* ---------------------------------------------------------
+   FIXED / STICKY HEADER
+   --------------------------------------------------------- */
+
+.offline-library-card > .form-header{
+  flex:0 0 auto;
+
+  position:relative;
+  z-index:10;
+
+  margin:0 !important;
+  padding:4px 0 18px;
+
+  background:inherit;
+}
+
+
+/* Keep close button clearly rounded */
+.offline-library-card
+#closeOfflineLibraryBtn{
+  width:38px;
+  height:38px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:0 !important;
+
+  border-radius:10px !important;
+}
+
+
+/* ---------------------------------------------------------
+   ONLY THIS PART SCROLLS
+   --------------------------------------------------------- */
+
+.offline-library-card
+.offline-library-scroll{
+  flex:1 1 auto;
+  min-height:0;
+
+  overflow-y:auto !important;
+  overflow-x:hidden;
+
+  padding-right:6px;
+
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+
+
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+body[data-theme="light"]
+.offline-library-card > .form-header{
+  background:#fbf9fd;
+}
+
+
+/* =========================================================
+   DARK THEME
+   ========================================================= */
+
+body:not([data-theme="light"])
+.offline-library-card > .form-header{
+  background:#121925;
+}
+
+
+/* =========================================================
+   DESKTOP
+   ========================================================= */
+
+@media(min-width:701px){
+
+  .offline-library-card{
+    padding:28px 30px !important;
+    border-radius:24px !important;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .offline-library-card{
+    width:calc(100% - 12px) !important;
+
+    height:calc(100vh - 16px) !important;
+    height:calc(100dvh - 16px) !important;
+
+    max-height:none !important;
+
+    margin-top:8px;
+
+    padding:18px 16px !important;
+
+    border-radius:20px !important;
+  }
+
+  .offline-library-card > .form-header{
+    padding-bottom:14px;
+  }
+
+  .offline-library-card
+  #closeOfflineLibraryBtn{
+    width:36px;
+    height:36px;
+
+    border-radius:10px !important;
+  }
+
+}
