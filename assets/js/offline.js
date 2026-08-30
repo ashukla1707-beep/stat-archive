@@ -590,21 +590,60 @@ async function renderOfflineLibrary() {
   }
 
 
-  records.sort((a, b) => {
-    const pinDiff =
-      Number(offlinePinned(b)) -
-      Number(offlinePinned(a));
+ records.sort((a, b) => {
 
-    if (pinDiff) {
-      return pinDiff;
-    }
+  const subjectA =
+    String(
+      a.subjectName ||
+      a.subject ||
+      "Other"
+    ).trim();
 
-    return (
-      Number(b.savedAt) || 0
-    ) - (
-      Number(a.savedAt) || 0
+  const subjectB =
+    String(
+      b.subjectName ||
+      b.subject ||
+      "Other"
+    ).trim();
+
+  const subjectCompare =
+    subjectA.localeCompare(
+      subjectB,
+      undefined,
+      {
+        sensitivity: "base",
+        numeric: true
+      }
     );
-  });
+
+  if (subjectCompare !== 0) {
+    return subjectCompare;
+  }
+
+
+  const titleA =
+    String(
+      a.title ||
+      a.filename ||
+      "Untitled"
+    ).trim();
+
+  const titleB =
+    String(
+      b.title ||
+      b.filename ||
+      "Untitled"
+    ).trim();
+
+  return titleA.localeCompare(
+    titleB,
+    undefined,
+    {
+      sensitivity: "base",
+      numeric: true
+    }
+  );
+});
 
 
   offlineEntryIds.clear();
