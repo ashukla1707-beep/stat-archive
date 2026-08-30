@@ -3050,3 +3050,66 @@ body[data-theme="light"] .offline-btn.is-saved{
   }
 
 }
+/* =========================================================
+   OFFLINE SAVED STATE — CLEAR DIFFERENTIATION
+   ========================================================= */
+
+
+/* DARK THEME
+   Saved = cyan text + subtle cyan-tinted background */
+
+body:not([data-theme="light"]) .offline-btn.is-saved{
+  color:var(--cyan) !important;
+  background:rgba(94,231,247,.10) !important;
+  border-radius:7px;
+  box-shadow:inset 0 0 0 1px rgba(94,231,247,.16);
+}
+
+
+/* LIGHT THEME
+   Saved = white text on dark purple background */
+
+body[data-theme="light"] .offline-btn.is-saved{
+  color:#ffffff !important;
+  background:#4b365f !important;
+  border-radius:7px;
+  box-shadow:none !important;
+}
+
+
+/* =========================================================
+   DARK MOBILE SLIDER — SOFT GREY
+   ========================================================= */
+
+@media(max-width:700px){
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-webkit-slider-runnable-track{
+    background:rgba(148,163,184,.20) !important;
+  }
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-webkit-slider-thumb{
+    background:#7f8a9b !important;
+  }
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-moz-range-track{
+    background:rgba(148,163,184,.20) !important;
+  }
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-moz-range-progress{
+    background:#7f8a9b !important;
+  }
+
+  body:not([data-theme="light"])
+  .subject-mobile-scrollbar
+  input[type="range"]::-moz-range-thumb{
+    background:#7f8a9b !important;
+  }
+}
