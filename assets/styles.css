@@ -702,11 +702,25 @@ body{
     background:#dfe2e5;padding:8px;
     touch-action:pan-y pan-x pinch-zoom;scroll-behavior:smooth
   }
-  .pdf-pages{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
-  .pdf-page{
-    display:block;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.18);
-    max-width:none;height:auto;flex:0 0 auto
-  }
+ .pdf-pages{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:12px;
+  width:max-content;
+  min-width:100%;
+}
+
+.pdf-page{
+  display:block;
+  background:#fff;
+  box-shadow:0 1px 5px rgba(0,0,0,.18);
+  max-width:none;
+  height:auto;
+  flex:0 0 auto;
+  margin-left:auto;
+  margin-right:auto;
+}
   .pdf-page-placeholder{
     background:repeating-linear-gradient(135deg,#eef0f2,#eef0f2 10px,#e6e8eb 10px,#e6e8eb 20px)
   }
