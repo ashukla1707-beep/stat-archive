@@ -1582,13 +1582,26 @@ document
       }
 
 
-      if (
-        btn.classList.contains(
-          "pv-btn"
-        )
-      ) {
+   if (
+  btn.classList.contains(
+    "pv-btn"
+  )
+) {
 
-        previewEntry(entry);
+  btn.classList.add(
+    "is-previewed"
+  );
+
+  previewedEntryIds.add(
+    String(entry.id)
+  );
+
+  saveEntryActionHistory(
+    "statArchivePreviewedEntries",
+    previewedEntryIds
+  );
+
+  previewEntry(entry);
 
       } else if (
         btn.classList.contains(
