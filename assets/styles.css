@@ -2849,3 +2849,66 @@ body[data-theme="light"]
 .subject-row:not([data-subject-code="__latest__"]) .stamp{
   display:none !important;
 }
+/* =========================================================
+   SUBJECT NAME BADGE ABOVE ENTRY CARDS
+   ========================================================= */
+
+.subject-row-name{
+  display:inline-flex;
+  align-items:center;
+
+  padding:5px 9px;
+
+  border-radius:6px;
+
+  background:rgba(94,231,247,.065);
+
+  color:var(--cyan);
+
+  font:700 11px 'JetBrains Mono',monospace;
+
+  letter-spacing:.06em;
+}
+
+
+/* Light theme — same appearance as old card subject badge */
+
+body[data-theme="light"] .subject-row-name{
+  background:#e0ece8;
+  color:#245e57;
+}
+
+
+/* Keep Latest entries as a normal heading,
+   not as a subject badge */
+
+.subject-row[data-subject-code="__latest__"]
+.subject-row-name{
+  padding:0;
+  background:transparent;
+  color:var(--text);
+
+  font:700 14.5px 'JetBrains Mono',monospace;
+  letter-spacing:.01em;
+}
+
+
+body[data-theme="light"]
+.subject-row[data-subject-code="__latest__"]
+.subject-row-name{
+  background:transparent;
+  color:#27302d;
+}
+
+
+/* Mobile */
+
+@media(max-width:700px){
+
+  .subject-row-name{
+    padding:5px 8px;
+    font-size:10.5px;
+    line-height:1.35;
+  }
+
+}
