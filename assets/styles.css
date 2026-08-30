@@ -3540,3 +3540,6 @@ body:not([data-theme="light"])
   }
 
 }
+#offlineLibraryTitle{
+  font-weight:800 !important;
+}
