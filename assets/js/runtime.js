@@ -500,4 +500,47 @@ document.querySelectorAll(".overlay").forEach(overlay => {
     }
   });
 })();
+// ===== Desktop Offline Library horizontal mouse-wheel scrolling =====
 
+document.addEventListener(
+  "wheel",
+  event => {
+
+    const row =
+      event.target.closest(
+        ".offline-subject-files"
+      );
+
+    if (!row) return;
+
+    /*
+     * Do not interfere with touchpads that
+     * already provide horizontal deltaX.
+     */
+    if (
+      Math.abs(event.deltaX) >
+      Math.abs(event.deltaY)
+    ) {
+      return;
+    }
+
+    /*
+     * Nothing to scroll horizontally.
+     */
+    if (
+      row.scrollWidth <=
+      row.clientWidth
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+
+    row.scrollLeft +=
+      event.deltaY;
+
+  },
+  {
+    passive:false
+  }
+);
