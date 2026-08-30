@@ -3356,3 +3356,28 @@ body[data-theme="light"]
   background:#4b365f !important;
   box-shadow:none !important;
 }
+/* =========================================================
+   SUBJECT NAME — REMOVE BACKGROUND
+   ========================================================= */
+
+.subject-row-name{
+  background:transparent !important;
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+
+
+/* Light theme */
+body[data-theme="light"] .subject-row-name{
+  background:transparent !important;
+}
+
+
+/* Keep the text color */
+body:not([data-theme="light"]) .subject-row-name{
+  color:var(--cyan) !important;
+}
+
+body[data-theme="light"] .subject-row-name{
+  color:#245e57 !important;
+}
