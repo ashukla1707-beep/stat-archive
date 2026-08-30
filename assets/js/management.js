@@ -356,12 +356,19 @@ document.getElementById("editEntryForm").addEventListener("submit", async (e) =>
   }
 
   if (file) {
-    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
-    if (!allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))) {
-      showEditEntryError("Invalid file type. Only PDF and standard image files are allowed.");
-      return;
-    }
-    if (file.size > maxBytesForType(type)) {
+
+  if (
+    !file.name
+      .toLowerCase()
+      .endsWith(".pdf")
+  ) {
+    showEditEntryError(
+      "Invalid file type. Only PDF files can be uploaded."
+    );
+    return;
+  }
+
+  if (file.size > maxBytesForType(type)) {
       showEditEntryError(`That file is ${formatSize(file.size)}. ${type} files must be under ${formatSize(maxBytesForType(type))}.`);
       return;
     }
@@ -1029,13 +1036,19 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       return;
     }
 
-    const allowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp"];
-    const isValidType = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-    if (!isValidType) {
-      showFormError("Invalid file type. Only PDF and standard image files are allowed.");
-      isUploading = false;
-      return;
-    }
+   const isPdf =
+  file.name
+    .toLowerCase()
+    .endsWith(".pdf");
+
+if (!isPdf) {
+  showFormError(
+    "Invalid file type. Only PDF files can be uploaded."
+  );
+
+  isUploading = false;
+  return;
+}
 
     const typeLimit = maxBytesForType(selectedType);
 
