@@ -1603,16 +1603,29 @@ document
 
   previewEntry(entry);
 
-      } else if (
-        btn.classList.contains(
-          "dl-btn"
-        )
-      ) {
+    } else if (
+  btn.classList.contains(
+    "dl-btn"
+  )
+) {
 
-        downloadEntry(
-          entry,
-          btn
-        );
+  btn.classList.add(
+    "is-downloaded"
+  );
+
+  downloadedEntryIds.add(
+    String(entry.id)
+  );
+
+  saveEntryActionHistory(
+    "statArchiveDownloadedEntries",
+    downloadedEntryIds
+  );
+
+  downloadEntry(
+    entry,
+    btn
+  );
 
       } else if (
         btn.classList.contains(
