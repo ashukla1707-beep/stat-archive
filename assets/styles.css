@@ -3113,3 +3113,31 @@ body[data-theme="light"] .offline-btn.is-saved{
     background:#7f8a9b !important;
   }
 }
+/* =========================================================
+   KEEP SUBJECT NAME + ENTRY COUNT ON ONE LINE
+   MOBILE
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .subject-row-title{
+    display:flex !important;
+    align-items:center !important;
+    flex-wrap:nowrap !important;
+    gap:8px !important;
+    width:100%;
+    min-width:0;
+  }
+
+  .subject-row-name{
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  .subject-row-count{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+    margin-left:auto !important;
+  }
+
+}
