@@ -2582,3 +2582,164 @@ html.stat-archive-pwa .offline-btn{
     pointer-events:none !important;
   }
 }
+/* =========================================================
+   ARCHIVE FILTER GROUPING
+   Clear visual separation between Subjects, Types,
+   and the archive entries on desktop and mobile.
+   ========================================================= */
+
+.archive-filter-section{
+  width:100%;
+  padding:0 0 24px;
+}
+
+.archive-filter-section + .archive-filter-section{
+  padding-top:22px;
+  border-top:1px solid var(--line);
+}
+
+.archive-filter-label{
+  margin:0 0 11px 2px;
+  color:var(--muted);
+  font:700 10px 'JetBrains Mono',monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.archive-type-filter-section{
+  padding-bottom:24px;
+}
+
+
+/* =========================================================
+   ARCHIVE ENTRIES DIVIDER
+   ========================================================= */
+
+.archive-entries-divider{
+  max-width:1120px;
+  width:100%;
+
+  margin:10px auto 28px;
+
+  padding-top:24px;
+
+  border-top:1px solid var(--line);
+
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.archive-entries-divider > span{
+  flex:0 0 auto;
+
+  color:var(--muted);
+
+  font:700 10px 'JetBrains Mono',monospace;
+
+  letter-spacing:.12em;
+
+  text-transform:uppercase;
+}
+
+.archive-entries-divider > i{
+  display:block;
+
+  flex:1 1 auto;
+
+  height:1px;
+
+  background:var(--line);
+}
+
+
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+body[data-theme="light"] .archive-filter-label,
+body[data-theme="light"] .archive-entries-divider > span{
+  color:#756d7e;
+}
+
+body[data-theme="light"]
+.archive-filter-section + .archive-filter-section,
+body[data-theme="light"]
+.archive-entries-divider{
+  border-color:#d8d0e3;
+}
+
+body[data-theme="light"]
+.archive-entries-divider > i{
+  background:#d8d0e3;
+}
+
+
+/* =========================================================
+   DESKTOP
+   ========================================================= */
+
+@media (min-width:701px){
+
+  .archive-filter-section{
+    padding-bottom:26px;
+  }
+
+  .archive-filter-section + .archive-filter-section{
+    padding-top:24px;
+  }
+
+  .archive-entries-divider{
+    margin-top:12px;
+    margin-bottom:30px;
+
+    padding-top:27px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width:700px){
+
+  .archive-filter-section{
+    padding-bottom:24px;
+  }
+
+  .archive-filter-section + .archive-filter-section{
+    padding-top:20px;
+  }
+
+  .archive-filter-label{
+    margin-bottom:10px;
+  }
+
+  .archive-entries-divider{
+    margin-top:8px;
+    margin-bottom:27px;
+
+    padding-top:25px;
+  }
+
+}
+
+
+/* =========================================================
+   LARGE DESKTOP / FULL-WIDTH MODE
+
+   Your existing stylesheet expands the main archive area
+   beyond the old 1120px limit on large desktop screens.
+   Keep the new archive divider aligned with that same layout.
+   ========================================================= */
+
+@media (min-width:1200px){
+
+  .archive-entries-divider{
+    max-width:none !important;
+    width:100% !important;
+  }
+
+}
