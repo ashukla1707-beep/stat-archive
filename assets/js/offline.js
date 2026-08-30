@@ -335,7 +335,12 @@ function offlineRecordLabel(record) {
 let offlineSearchTerm = "";
 let offlineSubjectFilter = "All";
 let offlineTypeFilter = "All";
+let offlineSubjectsExpanded = false;
 
+
+/* =========================================================
+   OFFLINE HELPERS
+   ========================================================= */
 
 function offlinePinned(record) {
   return record?.pinned === true;
@@ -343,10 +348,9 @@ function offlinePinned(record) {
 
 
 function offlineSavedDate(record) {
-  const n =
-    Number(
-      record?.savedAt || 0
-    );
+  const n = Number(
+    record?.savedAt || 0
+  );
 
   if (!n) return "";
 
@@ -372,9 +376,8 @@ function offlineSavedDate(record) {
    OFFLINE SUBJECT FILTERS
    ========================================================= */
 
-let offlineSubjectsExpanded = false;
-
 function renderOfflineSubjectFilters(records) {
+
   const wrap =
     document.getElementById(
       "offlineSubjectFilters"
@@ -384,8 +387,7 @@ function renderOfflineSubjectFilters(records) {
 
 
   /*
-   * Get unique subjects
-   * and keep them alphabetical.
+   * Unique subjects, alphabetical.
    */
   const subjects =
     [...new Set(
@@ -412,8 +414,7 @@ function renderOfflineSubjectFilters(records) {
 
 
   /*
-   * If selected subject no longer exists,
-   * return to All subjects.
+   * Reset invalid selection.
    */
   if (
     offlineSubjectFilter !== "All" &&
@@ -426,7 +427,7 @@ function renderOfflineSubjectFilters(records) {
 
 
   /*
-   * Normally show only first 3 subjects.
+   * Show only 3 subjects normally.
    */
   const visibleSubjects =
     offlineSubjectsExpanded
@@ -448,14 +449,15 @@ function renderOfflineSubjectFilters(records) {
           ? " active"
           : ""
       }"
-      data-offline-subject="All">
+      data-offline-subject="All"
+    >
       All subjects
     </button>
   `);
 
 
   /*
-   * Individual subject buttons
+   * First 3 / all subject buttons
    */
   visibleSubjects.forEach(subject => {
 
@@ -467,7 +469,8 @@ function renderOfflineSubjectFilters(records) {
             ? " active"
             : ""
         }"
-        data-offline-subject="${escapeHtml(subject)}">
+        data-offline-subject="${escapeHtml(subject)}"
+      >
         ${escapeHtml(subject)}
       </button>
     `);
@@ -484,7 +487,8 @@ function renderOfflineSubjectFilters(records) {
       <button
         type="button"
         class="offline-filter offline-subject-more-btn"
-        data-offline-subject-more="true">
+        data-offline-subject-more="true"
+      >
         ${
           offlineSubjectsExpanded
             ? "Less"
@@ -499,61 +503,110 @@ function renderOfflineSubjectFilters(records) {
   wrap.innerHTML =
     buttons.join("");
 }
+
+
+/* =========================================================
+   OFFLINE TYPE FILTERS
+   ========================================================= */
+
+function renderOfflineTypeFilters(records) {
+
   const wrap =
     document.getElementById(
-      "offlineSubjectFilters"
+      "offlineTypeFilters"
     );
 
   if (!wrap) return;
 
-  const subjects = [
+
+  const types = [
     ...new Set(
       (records || [])
         .map(record =>
           String(
-            record.subjectName ||
-            record.subject ||
-            "Other"
+            record.type || ""
           ).trim()
         )
         .filter(Boolean)
     )
-  ].sort(
+  ];
+
+
+  const typeRank = type => {
+
+    const t =
+      String(type || "")
+        .trim()
+        .toLowerCase();
+
+    if (t === "book") return 0;
+
+    if (
+      t === "notes" ||
+      t === "note"
+    ) {
+      return 1;
+    }
+
+    if (
+      t === "previous year question" ||
+      t === "pyq"
+    ) {
+      return 2;
+    }
+
+    if (
+      t === "mid-term question" ||
+      t === "mid term question" ||
+      t === "mtq"
+    ) {
+      return 3;
+    }
+
+    return 100;
+  };
+
+
+  types.sort(
     (a, b) =>
+      typeRank(a) -
+        typeRank(b) ||
       a.localeCompare(b)
   );
 
+
   const options =
-    ["All", ...subjects];
+    ["All", ...types];
+
 
   if (
     !options.includes(
-      offlineSubjectFilter
+      offlineTypeFilter
     )
   ) {
-    offlineSubjectFilter = "All";
+    offlineTypeFilter = "All";
   }
 
+
   wrap.innerHTML =
-    options.map(subject => `
+    options.map(type => `
       <button
         type="button"
         class="offline-filter${
-          offlineSubjectFilter === subject
+          offlineTypeFilter === type
             ? " active"
             : ""
         }"
-        data-offline-subject="${escapeHtml(subject)}"
+        data-offline-filter="${escapeHtml(type)}"
       >
         ${escapeHtml(
-          subject === "All"
-            ? "All subjects"
-            : subject
+          type === "All"
+            ? "All types"
+            : type
         )}
       </button>
     `).join("");
 }
-
 
 /* =========================================================
    OFFLINE TYPE FILTERS
