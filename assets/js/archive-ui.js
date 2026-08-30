@@ -135,11 +135,7 @@ function buildCard(entry) {
       <span class="card-type"${isBook && entry.title ? ` data-full-title="${escapeHtml(typeLabel)}" tabindex="0"` : ""}>${escapeHtml(typeLabel)}</span>
       ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
     </div>
-    ${archiveRole === "viewer" ? "" : `
-    <div class="card-file-row">
-      <span class="card-filename" title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</span>
-      <span class="card-size">${formatSize(entry.size)}</span>
-    </div>`}
+
     <div class="card-actions">
       ${entry.driveUrl
         ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
