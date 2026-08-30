@@ -383,12 +383,20 @@ function render() {
     row.className = "subject-row";
     row.dataset.subjectCode = code;
     row.innerHTML = `
-      <div class="subject-row-head">
-        <div class="subject-row-title">
-          ${code === "__latest__" ? "Latest entries" : escapeHtml(meta.name)}
-          <span class="subject-row-count">${groupEntries.length} ${groupEntries.length === 1 ? "entry" : "entries"}</span>
-        </div>
-      </div>
+  <div class="subject-row-head">
+    <div class="subject-row-title">
+
+      <span class="subject-row-name">
+        ${code === "__latest__" ? "Latest entries" : escapeHtml(meta.name)}
+      </span>
+
+      <span class="subject-row-count">
+        ${groupEntries.length}
+        ${groupEntries.length === 1 ? "entry" : "entries"}
+      </span>
+
+    </div>
+  </div>
       <div class="subject-carousel">
         <div class="subject-track"></div>
         <div class="subject-nav-row">
