@@ -2743,3 +2743,99 @@ body[data-theme="light"]
   }
 
 }
+/* =========================================================
+   COMPACT FILTER / ACTION SPACING
+   ========================================================= */
+
+.archive-filter-section{
+  padding-bottom:14px !important;
+}
+
+.archive-filter-section + .archive-filter-section{
+  padding-top:14px !important;
+}
+
+.archive-filter-label{
+  margin-bottom:8px !important;
+}
+
+.archive-type-filter-section{
+  padding-bottom:14px !important;
+}
+
+
+/* Divider between filters and action buttons */
+.archive-action-row{
+  width:100%;
+  margin-top:14px !important;
+  padding-top:18px;
+
+  border-top:1px solid var(--line);
+}
+
+
+/* Keep action buttons close together */
+.archive-action-row{
+  gap:10px !important;
+}
+
+#permissionHint{
+  margin-top:4px !important;
+}
+
+
+/* Archive entries divider should not create a large empty area */
+.archive-entries-divider{
+  margin-top:16px !important;
+  margin-bottom:20px !important;
+
+  padding-top:18px !important;
+}
+
+
+/* Remove the extra line above Archive entries,
+   because the actions already have their own divider */
+.archive-entries-divider{
+  border-top:0 !important;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .toolbar{
+    gap:8px !important;
+    margin-bottom:14px !important;
+  }
+
+  .archive-filter-section{
+    padding-bottom:12px !important;
+  }
+
+  .archive-filter-section + .archive-filter-section{
+    padding-top:12px !important;
+  }
+
+  .archive-filter-label{
+    margin-bottom:8px !important;
+  }
+
+  .archive-action-row{
+    margin-top:10px !important;
+    padding-top:16px !important;
+  }
+
+  #permissionHint{
+    margin-top:2px !important;
+  }
+
+  .archive-entries-divider{
+    margin-top:12px !important;
+    margin-bottom:18px !important;
+    padding-top:14px !important;
+  }
+
+}
