@@ -1540,7 +1540,10 @@ body{
   vector-effect:non-scaling-stroke;
   filter:drop-shadow(0 0 6px rgba(94,231,247,.45));
 
+  stroke-dasharray:none !important;
+  stroke-dashoffset:0 !important;
   animation:none !important;
+  transition:none !important;
 }
 @keyframes curveDrawOnce{
   0%{stroke-dashoffset:1000;opacity:.35}
