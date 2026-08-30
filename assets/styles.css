@@ -1539,9 +1539,8 @@ body{
   stroke-linejoin:round;
   vector-effect:non-scaling-stroke;
   filter:drop-shadow(0 0 6px rgba(94,231,247,.45));
-  stroke-dasharray:1000;
-  stroke-dashoffset:1000;
-  animation:curveDrawOnce 3.4s cubic-bezier(.22,.61,.36,1) forwards;
+
+  animation:none !important;
 }
 @keyframes curveDrawOnce{
   0%{stroke-dashoffset:1000;opacity:.35}
