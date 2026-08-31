@@ -4398,6 +4398,92 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 
 /* =========================================================
+   DESKTOP HERO — FIXED GRAPH SIZE + UNIFORM VERTICAL SPACE
+   Mobile remains unchanged
+   ========================================================= */
+
+@media(min-width:901px){
+
+  .header{
+    position:relative !important;
+  }
+
+  /* Keep graph size unchanged and center it vertically */
+  .hero-probability{
+    position:absolute !important;
+
+    right:82px !important;
+
+    top:50% !important;
+    bottom:auto !important;
+
+    transform:translateY(-50%) !important;
+
+    width:400px !important;
+    height:250px !important;
+
+    margin:0 !important;
+  }
+
+  /* Menu stays inside hero, top-right */
+  .main-menu-btn{
+    position:absolute !important;
+
+    top:18px !important;
+    right:18px !important;
+
+    left:auto !important;
+    bottom:auto !important;
+
+    width:38px !important;
+    min-width:38px !important;
+    height:38px !important;
+
+    margin:0 !important;
+    padding:0 !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    z-index:100 !important;
+
+    border:1px solid rgba(148,163,184,.18) !important;
+    border-radius:10px !important;
+
+    background:rgba(9,14,21,.64) !important;
+    color:#cbd5e1 !important;
+
+    font-size:19px !important;
+    line-height:1 !important;
+
+    box-shadow:none !important;
+
+    transform:none !important;
+  }
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+  .main-menu-btn:hover{
+    background:rgba(94,231,247,.07) !important;
+    border-color:rgba(94,231,247,.38) !important;
+    color:var(--cyan) !important;
+  }
+
+  body[data-theme="light"] .main-menu-btn{
+    background:rgba(250,248,241,.72) !important;
+    border-color:rgba(86,65,100,.16) !important;
+    color:#4b365f !important;
+  }
+
+}
+
+
+/* =========================================================
    MOBILE — KEEP CURRENT WORKING LAYOUT
    ========================================================= */
 
@@ -4408,7 +4494,6 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
     top:14px !important;
     right:14px !important;
-
     left:auto !important;
 
     width:40px !important;
