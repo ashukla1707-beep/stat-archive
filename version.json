@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.5.1",
-  "apkUrl": "https://stat-archive.lustats.workers.dev/downloads/stat-archive.apk",
+  "versionCode": 9,
+  "versionName": "1.5.2",
+  "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
   "message": "A new version of Stat Archive is available."
 }
