@@ -5120,3 +5120,162 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     color:#4b365f !important;
   }
 }
+/* =========================================================
+   FINAL GRAPH POLISH
+   Hide MEAN + menu inside graph + larger curve
+   DESKTOP ONLY
+   ========================================================= */
+
+@media(min-width:901px){
+
+  /* -------------------------------------------------------
+     1. REMOVE MEAN COMPLETELY
+     ------------------------------------------------------- */
+
+  .hero-probability .curve-note.note-one{
+    display:none !important;
+  }
+
+  .hero-probability .curve-note.note-one::before,
+  .hero-probability .curve-note.note-one::after{
+    content:none !important;
+    display:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     2. KEEP GRAPH BLOCK SIZE EXACTLY THE SAME
+     ------------------------------------------------------- */
+
+  .hero-probability{
+    width:510px !important;
+    height:235px !important;
+
+    position:absolute !important;
+    top:50% !important;
+    right:42px !important;
+
+    transform:translateY(-50%) !important;
+  }
+
+
+  /* -------------------------------------------------------
+     3. ENLARGE ACTUAL GRAPH INSIDE SAME BLOCK
+     ------------------------------------------------------- */
+
+  .hero-probability .probability-svg{
+    position:absolute !important;
+
+    /* use almost all available width */
+    left:8px !important;
+    right:8px !important;
+
+    top:35px !important;
+
+    width:494px !important;
+    height:194px !important;
+
+    transform:none !important;
+  }
+
+
+  /*
+   * Make bell curve wider AND taller.
+   * The outer graph block does not change.
+   */
+  .hero-probability .gaussian-curve{
+    transform-box:fill-box !important;
+    transform-origin:center bottom !important;
+
+    transform:
+      translateY(-9px)
+      scaleX(1.08)
+      scaleY(1.18) !important;
+  }
+
+
+  /* Mean vertical guide remains centred */
+  .hero-probability .mean-line{
+    transform:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     4. MENU INSIDE GRAPH BLOCK — TOP RIGHT
+     ------------------------------------------------------- */
+
+  .main-menu-btn{
+    position:absolute !important;
+
+    /*
+     * Graph block:
+     * right:42px
+     * width:510px
+     *
+     * This puts the hamburger inside its
+     * upper-right corner.
+     */
+    top:calc(50% - 99px) !important;
+    right:56px !important;
+
+    left:auto !important;
+    bottom:auto !important;
+
+    width:42px !important;
+    min-width:42px !important;
+    height:42px !important;
+
+    margin:0 !important;
+    padding:0 !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    z-index:150 !important;
+
+    transform:none !important;
+
+    border-radius:11px !important;
+
+    background:rgba(8,14,22,.78) !important;
+    border:1px solid rgba(148,163,184,.18) !important;
+
+    box-shadow:none !important;
+  }
+
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     5. KEEP DISTRIBUTION CLEAR OF MENU
+     ------------------------------------------------------- */
+
+  .hero-probability .curve-title{
+    top:16px !important;
+    left:18px !important;
+  }
+
+
+  /* Formula remains removed */
+  .hero-probability .formula-chip{
+    display:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     LIGHT THEME
+     ------------------------------------------------------- */
+
+  body[data-theme="light"] .main-menu-btn{
+    background:rgba(250,248,241,.88) !important;
+    border-color:rgba(86,65,100,.16) !important;
+    color:#4b365f !important;
+  }
+
+}
