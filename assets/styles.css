@@ -4158,3 +4158,57 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
+/* =========================================================
+   FINAL DESKTOP HERO GRAPH + MENU POSITION
+   Mobile remains unchanged
+   ========================================================= */
+
+@media(min-width:901px){
+
+  /* Move probability graph 15px to the left */
+  .hero-probability{
+    right:75px !important;
+  }
+
+
+  /* Keep menu button clear of graph */
+  .main-menu-btn{
+    top:16px !important;
+    right:12px !important;
+
+    width:42px !important;
+    height:42px !important;
+
+    z-index:60 !important;
+
+    border-radius:12px !important;
+
+    background:rgba(15,20,29,.88) !important;
+    border:1px solid rgba(148,163,184,.25) !important;
+
+    box-shadow:
+      0 8px 24px rgba(0,0,0,.18) !important;
+
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
+
+}
+
+
+/* Light theme desktop menu button */
+
+@media(min-width:901px){
+
+  body[data-theme="light"] .main-menu-btn{
+    background:rgba(250,248,241,.90) !important;
+
+    border-color:rgba(86,65,100,.22) !important;
+
+    color:#4b365f !important;
+
+    box-shadow:
+      0 8px 22px rgba(58,53,42,.10) !important;
+  }
+
+}
