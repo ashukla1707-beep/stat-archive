@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-menu-flash-fix-v2";
+const CACHE = "stat-archive-shell-v20260901-menu-flash-fix-v3";
 
 const APP_SHELL = [
   "./",
@@ -22,6 +22,8 @@ const APP_SHELL = [
   "./icons/icon-512.png"
 ];
 
+const MENU_FLASH_GUARD = `\n/* startup menu hard guard */\n.main-side-menu:not(.is-open),\n.main-menu-backdrop:not(.is-open){display:none !important;}\n`;
+
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE)
@@ -39,6 +41,51 @@ self.addEventListener("activate", event => {
       .then(() => self.clients.claim())
   );
 });
+
+async function fetchMutable(request, url, isNavigation) {
+  try {
+    const response = await fetch(request);
+    if (!response || !response.ok) return response;
+
+    let finalResponse = response;
+
+    if (url.pathname.endsWith("/assets/scanner.css")) {
+      const css = await response.text();
+      finalResponse = new Response(css + MENU_FLASH_GUARD, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      });
+    }
+
+    const copy = finalResponse.clone();
+    caches.open(CACHE).then(cache => cache.put(request, copy));
+    return finalResponse;
+  } catch (_) {
+    const cache = await caches.open(CACHE);
+
+    if (isNavigation) {
+      return (await cache.match(request)) ||
+             (await cache.match("./index.html")) ||
+             (await cache.match("./")) ||
+             Response.error();
+    }
+
+    const cached = await cache.match(request);
+    if (!cached) return Response.error();
+
+    if (url.pathname.endsWith("/assets/scanner.css")) {
+      const css = await cached.text();
+      return new Response(css + MENU_FLASH_GUARD, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers: cached.headers
+      });
+    }
+
+    return cached;
+  }
+}
 
 self.addEventListener("fetch", event => {
   const request = event.request;
@@ -61,28 +108,7 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith("/manifest.json");
 
   if (isNavigation || isMutableAppAsset) {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then(cache => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE);
-
-          if (isNavigation) {
-            return (await cache.match(request)) ||
-                   (await cache.match("./index.html")) ||
-                   (await cache.match("./")) ||
-                   Response.error();
-          }
-
-          return (await cache.match(request)) || Response.error();
-        })
-    );
+    event.respondWith(fetchMutable(request, url, isNavigation));
     return;
   }
 
