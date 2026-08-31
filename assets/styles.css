@@ -3554,3 +3554,502 @@ body:not([data-theme="light"])
     font-size:19px !important;
   }
 }
+/* =========================================================
+   MAIN HAMBURGER / SIDE MENU
+   ========================================================= */
+
+.main-menu-btn{
+  position:absolute;
+  top:18px;
+  right:18px;
+  z-index:8;
+
+  width:42px;
+  height:42px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:0;
+
+  border:1px solid var(--line-strong);
+  border-radius:11px;
+
+  background:rgba(255,255,255,.025);
+  color:var(--text);
+
+  font-size:20px;
+  line-height:1;
+
+  cursor:pointer;
+
+  transition:
+    border-color .18s ease,
+    background .18s ease,
+    color .18s ease,
+    transform .18s ease;
+}
+
+
+.main-menu-btn:hover{
+  border-color:rgba(94,231,247,.50);
+  background:rgba(94,231,247,.07);
+  color:var(--cyan);
+}
+
+
+/* -----------------------------------------
+   Backdrop
+   ----------------------------------------- */
+
+.main-menu-backdrop{
+  position:fixed;
+  inset:0;
+
+  z-index:9990;
+
+  background:rgba(0,0,0,.48);
+
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+
+  transition:
+    opacity .22s ease,
+    visibility .22s ease;
+}
+
+
+.main-menu-backdrop.is-open{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+
+
+/* -----------------------------------------
+   Side panel
+   ----------------------------------------- */
+
+.main-side-menu{
+  position:fixed;
+
+  top:0;
+  right:0;
+
+  z-index:9991;
+
+  width:min(360px,88vw);
+  height:100vh;
+  height:100dvh;
+
+  padding:22px;
+
+  overflow-y:auto;
+
+  border-left:1px solid var(--line);
+
+  background:var(--panel-solid);
+
+  box-shadow:-22px 0 60px rgba(0,0,0,.35);
+
+  transform:translateX(102%);
+
+  transition:transform .24s ease;
+
+  -webkit-overflow-scrolling:touch;
+}
+
+
+.main-side-menu.is-open{
+  transform:translateX(0);
+}
+
+
+/* -----------------------------------------
+   Header
+   ----------------------------------------- */
+
+.main-side-menu-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  gap:12px;
+
+  padding-bottom:18px;
+
+  border-bottom:1px solid var(--line);
+}
+
+
+.main-side-menu-brand{
+  display:flex;
+  flex-direction:column;
+
+  gap:3px;
+}
+
+
+.main-side-menu-brand strong{
+  color:var(--text);
+
+  font:900 17px 'JetBrains Mono',monospace;
+}
+
+
+.main-side-menu-brand span{
+  color:var(--muted);
+
+  font:600 10px 'JetBrains Mono',monospace;
+
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+
+.main-side-menu-close{
+  width:36px;
+  height:36px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:0;
+
+  border:1px solid var(--line);
+  border-radius:10px;
+
+  background:transparent;
+  color:var(--muted);
+
+  font-size:17px;
+
+  cursor:pointer;
+}
+
+
+/* -----------------------------------------
+   Sections
+   ----------------------------------------- */
+
+.main-menu-section{
+  padding:19px 0;
+
+  border-bottom:1px solid var(--line);
+}
+
+
+.main-menu-label{
+  margin-bottom:10px;
+
+  color:var(--muted);
+
+  font:700 9px 'JetBrains Mono',monospace;
+
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+
+/* -----------------------------------------
+   Theme
+   ----------------------------------------- */
+
+.main-menu-theme-row{
+  display:grid;
+
+  grid-template-columns:1fr 1fr;
+
+  gap:8px;
+}
+
+
+.main-menu-theme-btn{
+  min-height:44px;
+
+  border:1px solid var(--line);
+
+  border-radius:11px;
+
+  background:rgba(255,255,255,.02);
+
+  color:var(--text);
+
+  font:700 11px 'JetBrains Mono',monospace;
+
+  cursor:pointer;
+}
+
+
+.main-menu-theme-btn.is-active{
+  border-color:rgba(94,231,247,.42);
+
+  background:rgba(94,231,247,.08);
+
+  color:var(--cyan);
+}
+
+
+/* -----------------------------------------
+   Account status
+   ----------------------------------------- */
+
+.main-menu-account-status{
+  display:flex;
+  align-items:center;
+
+  gap:8px;
+
+  margin-bottom:10px;
+
+  color:var(--muted);
+
+  font:600 11px 'JetBrains Mono',monospace;
+}
+
+
+.main-menu-account-dot{
+  width:8px;
+  height:8px;
+
+  flex:0 0 auto;
+
+  border-radius:50%;
+
+  background:var(--muted-2);
+}
+
+
+.main-menu-account-dot.is-signed-in{
+  background:var(--green);
+
+  box-shadow:0 0 9px var(--green);
+}
+
+
+/* -----------------------------------------
+   Menu actions
+   ----------------------------------------- */
+
+.main-menu-action{
+  width:100%;
+  min-height:44px;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  gap:12px;
+
+  margin:0 0 8px;
+
+  padding:11px 12px;
+
+  border:1px solid var(--line);
+  border-radius:11px;
+
+  background:rgba(255,255,255,.02);
+
+  color:var(--text);
+
+  text-align:left;
+
+  font:700 11px 'JetBrains Mono',monospace;
+
+  cursor:pointer;
+
+  transition:
+    border-color .18s ease,
+    background .18s ease,
+    color .18s ease;
+}
+
+
+.main-menu-action:hover{
+  border-color:rgba(94,231,247,.42);
+
+  background:rgba(94,231,247,.055);
+
+  color:var(--cyan);
+}
+
+
+.main-menu-arrow{
+  color:var(--muted);
+
+  font-size:19px;
+}
+
+
+/* -----------------------------------------
+   Footer
+   ----------------------------------------- */
+
+.main-menu-footer{
+  display:flex;
+  flex-direction:column;
+
+  gap:4px;
+
+  padding-top:18px;
+
+  color:var(--muted);
+}
+
+
+.main-menu-footer strong{
+  font:700 10px 'JetBrains Mono',monospace;
+}
+
+
+.main-menu-footer span{
+  font-size:11px;
+}
+
+
+/* =========================================================
+   ABOUT WINDOW
+   ========================================================= */
+
+.about-archive-card{
+  width:min(540px,calc(100vw - 32px));
+
+  border-radius:22px !important;
+}
+
+
+#aboutArchiveTitle{
+  font-size:20px !important;
+  font-weight:900 !important;
+}
+
+
+.about-archive-body{
+  color:var(--muted);
+
+  font-size:13px;
+  line-height:1.7;
+}
+
+
+.about-archive-body p{
+  margin:0 0 14px;
+}
+
+
+.about-archive-meta{
+  display:flex;
+  flex-direction:column;
+
+  gap:4px;
+
+  margin-top:20px;
+  padding-top:16px;
+
+  border-top:1px solid var(--line);
+}
+
+
+.about-archive-meta span{
+  color:var(--text);
+
+  font:800 12px 'JetBrains Mono',monospace;
+}
+
+
+.about-archive-meta small{
+  color:var(--muted);
+
+  font:600 9px 'JetBrains Mono',monospace;
+
+  letter-spacing:.08em;
+
+  text-transform:uppercase;
+}
+
+
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+body[data-theme="light"] .main-menu-btn{
+  background:rgba(75,54,95,.03);
+  color:#4b365f;
+}
+
+
+body[data-theme="light"] .main-side-menu{
+  background:#fbf9fd;
+
+  border-color:#ddd4e4;
+
+  box-shadow:-22px 0 60px rgba(51,42,60,.16);
+}
+
+
+body[data-theme="light"] .main-menu-theme-btn.is-active{
+  border-color:rgba(75,54,95,.35);
+
+  background:rgba(75,54,95,.09);
+
+  color:#4b365f;
+}
+
+
+body[data-theme="light"] .main-menu-action:hover{
+  border-color:rgba(75,54,95,.34);
+
+  background:rgba(75,54,95,.055);
+
+  color:#4b365f;
+}
+
+
+/* =========================================================
+   REMOVE OLD TOP THEME + AUTH UI
+   They stay in DOM so existing JS keeps working.
+   ========================================================= */
+
+.theme-toggle,
+.authbar{
+  display:none !important;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .main-menu-btn{
+    top:14px;
+    right:14px;
+
+    width:40px;
+    height:40px;
+
+    border-radius:10px;
+  }
+
+
+  .main-side-menu{
+    width:min(340px,90vw);
+
+    padding:
+      max(18px,env(safe-area-inset-top))
+      18px
+      max(20px,env(safe-area-inset-bottom));
+  }
+
+
+  .about-archive-card{
+    width:calc(100% - 16px);
+
+    border-radius:20px !important;
+  }
+
+}
