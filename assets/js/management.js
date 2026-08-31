@@ -4914,6 +4914,79 @@ document
 
 
   /* -----------------------------------------
+     OFFLINE LIBRARY
+     ----------------------------------------- */
+
+  const menuOfflineLibraryBtn =
+    document.getElementById(
+      "menuOfflineLibraryBtn"
+    );
+
+  const originalOfflineLibraryBtn =
+    document.getElementById(
+      "offlineLibraryBtn"
+    );
+
+  const originalOfflineCount =
+    document.getElementById(
+      "offlineLibraryCount"
+    );
+
+  const menuOfflineCount =
+    document.getElementById(
+      "menuOfflineLibraryCount"
+    );
+
+
+  function syncOfflineLibraryCount(){
+
+    if (
+      originalOfflineCount &&
+      menuOfflineCount
+    ) {
+
+      menuOfflineCount.textContent =
+        originalOfflineCount.textContent.trim();
+
+    }
+
+  }
+
+
+  menuOfflineLibraryBtn
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeMenu();
+
+        originalOfflineLibraryBtn
+          ?.click();
+
+      }
+    );
+
+
+  syncOfflineLibraryCount();
+
+
+  if (originalOfflineCount) {
+
+    new MutationObserver(
+      syncOfflineLibraryCount
+    ).observe(
+      originalOfflineCount,
+      {
+        childList:true,
+        subtree:true,
+        characterData:true
+      }
+    );
+
+  }
+
+
+  /* -----------------------------------------
      MANUALS
      We connect the actual manuals next.
      ----------------------------------------- */
