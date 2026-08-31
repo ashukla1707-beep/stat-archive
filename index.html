@@ -554,11 +554,6 @@
 
 
 
-<!-- Supabase JS client library. Required before supabase.createClient() below
-     — without this, that call throws "supabase is not defined" and the rest
-     of the script (including init(), which loads all entries/subjects)
-     never runs, leaving the page permanently blank/read-only. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- =========================================================
      MAIN SIDE MENU
      ========================================================= -->
@@ -577,195 +572,46 @@
   aria-hidden="true"
 >
 
- <!-- ACCOUNT -->
+  <!-- HEADER -->
 
-<section class="main-menu-section">
+  <div class="main-side-menu-head">
 
-  <div class="main-menu-label">
-    Account
-  </div>
+    <div class="main-side-menu-brand">
 
-  <div class="main-menu-account-status">
+      <strong>
+        Stat Archive
+      </strong>
 
-    <span
-      class="main-menu-account-dot"
-      id="menuAccountDot"
-    ></span>
+      <span>
+        Menu
+      </span>
 
-    <span id="menuAccountStatus">
-      Read-only access
-    </span>
+    </div>
 
-  </div>
-
-  <button
-    type="button"
-    class="main-menu-action"
-    id="menuAuthBtn"
-  >
-
-    <span id="menuAuthText">
-      Sign in
-    </span>
-
-    <span class="main-menu-arrow">
-      ›
-    </span>
-
-  </button>
-
-</section>
-
-
-<!-- APPEARANCE -->
-
-<section class="main-menu-section">
-
-  <div class="main-menu-label">
-    Appearance
-  </div>
-
-  <div class="main-menu-theme-row">
 
     <button
       type="button"
-      class="main-menu-theme-btn"
-      id="menuDarkBtn"
+      class="main-side-menu-close"
+      id="mainMenuCloseBtn"
+      aria-label="Close menu"
     >
-      ☾ Dark
-    </button>
-
-    <button
-      type="button"
-      class="main-menu-theme-btn"
-      id="menuLightBtn"
-    >
-      ☀ Light
+      ✕
     </button>
 
   </div>
 
-</section>
 
 
-<!-- OFFLINE LIBRARY -->
-
-<section class="main-menu-section">
-
-  <button
-    type="button"
-    class="main-menu-action"
-    id="menuOfflineLibraryBtn"
-  >
-
-    <span>
-      Offline Library
-    </span>
-
-    <span class="main-menu-side-meta">
-
-      <span
-        class="offline-library-count"
-        id="menuOfflineLibraryCount"
-      >
-        0
-      </span>
-
-      <span class="main-menu-arrow">
-        ›
-      </span>
-
-    </span>
-
-  </button>
-
-</section>
-
-
-<!-- MANUAL -->
-
-<section class="main-menu-section">
-
-  <button
-    type="button"
-    class="main-menu-action"
-    id="menuManualsBtn"
-  >
-
-    <span>
-      Manual
-    </span>
-
-    <span class="main-menu-arrow">
-      ›
-    </span>
-
-  </button>
-
-</section>
-
-
-<!-- ABOUT -->
-
-<section class="main-menu-section">
-
-  <button
-    type="button"
-    class="main-menu-action"
-    id="menuAboutBtn"
-  >
-
-    <span>
-      About Stat Archive
-    </span>
-
-    <span class="main-menu-arrow">
-      ›
-    </span>
-
-  </button>
-
-</section>
-
-
-  <!-- APPEARANCE -->
-
-  <section class="main-menu-section">
-
-    <div class="main-menu-label">
-      Appearance
-    </div>
-
-    <div class="main-menu-theme-row">
-
-      <button
-        type="button"
-        class="main-menu-theme-btn"
-        id="menuDarkBtn"
-      >
-        ☾ Dark
-      </button>
-
-      <button
-        type="button"
-        class="main-menu-theme-btn"
-        id="menuLightBtn"
-      >
-        ☀ Light
-      </button>
-
-    </div>
-
-  </section>
-
-
-  <!-- ACCOUNT -->
+  <!-- =====================================================
+       ACCOUNT
+       ===================================================== -->
 
   <section class="main-menu-section">
 
     <div class="main-menu-label">
       Account
     </div>
+
 
     <div class="main-menu-account-status">
 
@@ -800,14 +646,87 @@
   </section>
 
 
-  <!-- HELP -->
+
+  <!-- =====================================================
+       APPEARANCE
+       ===================================================== -->
 
   <section class="main-menu-section">
 
     <div class="main-menu-label">
-      Help
+      Appearance
     </div>
 
+
+    <div class="main-menu-theme-row">
+
+      <button
+        type="button"
+        class="main-menu-theme-btn"
+        id="menuDarkBtn"
+      >
+        ☾ Dark
+      </button>
+
+
+      <button
+        type="button"
+        class="main-menu-theme-btn"
+        id="menuLightBtn"
+      >
+        ☀ Light
+      </button>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =====================================================
+       OFFLINE LIBRARY
+       ===================================================== -->
+
+  <section class="main-menu-section">
+
+    <button
+      type="button"
+      class="main-menu-action"
+      id="menuOfflineLibraryBtn"
+    >
+
+      <span>
+        Offline Library
+      </span>
+
+
+      <span class="main-menu-side-meta">
+
+        <span
+          class="offline-library-count"
+          id="menuOfflineLibraryCount"
+        >
+          0
+        </span>
+
+
+        <span class="main-menu-arrow">
+          ›
+        </span>
+
+      </span>
+
+    </button>
+
+  </section>
+
+
+
+  <!-- =====================================================
+       MANUAL
+       ===================================================== -->
+
+  <section class="main-menu-section">
 
     <button
       type="button"
@@ -816,7 +735,7 @@
     >
 
       <span>
-        Help &amp; Manuals
+        Manual
       </span>
 
       <span class="main-menu-arrow">
@@ -825,6 +744,15 @@
 
     </button>
 
+  </section>
+
+
+
+  <!-- =====================================================
+       ABOUT STAT ARCHIVE
+       ===================================================== -->
+
+  <section class="main-menu-section">
 
     <button
       type="button"
@@ -845,6 +773,11 @@
   </section>
 
 
+
+  <!-- =====================================================
+       FOOTER
+       ===================================================== -->
+
   <div class="main-menu-footer">
 
     <strong>
@@ -860,8 +793,9 @@
 </aside>
 
 
+
 <!-- =========================================================
-     ABOUT STAT ARCHIVE
+     ABOUT STAT ARCHIVE WINDOW
      ========================================================= -->
 
 <div
@@ -883,6 +817,7 @@
         About Stat Archive
       </span>
 
+
       <button
         type="button"
         class="close-btn"
@@ -903,6 +838,7 @@
         University of Lucknow.
       </p>
 
+
       <p>
         It brings notes, books, previous-year
         questions, mid-term questions and other
@@ -910,9 +846,12 @@
         archive.
       </p>
 
+
       <div class="about-archive-meta">
 
-        <span>Stat Archive</span>
+        <span>
+          Stat Archive
+        </span>
 
         <small>
           Learn · Analyze · Grow
@@ -926,17 +865,230 @@
 
 </div>
 
-    <script src="assets/js/pdf.js"></script>
-  <script src="assets/js/core.js"></script>
-  <script src="assets/js/archive-ui.js"></script>
-  <script src="assets/js/preview.js"></script>
-  <script src="assets/js/offline.js"></script>
-  <script src="assets/js/management.js"></script>
-  <script src="assets/js/runtime.js"></script>
-  <script src="assets/js/tooltips.js"></script>
-  <script src="assets/js/service-worker-register.js"></script>
-  <script src="assets/js/hero-animation.js"></script>
-  <script src="assets/js/subject-panel.js"></script>
-  <script src="assets/js/accessibility.js"></script>
+
+
+<!-- =========================================================
+     SUPABASE
+     ========================================================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+
+<!-- =========================================================
+     BASIC SIDE MENU OPEN / CLOSE
+     IMPORTANT:
+     This script comes AFTER the sidebar HTML.
+     ========================================================= -->
+
+<script>
+
+(function () {
+
+  const menuBtn =
+    document.getElementById(
+      "mainMenuBtn"
+    );
+
+
+  const menu =
+    document.getElementById(
+      "mainSideMenu"
+    );
+
+
+  const closeBtn =
+    document.getElementById(
+      "mainMenuCloseBtn"
+    );
+
+
+  const backdrop =
+    document.getElementById(
+      "mainMenuBackdrop"
+    );
+
+
+  if (
+    !menuBtn ||
+    !menu ||
+    !closeBtn ||
+    !backdrop
+  ) {
+
+    console.warn(
+      "Stat Archive menu elements were not found."
+    );
+
+    return;
+  }
+
+
+
+  function openMainMenu() {
+
+    menu.classList.add(
+      "is-open"
+    );
+
+
+    backdrop.classList.add(
+      "is-open"
+    );
+
+
+    menu.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
+
+    backdrop.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
+
+    menuBtn.setAttribute(
+      "aria-expanded",
+      "true"
+    );
+
+  }
+
+
+
+  function closeMainMenu() {
+
+    menu.classList.remove(
+      "is-open"
+    );
+
+
+    backdrop.classList.remove(
+      "is-open"
+    );
+
+
+    menu.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+
+    backdrop.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+
+    menuBtn.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+  }
+
+
+
+  menuBtn.addEventListener(
+    "click",
+    function () {
+
+      if (
+        menu.classList.contains(
+          "is-open"
+        )
+      ) {
+
+        closeMainMenu();
+
+      } else {
+
+        openMainMenu();
+
+      }
+
+    }
+  );
+
+
+
+  closeBtn.addEventListener(
+    "click",
+    closeMainMenu
+  );
+
+
+
+  backdrop.addEventListener(
+    "click",
+    closeMainMenu
+  );
+
+
+
+  document.addEventListener(
+    "keydown",
+    function (event) {
+
+      if (
+        event.key === "Escape" &&
+        menu.classList.contains(
+          "is-open"
+        )
+      ) {
+
+        closeMainMenu();
+
+      }
+
+    }
+  );
+
+
+
+  window.statArchiveOpenMenu =
+    openMainMenu;
+
+
+  window.statArchiveCloseMenu =
+    closeMainMenu;
+
+})();
+
+</script>
+
+
+
+<!-- =========================================================
+     EXISTING STAT ARCHIVE JAVASCRIPT
+     ========================================================= -->
+
+<script src="assets/js/pdf.js"></script>
+
+<script src="assets/js/core.js"></script>
+
+<script src="assets/js/archive-ui.js"></script>
+
+<script src="assets/js/preview.js"></script>
+
+<script src="assets/js/offline.js"></script>
+
+<script src="assets/js/management.js"></script>
+
+<script src="assets/js/runtime.js"></script>
+
+<script src="assets/js/tooltips.js"></script>
+
+<script src="assets/js/service-worker-register.js"></script>
+
+<script src="assets/js/hero-animation.js"></script>
+
+<script src="assets/js/subject-panel.js"></script>
+
+<script src="assets/js/accessibility.js"></script>
+
+
 </body>
 </html>
