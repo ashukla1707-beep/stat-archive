@@ -4158,62 +4158,63 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
-/* =========================================================
-   DESKTOP MENU — TOP LEFT OF HERO
+//* =========================================================
+   FINAL DESKTOP MENU — INSIDE HERO, TOP LEFT
    Mobile remains unchanged
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Do NOT alter the graph */
+  /* Hero is the positioning container */
+  .header{
+    position:relative !important;
+  }
+
+
+  /* Keep graph exactly at its normal desktop position */
   .hero-probability{
     right:60px !important;
   }
 
 
-  /* Hamburger at upper-left edge of hero */
-  .page{
-    position:relative;
-  }
-
-
+  /* Menu button INSIDE hero — upper-left */
   .main-menu-btn{
     position:absolute !important;
 
     top:14px !important;
-    left:8px !important;
+    left:14px !important;
 
     right:auto !important;
+    bottom:auto !important;
 
-    width:42px !important;
-    height:42px !important;
+    margin:0 !important;
+
+    width:38px !important;
+    min-width:38px !important;
+    height:38px !important;
 
     display:flex !important;
     align-items:center !important;
     justify-content:center !important;
 
     padding:0 !important;
+    gap:0 !important;
 
     z-index:100 !important;
 
-    border-radius:11px !important;
+    border:1px solid rgba(148,163,184,.18) !important;
+    border-radius:10px !important;
 
-    border:
-      1px solid rgba(148,163,184,.22) !important;
+    background:rgba(9,14,21,.64) !important;
+    color:#cbd5e1 !important;
 
-    background:
-      rgba(9,14,21,.86) !important;
-
-    color:#dbe4ef !important;
-
-    font-size:20px !important;
+    font-size:19px !important;
     line-height:1 !important;
 
-    box-shadow:
-      0 8px 22px rgba(0,0,0,.16) !important;
+    box-shadow:none !important;
 
-    backdrop-filter:blur(10px);
-    -webkit-backdrop-filter:blur(10px);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
 
     transform:none !important;
 
@@ -4224,31 +4225,73 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 
-  .main-menu-btn:hover{
-    background:
-      rgba(94,231,247,.07) !important;
-
-    border-color:
-      rgba(94,231,247,.40) !important;
-
-    color:
-      var(--cyan) !important;
+  /* Remove old MENU text / decorative pseudo elements */
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
   }
 
 
-  /* Light mode */
+  .main-menu-btn:hover{
+    background:rgba(94,231,247,.07) !important;
+    border-color:rgba(94,231,247,.38) !important;
+    color:var(--cyan) !important;
+
+    transform:none !important;
+  }
+
+
+  /* Give the first hero line a little clearance from the menu */
+  .hero-copy .eyebrow{
+    margin-left:44px !important;
+  }
+
+
+  /* Light theme */
   body[data-theme="light"] .main-menu-btn{
-    background:
-      rgba(250,248,241,.92) !important;
+    background:rgba(250,248,241,.70) !important;
+    border-color:rgba(86,65,100,.16) !important;
+    color:#4b365f !important;
+    box-shadow:none !important;
+  }
 
-    border-color:
-      rgba(86,65,100,.20) !important;
+}
 
-    color:
-      #4b365f !important;
 
-    box-shadow:
-      0 7px 18px rgba(58,53,42,.10) !important;
+/* =========================================================
+   MOBILE
+   Keep existing working mobile placement
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .main-menu-btn{
+    position:absolute !important;
+
+    top:14px !important;
+    right:14px !important;
+    left:auto !important;
+
+    width:40px !important;
+    min-width:40px !important;
+    height:40px !important;
+
+    margin:0 !important;
+
+    transform:none !important;
+  }
+
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+
+  .hero-copy .eyebrow{
+    margin-left:0 !important;
   }
 
 }
