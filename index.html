@@ -272,11 +272,43 @@
       <div class="filter-row" id="typeFilterRow"></div>
     </div>
 
-    <div class="archive-action-row">
-      <button class="new-btn" id="openFormBtn" disabled title="Sign in to file a new entry" style="display:none">+ File a new entry</button>
-      <button class="latest-btn" id="latestEntriesBtn" type="button" style="display:none">↕ Latest entries</button>
-      <button class="latest-btn" id="offlineLibraryBtn" type="button">⇩ Offline library <span class="offline-library-count" id="offlineLibraryCount">0</span></button>
-    </div>
+ <div class="archive-action-row">
+
+  <button
+    class="new-btn"
+    id="openFormBtn"
+    disabled
+    title="Sign in to file a new entry"
+    style="display:none"
+  >
+    + File a new entry
+  </button>
+
+  <button
+    class="latest-btn"
+    id="latestEntriesBtn"
+    type="button"
+    style="display:none"
+  >
+    ↕ Latest entries
+  </button>
+
+  <!-- Kept for existing offline.js logic -->
+  <button
+    id="offlineLibraryBtn"
+    type="button"
+    style="display:none !important"
+    aria-hidden="true"
+    tabindex="-1"
+  >
+    Offline library
+    <span
+      class="offline-library-count"
+      id="offlineLibraryCount"
+    >0</span>
+  </button>
+
+</div>
     <div id="permissionHint" style="font:500 10px 'JetBrains Mono',monospace;color:#596578;margin-top:-4px;">
       Contributors can edit their 3 newest entries. Only Admins can remove entries.
     </div>
@@ -545,23 +577,155 @@
   aria-hidden="true"
 >
 
-  <div class="main-side-menu-head">
+ <!-- ACCOUNT -->
 
-    <div class="main-side-menu-brand">
-      <strong>Stat Archive</strong>
-      <span>Menu</span>
-    </div>
+<section class="main-menu-section">
+
+  <div class="main-menu-label">
+    Account
+  </div>
+
+  <div class="main-menu-account-status">
+
+    <span
+      class="main-menu-account-dot"
+      id="menuAccountDot"
+    ></span>
+
+    <span id="menuAccountStatus">
+      Read-only access
+    </span>
+
+  </div>
+
+  <button
+    type="button"
+    class="main-menu-action"
+    id="menuAuthBtn"
+  >
+
+    <span id="menuAuthText">
+      Sign in
+    </span>
+
+    <span class="main-menu-arrow">
+      ›
+    </span>
+
+  </button>
+
+</section>
+
+
+<!-- APPEARANCE -->
+
+<section class="main-menu-section">
+
+  <div class="main-menu-label">
+    Appearance
+  </div>
+
+  <div class="main-menu-theme-row">
 
     <button
       type="button"
-      class="main-side-menu-close"
-      id="mainMenuCloseBtn"
-      aria-label="Close menu"
+      class="main-menu-theme-btn"
+      id="menuDarkBtn"
     >
-      ✕
+      ☾ Dark
+    </button>
+
+    <button
+      type="button"
+      class="main-menu-theme-btn"
+      id="menuLightBtn"
+    >
+      ☀ Light
     </button>
 
   </div>
+
+</section>
+
+
+<!-- OFFLINE LIBRARY -->
+
+<section class="main-menu-section">
+
+  <button
+    type="button"
+    class="main-menu-action"
+    id="menuOfflineLibraryBtn"
+  >
+
+    <span>
+      Offline Library
+    </span>
+
+    <span class="main-menu-side-meta">
+
+      <span
+        class="offline-library-count"
+        id="menuOfflineLibraryCount"
+      >
+        0
+      </span>
+
+      <span class="main-menu-arrow">
+        ›
+      </span>
+
+    </span>
+
+  </button>
+
+</section>
+
+
+<!-- MANUAL -->
+
+<section class="main-menu-section">
+
+  <button
+    type="button"
+    class="main-menu-action"
+    id="menuManualsBtn"
+  >
+
+    <span>
+      Manual
+    </span>
+
+    <span class="main-menu-arrow">
+      ›
+    </span>
+
+  </button>
+
+</section>
+
+
+<!-- ABOUT -->
+
+<section class="main-menu-section">
+
+  <button
+    type="button"
+    class="main-menu-action"
+    id="menuAboutBtn"
+  >
+
+    <span>
+      About Stat Archive
+    </span>
+
+    <span class="main-menu-arrow">
+      ›
+    </span>
+
+  </button>
+
+</section>
 
 
   <!-- APPEARANCE -->
