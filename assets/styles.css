@@ -5350,3 +5350,111 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
+/* =========================================================
+   FINAL DESKTOP HEIGHT + TRANSPARENCY FIX
+   WIDTH IS NOT CHANGED
+   MOBILE REMAINS UNCHANGED
+   ========================================================= */
+
+@media(min-width:901px){
+
+  /* -------------------------------------------------------
+     HERO
+     Keep current width, reduce only height
+     ------------------------------------------------------- */
+
+  .header{
+    height:220px !important;
+    min-height:220px !important;
+
+    padding-top:20px !important;
+    padding-bottom:20px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     GRAPH CARD
+     Keep current width, reduce only height
+     ------------------------------------------------------- */
+
+  .hero-probability{
+    height:180px !important;
+
+    top:50% !important;
+    transform:translateY(-50%) !important;
+
+    /* much more transparent */
+    background:
+      radial-gradient(
+        circle at 52% 56%,
+        rgba(94,231,247,.025),
+        transparent 55%
+      ),
+      rgba(8,14,21,.045) !important;
+
+    border-color:
+      rgba(148,163,184,.10) !important;
+
+    box-shadow:
+      0 6px 18px rgba(0,0,0,.025) !important;
+
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     GRAPH
+     Fit inside shorter card
+     ------------------------------------------------------- */
+
+  .hero-probability .probability-svg{
+    top:30px !important;
+
+    height:142px !important;
+  }
+
+
+  /* keep title near top */
+  .hero-probability .curve-title{
+    top:13px !important;
+  }
+
+
+  /* keep menu inside graph block */
+  .main-menu-btn{
+    top:calc(50% - 76px) !important;
+  }
+
+
+  /* μ */
+  .hero-probability .axis-mid{
+    bottom:2px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     LIGHT THEME
+     Much more transparent
+     ------------------------------------------------------- */
+
+  body[data-theme="light"] .hero-probability{
+    background:
+      radial-gradient(
+        circle at 52% 56%,
+        rgba(52,125,115,.018),
+        transparent 55%
+      ),
+      rgba(255,255,255,.10) !important;
+
+    border-color:
+      rgba(67,73,69,.08) !important;
+
+    box-shadow:
+      0 5px 14px rgba(58,53,42,.018) !important;
+
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+
+}
