@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reader Manual - Stat Archive</title>
+<script>
+try{if(localStorage.getItem('statArchiveTheme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}
+</script>
+<style>
+:root{color-scheme:dark;--bg:#070a0f;--panel:#0e1621;--panel2:#111c29;--text:#eef4f8;--muted:#8d9aaa;--accent:#5ee7f7;--line:rgba(148,163,184,.17);--soft:rgba(94,231,247,.08);--warn:#d7c4ff}html[data-theme="light"]{color-scheme:light;--bg:#f5f2e9;--panel:rgba(255,255,255,.76);--panel2:rgba(255,255,255,.9);--text:#25302d;--muted:#746f69;--accent:#347d73;--line:rgba(75,54,95,.15);--soft:rgba(52,125,115,.07);--warn:#4b365f}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}body{background-image:linear-gradient(rgba(148,163,184,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.035) 1px,transparent 1px);background-size:48px 48px}.wrap{width:min(920px,calc(100% - 28px));margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 0 max(34px,env(safe-area-inset-bottom))}.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px)}.back{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:12px;min-height:42px;padding:0 14px;font-weight:700;cursor:pointer}.badge{font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}.hero{padding:28px 30px;margin:8px 0 16px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,var(--panel2),var(--panel));box-shadow:0 18px 50px rgba(0,0,0,.16)}h1{margin:5px 0 7px;font-size:clamp(32px,6vw,54px);letter-spacing:-.035em;line-height:1}.sub{margin:0;color:var(--muted);font-size:16px}.intro{margin-top:20px;padding:16px 17px;border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:14px;background:var(--soft);line-height:1.65}.section{margin:14px 0;padding:22px 24px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}h2{margin:0 0 14px;color:var(--accent);font-size:22px}p,li{font-size:15px;line-height:1.65}ol,ul{margin:0;padding-left:23px}li+li{margin-top:6px}.note{margin:14px 0 0;padding:13px 14px;border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:8px;color:var(--text)}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--panel2);color:var(--text)}footer{text-align:center;color:var(--muted);font-size:12px;padding:18px 0}@media(max-width:620px){.wrap{width:min(100% - 20px,920px)}.hero{padding:23px 20px;border-radius:18px}.section{padding:19px 17px;border-radius:16px}h2{font-size:19px}p,li{font-size:14px}table{font-size:12.5px}th,td{padding:8px 9px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top"><div class="badge">Stat Archive · Reader Manual</div><button class="back" type="button" onclick="history.length>1?history.back():location.href='../'">← Back</button></div>
+  <section class="hero">
+    <div class="badge">STAT ARCHIVE</div>
+    <h1>Reader User Manual</h1>
+    <p class="sub">For students and read-only users · Updated August 2026</p>
+    <div class="intro"><strong>Who this manual is for:</strong> Students, readers and anyone who only needs to find and use study material.<br><br>Stat Archive organizes notes, books, previous-year questions, mid-term questions and other study material by course level and subject. Reader access does not require signing in.</div>
+  </section>
+
+  <section class="section"><h2>1. Choose Your Course Level</h2><ol><li>Use the M.Sc / B.Sc selector at the top of the archive.</li><li>Choose your course level before browsing. Subjects and entries are level-specific.</li><li>The site remembers your theme preference on the device.</li></ol></section>
+
+  <section class="section"><h2>2. Find Material Quickly</h2><ul><li><strong>Search:</strong> Use the search box for title, filename, year or subject.</li><li><strong>Subjects:</strong> Use subject filters to narrow the archive. On mobile, the subject controls stay compact and can be expanded when needed.</li><li><strong>Types:</strong> Filter by Book, Notes, Previous Year Question, Mid-Term Question or Others.</li><li><strong>Latest entries:</strong> Use Latest entries when you want recently added material first.</li><li><strong>Subject rows:</strong> Entries are grouped by subject. Swipe or scroll horizontally within a subject row to see additional files.</li></ul></section>
+
+  <section class="section"><h2>3. Preview, Download and Status Pills</h2><ol start="4"><li>Tap Preview to view supported files in the archive.</li><li>Tap Download to save a copy to your device.</li><li>When Preview or Download has been used on the device, its action pill can show a remembered used-state.</li><li>Tap Offline in the installed app/PWA to save a local offline copy. A saved Offline action changes state so you can see that the file is already stored.</li><li>Google Drive-linked large files open in Google Drive rather than using the normal local Preview/Download flow.</li></ol><div class="note"><strong>No account required:</strong> Browsing, filtering, previewing and downloading are reader features. Sign-in is only for archive maintenance roles.</div></section>
+
+  <section class="section"><h2>4. Offline Library</h2><ol start="9"><li>Open Offline Library from the installed Stat Archive app/PWA.</li><li>The summary shows saved file count, subject count and local storage used.</li><li>Search saved files by title, subject or year and filter them by subject/type.</li><li>Saved files remain grouped by subject with horizontal browsing.</li><li>Open offline opens the locally stored copy. Share sends the saved copy through the device sharing interface. Remove deletes only the local copy.</li><li>The Offline Library header remains visible while the saved-file content scrolls.</li></ol></section>
+
+  <section class="section"><h2>5. Mobile and Installed-App Behaviour</h2><ul><li>The mobile layout keeps filters and summary information compact.</li><li>Dark and Light themes are supported.</li><li>When the app regains connectivity, archive data refreshes so newer material can load.</li><li>Opening a saved offline file and returning takes you back to the Offline Library.</li></ul></section>
+
+  <section class="section"><h2>6. Reader Troubleshooting</h2><table><thead><tr><th>Problem</th><th>What to do</th></tr></thead><tbody><tr><td>A file will not preview</td><td>Try Download, or Open in Drive if the entry is Drive-linked.</td></tr><tr><td>Offline button is unavailable</td><td>Use the installed app/PWA rather than a normal browser tab.</td></tr><tr><td>New entries are missing</td><td>Reconnect to the internet and reopen/refresh Stat Archive.</td></tr><tr><td>Wrong subjects are shown</td><td>Check whether M.Sc or B.Sc is selected.</td></tr><tr><td>Layout looks unusual</td><td>Refresh once and confirm you are using a current browser/app version.</td></tr></tbody></table></section>
+
+  <section class="section"><h2>7. Quick Reference</h2><table><thead><tr><th>Action</th><th>Sign-in?</th></tr></thead><tbody><tr><td>Switch M.Sc / B.Sc</td><td>No</td></tr><tr><td>Browse / search / filter</td><td>No</td></tr><tr><td>Preview a file</td><td>No</td></tr><tr><td>Download a file</td><td>No</td></tr><tr><td>Use Offline Library</td><td>No - installed app/PWA</td></tr><tr><td>File/edit/delete archive entries</td><td>Yes - Contributor/Admin</td></tr></tbody></table></section>
+
+  <footer>Stat Archive - University of Lucknow Statistics Archive</footer>
+</main>
+</body>
+</html>
