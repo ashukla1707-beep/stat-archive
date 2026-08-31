@@ -4808,3 +4808,96 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
+/* =========================================================
+   FINAL HERO SPACING + MEAN POSITION
+   DESKTOP ONLY
+   ========================================================= */
+
+@media(min-width:901px){
+
+  /* -------------------------------------------------------
+     HERO — reduce unused vertical space
+     ------------------------------------------------------- */
+
+  .header{
+    min-height:230px !important;
+
+    padding-top:22px !important;
+    padding-bottom:22px !important;
+
+    align-items:center !important;
+  }
+
+
+  /* Vertically center the left hero content */
+  .hero-copy{
+    align-self:center !important;
+  }
+
+
+  /* Slightly tighten title area */
+  .eyebrow{
+    margin-bottom:12px !important;
+  }
+
+  .hero-line{
+    margin-top:14px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     GRAPH CARD
+     Keep compact and vertically centered
+     ------------------------------------------------------- */
+
+  .hero-probability{
+    top:50% !important;
+
+    transform:
+      translateY(-50%) !important;
+
+    height:205px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     GRAPH
+     Slightly compact vertically without changing width
+     ------------------------------------------------------- */
+
+  .hero-probability .probability-svg{
+    top:30px !important;
+
+    height:166px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     MEAN — ABOVE THE PEAK
+     ------------------------------------------------------- */
+
+  .hero-probability .curve-note.note-one{
+    left:50% !important;
+
+    /*
+     * Above the bell-curve peak.
+     */
+    top:46px !important;
+
+    transform:
+      translateX(-50%) !important;
+
+    padding:5px 8px !important;
+
+    z-index:7 !important;
+
+    font-size:8px !important;
+  }
+
+
+  /* μ remains centred below the axis */
+  .hero-probability .axis-mid{
+    bottom:4px !important;
+  }
+
+}
