@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-menu-flash-fix-v3";
+const CACHE = "stat-archive-shell-v20260901-manuals-v1";
 
 const APP_SHELL = [
   "./",
@@ -17,6 +17,8 @@ const APP_SHELL = [
   "./assets/js/hero-animation.js",
   "./assets/js/subject-panel.js",
   "./assets/js/accessibility.js",
+  "./manuals/reader.html",
+  "./manuals/contributor.html",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
