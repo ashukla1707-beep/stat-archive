@@ -4159,56 +4159,66 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   FINAL DESKTOP HERO GRAPH + MENU POSITION
-   Mobile remains unchanged
+   FINAL DESKTOP HERO + MENU POSITION
+   Mobile is untouched
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Move probability graph 15px to the left */
+  /* Keep graph close to original position */
   .hero-probability{
-    right:41px !important;
+    right:60px !important;
   }
 
 
-  /* Keep menu button clear of graph */
+  /* Menu button sits neatly in hero corner */
   .main-menu-btn{
-    top:16px !important;
-    right:12px !important;
+    top:20px !important;
+    right:20px !important;
 
-    width:42px !important;
-    height:42px !important;
+    width:38px !important;
+    height:38px !important;
 
     z-index:60 !important;
 
-    border-radius:12px !important;
+    border-radius:10px !important;
 
-    background:rgba(15,20,29,.88) !important;
-    border:1px solid rgba(148,163,184,.25) !important;
+    background:rgba(10,15,22,.78) !important;
+    border:1px solid rgba(148,163,184,.20) !important;
 
-    box-shadow:
-      0 8px 24px rgba(0,0,0,.18) !important;
+    color:#dbe4ef !important;
 
-    backdrop-filter:blur(10px);
-    -webkit-backdrop-filter:blur(10px);
+    font-size:19px !important;
+    line-height:1 !important;
+
+    box-shadow:none !important;
+
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+
+
+  .main-menu-btn:hover{
+    background:rgba(94,231,247,.07) !important;
+    border-color:rgba(94,231,247,.38) !important;
+    color:var(--cyan) !important;
   }
 
 }
 
 
-/* Light theme desktop menu button */
+/* Light theme */
 
 @media(min-width:901px){
 
   body[data-theme="light"] .main-menu-btn{
-    background:rgba(250,248,241,.90) !important;
+    background:rgba(250,248,241,.82) !important;
 
-    border-color:rgba(86,65,100,.22) !important;
+    border-color:rgba(86,65,100,.18) !important;
 
     color:#4b365f !important;
 
-    box-shadow:
-      0 8px 22px rgba(58,53,42,.10) !important;
+    box-shadow:none !important;
   }
 
 }
