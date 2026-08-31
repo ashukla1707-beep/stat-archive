@@ -4159,36 +4159,46 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   FINAL DESKTOP HERO + MENU POSITION
-   Mobile is untouched
+   FINAL DESKTOP LAYOUT
+   Graph on left + Menu in separate right-side area
+   Mobile remains unchanged
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Keep graph close to original position */
+  /* Leave room on right side for menu */
   .hero-probability{
-    right:60px !important;
+    right:120px !important;
   }
 
 
-  /* Menu button sits neatly in hero corner */
+  /* Menu centered vertically in right-side space */
   .main-menu-btn{
-    top:20px !important;
-    right:20px !important;
+    position:absolute !important;
 
-    width:38px !important;
-    height:38px !important;
+    top:50% !important;
+    right:22px !important;
+
+    transform:translateY(-50%) !important;
+
+    width:42px !important;
+    height:42px !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    padding:0 !important;
 
     z-index:60 !important;
 
-    border-radius:10px !important;
+    border:1px solid rgba(148,163,184,.22) !important;
+    border-radius:11px !important;
 
     background:rgba(10,15,22,.78) !important;
-    border:1px solid rgba(148,163,184,.20) !important;
-
     color:#dbe4ef !important;
 
-    font-size:19px !important;
+    font-size:20px !important;
     line-height:1 !important;
 
     box-shadow:none !important;
@@ -4199,26 +4209,26 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 
   .main-menu-btn:hover{
+    border-color:rgba(94,231,247,.42) !important;
+
     background:rgba(94,231,247,.07) !important;
-    border-color:rgba(94,231,247,.38) !important;
+
     color:var(--cyan) !important;
   }
 
 }
 
 
-/* Light theme */
+/* Light theme desktop */
 
 @media(min-width:901px){
 
   body[data-theme="light"] .main-menu-btn{
-    background:rgba(250,248,241,.82) !important;
+    background:rgba(250,248,241,.86) !important;
 
-    border-color:rgba(86,65,100,.18) !important;
+    border-color:rgba(86,65,100,.20) !important;
 
     color:#4b365f !important;
-
-    box-shadow:none !important;
   }
 
 }
