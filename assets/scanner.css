@@ -35,3 +35,120 @@
 .scanner-strength{display:grid;grid-template-columns:58px 1fr 46px;gap:8px;align-items:center;margin:10px 0;color:#aebdca;font-size:11px}.scanner-strength input{width:100%;padding:0}.scanner-strength output{text-align:right;color:#edf4fb}.scanner-apply-row button{flex:1;justify-content:center}
 @media(max-width:700px){.scanner-overlay{padding:8px;align-items:flex-start}.scanner-card{max-height:calc(100dvh - 16px)}.scanner-controls{max-height:48dvh}.scanner-editor-nav button{min-width:88px}}
 body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}body[data-theme="light"] .scanner-card,body[data-theme="light"] .scanner-editor,body[data-theme="light"] .scanner-editor-head,body[data-theme="light"] .scanner-controls,body[data-theme="light"] .scanner-source-sheet{background:#faf7ef;color:#27302d}
+
+/* =========================================================
+   Desktop hero refinement
+   Loaded after styles.css so it cleanly overrides old trials.
+   ========================================================= */
+@media (min-width:901px){
+  /* Keep the compact hero from the current desktop design. */
+  .header{
+    min-height:0 !important;
+    height:245px !important;
+    padding-top:22px !important;
+    padding-bottom:22px !important;
+    align-items:center !important;
+  }
+
+  .hero-copy{align-self:center !important;}
+
+  /* Graph card: same size, but substantially more transparent so the
+     hero grid/gradient remains visible through it, like on mobile. */
+  .hero-probability{
+    position:absolute !important;
+    top:50% !important;
+    right:54px !important;
+    transform:translateY(-50%) !important;
+    width:455px !important;
+    height:205px !important;
+    margin:0 !important;
+    background:
+      radial-gradient(circle at 56% 56%,rgba(94,231,247,.025),transparent 54%),
+      rgba(8,14,21,.035) !important;
+    border-color:rgba(148,163,184,.10) !important;
+    box-shadow:0 5px 16px rgba(0,0,0,.02) !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+
+  /* Hide the formula/mean badge as in the current preferred desktop look. */
+  .hero-probability .formula-chip,
+  .hero-probability .curve-note.note-one{
+    display:none !important;
+  }
+
+  /* Use almost the full graph card without resizing the card itself. */
+  .hero-probability .probability-svg{
+    position:absolute !important;
+    left:8px !important;
+    right:8px !important;
+    top:31px !important;
+    width:439px !important;
+    height:166px !important;
+    transform:none !important;
+  }
+
+  /* Keep the bell curve tall but do not widen it beyond the axis. */
+  .hero-probability .gaussian-curve{
+    transform-box:fill-box !important;
+    transform-origin:center bottom !important;
+    transform:translateY(-6px) scaleY(1.12) !important;
+  }
+
+  /* Extend the existing SVG baseline from x=18..502 to visually fill
+     the full 0..520 viewBox, without touching the HTML. */
+  .hero-probability .dot-baseline{
+    transform-box:fill-box !important;
+    transform-origin:center center !important;
+    transform:scaleX(1.0744) !important;
+    stroke:rgba(94,231,247,.52) !important;
+    stroke-width:1.25 !important;
+  }
+
+  .hero-probability .curve-title{
+    top:14px !important;
+    left:16px !important;
+  }
+
+  .hero-probability .axis-mid{
+    left:50% !important;
+    bottom:3px !important;
+    transform:translateX(-50%) !important;
+  }
+
+  /* mainMenuBtn is a sibling of the graph card in the DOM. These values
+     place it visually INSIDE the graph card's upper-right corner. */
+  .main-menu-btn{
+    position:absolute !important;
+    top:34px !important;
+    right:68px !important;
+    left:auto !important;
+    bottom:auto !important;
+    width:42px !important;
+    min-width:42px !important;
+    height:42px !important;
+    margin:0 !important;
+    padding:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    z-index:160 !important;
+    transform:none !important;
+  }
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+  body[data-theme="light"] .hero-probability{
+    background:
+      radial-gradient(circle at 56% 56%,rgba(52,125,115,.018),transparent 54%),
+      rgba(255,255,255,.08) !important;
+    border-color:rgba(67,73,69,.08) !important;
+    box-shadow:0 4px 12px rgba(58,53,42,.015) !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+}
