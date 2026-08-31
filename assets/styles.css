@@ -4026,13 +4026,13 @@ body[data-theme="light"] .main-menu-action:hover{
 @media(max-width:700px){
 
   .main-menu-btn{
-    top:14px;
-    right:14px;
+    top:14px !important;
+    right:14px !important;
 
-    width:40px;
-    height:40px;
+    width:40px !important;
+    height:40px !important;
 
-    border-radius:10px;
+    border-radius:10px !important;
   }
 
 
@@ -4053,24 +4053,32 @@ body[data-theme="light"] .main-menu-action:hover{
   }
 
 }
+
+
+/* =========================================================
+   DESKTOP MENU BUTTON
+   IMPORTANT: Graph position is NOT changed here.
+   ========================================================= */
+
 @media(min-width:901px){
 
   .main-menu-btn{
     top:18px !important;
-    right:18px !important;
+    right:10px !important;
 
-    width:42px;
-    height:42px;
+    width:42px !important;
+    height:42px !important;
 
-    z-index:20 !important;
-  }
-
-  .hero-probability{
-    right:82px !important;
-    width:400px !important;
+    z-index:50 !important;
   }
 
 }
+
+
+/* =========================================================
+   OFFLINE LIBRARY COUNT INSIDE SIDE MENU
+   ========================================================= */
+
 .main-menu-side-meta{
   display:flex;
   align-items:center;
@@ -4101,4 +4109,52 @@ body[data-theme="light"] .main-menu-action:hover{
 body[data-theme="light"] #menuOfflineLibraryCount{
   background:rgba(75,54,95,.09);
   color:#4b365f;
+}
+/* =========================================================
+   MENU BUTTON POSITION
+   Do not alter hero graph
+   ========================================================= */
+
+.main-menu-btn{
+  position:absolute !important;
+
+  top:18px !important;
+  right:10px !important;
+
+  width:42px !important;
+  height:42px !important;
+
+  z-index:50 !important;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+
+  padding:0 !important;
+
+  border:1px solid var(--line-strong) !important;
+  border-radius:11px !important;
+
+  background:rgba(255,255,255,.025) !important;
+  color:var(--text) !important;
+
+  font-size:21px !important;
+  line-height:1 !important;
+
+  cursor:pointer !important;
+}
+
+
+/* Mobile position */
+
+@media(max-width:700px){
+
+  .main-menu-btn{
+    top:14px !important;
+    right:14px !important;
+
+    width:40px !important;
+    height:40px !important;
+  }
+
 }
