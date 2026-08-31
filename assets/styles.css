@@ -4159,30 +4159,29 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   DESKTOP MENU — FLOATING SIDE TAB
-   Hero and graph stay untouched
-   Mobile stays unchanged
+   DESKTOP MENU — CLEAN FIXED TOP-RIGHT BUTTON
+   Hero and graph remain untouched
+   Mobile remains unchanged
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Restore original graph placement */
+  /* Restore graph to original placement */
   .hero-probability{
     right:60px !important;
   }
 
 
-  /* Put menu outside the hero content */
   .main-menu-btn{
     position:fixed !important;
 
-    top:175px !important;
-    right:14px !important;
+    top:22px !important;
+    right:22px !important;
 
     left:auto !important;
 
-    width:42px !important;
-    height:54px !important;
+    width:40px !important;
+    height:40px !important;
 
     display:flex !important;
     align-items:center !important;
@@ -4190,25 +4189,21 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
     padding:0 !important;
 
-    z-index:999 !important;
+    z-index:9999 !important;
 
-    border-radius:12px 0 0 12px !important;
+    border-radius:12px !important;
 
-    border:
-      1px solid rgba(148,163,184,.20) !important;
+    border:1px solid rgba(148,163,184,.22) !important;
 
-    border-right:none !important;
-
-    background:
-      rgba(10,15,22,.90) !important;
+    background:rgba(9,14,21,.88) !important;
 
     color:#dbe4ef !important;
 
-    font-size:20px !important;
+    font-size:19px !important;
     line-height:1 !important;
 
     box-shadow:
-      -5px 7px 22px rgba(0,0,0,.18) !important;
+      0 8px 24px rgba(0,0,0,.18) !important;
 
     backdrop-filter:blur(12px);
     -webkit-backdrop-filter:blur(12px);
@@ -4216,37 +4211,33 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     transform:none !important;
 
     transition:
-      width .18s ease,
-      color .18s ease,
       background .18s ease,
-      border-color .18s ease;
+      border-color .18s ease,
+      color .18s ease,
+      transform .18s ease;
   }
 
 
   .main-menu-btn:hover{
-    width:48px !important;
+    background:rgba(15,27,35,.96) !important;
+
+    border-color:rgba(94,231,247,.42) !important;
 
     color:var(--cyan) !important;
 
-    background:
-      rgba(16,27,35,.96) !important;
-
-    border-color:
-      rgba(94,231,247,.38) !important;
+    transform:translateY(-1px) !important;
   }
 
 
   body[data-theme="light"] .main-menu-btn{
-    background:
-      rgba(250,248,241,.94) !important;
+    background:rgba(250,248,241,.94) !important;
+
+    border-color:rgba(86,65,100,.20) !important;
 
     color:#4b365f !important;
 
-    border-color:
-      rgba(86,65,100,.18) !important;
-
     box-shadow:
-      -5px 7px 18px rgba(58,53,42,.10) !important;
+      0 8px 22px rgba(58,53,42,.10) !important;
   }
 
 }
