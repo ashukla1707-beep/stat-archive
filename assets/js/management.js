@@ -4495,3 +4495,444 @@ document
       }
     }
   );
+/* =========================================================
+   MAIN SIDE MENU
+   ========================================================= */
+
+(function setupMainSideMenu(){
+
+  const menuBtn =
+    document.getElementById(
+      "mainMenuBtn"
+    );
+
+  const closeBtn =
+    document.getElementById(
+      "mainMenuCloseBtn"
+    );
+
+  const menu =
+    document.getElementById(
+      "mainSideMenu"
+    );
+
+  const backdrop =
+    document.getElementById(
+      "mainMenuBackdrop"
+    );
+
+
+  if (
+    !menuBtn ||
+    !closeBtn ||
+    !menu ||
+    !backdrop
+  ) {
+    return;
+  }
+
+
+  function openMenu(){
+
+    menu.classList.add(
+      "is-open"
+    );
+
+    backdrop.classList.add(
+      "is-open"
+    );
+
+    menu.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
+    menuBtn.setAttribute(
+      "aria-expanded",
+      "true"
+    );
+  }
+
+
+  function closeMenu(){
+
+    menu.classList.remove(
+      "is-open"
+    );
+
+    backdrop.classList.remove(
+      "is-open"
+    );
+
+    menu.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    menuBtn.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+  }
+
+
+  menuBtn.addEventListener(
+    "click",
+    openMenu
+  );
+
+
+  closeBtn.addEventListener(
+    "click",
+    closeMenu
+  );
+
+
+  backdrop.addEventListener(
+    "click",
+    closeMenu
+  );
+
+
+  document.addEventListener(
+    "keydown",
+    e => {
+
+      if (
+        e.key === "Escape" &&
+        menu.classList.contains(
+          "is-open"
+        )
+      ) {
+        closeMenu();
+      }
+    }
+  );
+
+
+  /* -----------------------------------------
+     THEME
+     Uses your EXISTING theme buttons
+     ----------------------------------------- */
+
+  const originalDark =
+    document.getElementById(
+      "themeDarkBtn"
+    );
+
+  const originalLight =
+    document.getElementById(
+      "themeLightBtn"
+    );
+
+  const menuDark =
+    document.getElementById(
+      "menuDarkBtn"
+    );
+
+  const menuLight =
+    document.getElementById(
+      "menuLightBtn"
+    );
+
+
+  function syncThemeButtons(){
+
+    const isLight =
+      document.body
+        .getAttribute(
+          "data-theme"
+        ) === "light";
+
+
+    menuDark?.classList.toggle(
+      "is-active",
+      !isLight
+    );
+
+    menuLight?.classList.toggle(
+      "is-active",
+      isLight
+    );
+  }
+
+
+  menuDark?.addEventListener(
+    "click",
+    () => {
+
+      originalDark?.click();
+
+      setTimeout(
+        syncThemeButtons,
+        20
+      );
+    }
+  );
+
+
+  menuLight?.addEventListener(
+    "click",
+    () => {
+
+      originalLight?.click();
+
+      setTimeout(
+        syncThemeButtons,
+        20
+      );
+    }
+  );
+
+
+  syncThemeButtons();
+
+
+  const themeObserver =
+    new MutationObserver(
+      syncThemeButtons
+    );
+
+
+  themeObserver.observe(
+    document.body,
+    {
+      attributes:true,
+      attributeFilter:[
+        "data-theme"
+      ]
+    }
+  );
+
+
+  /* -----------------------------------------
+     ACCOUNT
+     Uses your EXISTING auth button
+     ----------------------------------------- */
+
+  const originalAuthBtn =
+    document.getElementById(
+      "authBtn"
+    );
+
+  const originalAuthLabel =
+    document.getElementById(
+      "authLabel"
+    );
+
+  const originalAuthDot =
+    document.getElementById(
+      "authDot"
+    );
+
+  const menuAuthBtn =
+    document.getElementById(
+      "menuAuthBtn"
+    );
+
+  const menuAuthText =
+    document.getElementById(
+      "menuAuthText"
+    );
+
+  const menuAccountStatus =
+    document.getElementById(
+      "menuAccountStatus"
+    );
+
+  const menuAccountDot =
+    document.getElementById(
+      "menuAccountDot"
+    );
+
+
+  function syncAccount(){
+
+    if (
+      originalAuthBtn &&
+      menuAuthText
+    ) {
+
+      menuAuthText.textContent =
+        originalAuthBtn.textContent
+          .trim();
+    }
+
+
+    if (
+      originalAuthLabel &&
+      menuAccountStatus
+    ) {
+
+      menuAccountStatus.textContent =
+        originalAuthLabel.textContent
+          .trim();
+    }
+
+
+    const signedIn =
+      !!originalAuthDot?.classList
+        .contains(
+          "on"
+        );
+
+
+    menuAccountDot
+      ?.classList.toggle(
+        "is-signed-in",
+        signedIn
+      );
+  }
+
+
+  menuAuthBtn?.addEventListener(
+    "click",
+    () => {
+
+      closeMenu();
+
+      originalAuthBtn?.click();
+    }
+  );
+
+
+  syncAccount();
+
+
+  const accountObserver =
+    new MutationObserver(
+      syncAccount
+    );
+
+
+  if (originalAuthBtn) {
+
+    accountObserver.observe(
+      originalAuthBtn,
+      {
+        childList:true,
+        subtree:true,
+        attributes:true
+      }
+    );
+  }
+
+
+  if (originalAuthLabel) {
+
+    accountObserver.observe(
+      originalAuthLabel,
+      {
+        childList:true,
+        subtree:true
+      }
+    );
+  }
+
+
+  if (originalAuthDot) {
+
+    accountObserver.observe(
+      originalAuthDot,
+      {
+        attributes:true,
+        attributeFilter:[
+          "class"
+        ]
+      }
+    );
+  }
+
+
+  /* -----------------------------------------
+     ABOUT
+     ----------------------------------------- */
+
+  const aboutBtn =
+    document.getElementById(
+      "menuAboutBtn"
+    );
+
+  const aboutOverlay =
+    document.getElementById(
+      "aboutArchiveOverlay"
+    );
+
+  const closeAboutBtn =
+    document.getElementById(
+      "closeAboutArchiveBtn"
+    );
+
+
+  function openAbout(){
+
+    closeMenu();
+
+    aboutOverlay.style.display =
+      "flex";
+
+    document.body.classList.add(
+      "no-scroll"
+    );
+  }
+
+
+  function closeAbout(){
+
+    aboutOverlay.style.display =
+      "none";
+
+    document.body.classList.remove(
+      "no-scroll"
+    );
+  }
+
+
+  aboutBtn?.addEventListener(
+    "click",
+    openAbout
+  );
+
+
+  closeAboutBtn?.addEventListener(
+    "click",
+    closeAbout
+  );
+
+
+  aboutOverlay?.addEventListener(
+    "click",
+    e => {
+
+      if (
+        e.target === aboutOverlay
+      ) {
+        closeAbout();
+      }
+    }
+  );
+
+
+  /* -----------------------------------------
+     MANUALS
+     We connect the actual manuals next.
+     ----------------------------------------- */
+
+  document
+    .getElementById(
+      "menuManualsBtn"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeMenu();
+
+        /*
+         * Manual panel will be connected
+         * in the next step.
+         */
+      }
+    );
+
+})();
