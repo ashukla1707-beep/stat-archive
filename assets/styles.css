@@ -4484,31 +4484,133 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 
 /* =========================================================
-   MOBILE — KEEP CURRENT WORKING LAYOUT
+   DESKTOP GRAPH — COMPACT + UNIFORM SPACE + TRANSPARENCY
+   Mobile remains unchanged
    ========================================================= */
 
-@media(max-width:700px){
+@media(min-width:901px){
 
-  .main-menu-btn{
+  .header{
+    position:relative !important;
+  }
+
+
+  /* Graph card */
+  .hero-probability{
     position:absolute !important;
 
-    top:14px !important;
-    right:14px !important;
-    left:auto !important;
+    /* shift slightly left */
+    right:86px !important;
 
-    width:40px !important;
-    min-width:40px !important;
-    height:40px !important;
+    /* perfectly center vertically */
+    top:50% !important;
+    bottom:auto !important;
+
+    transform:translateY(-50%) !important;
+
+    /* keep width, reduce height */
+    width:400px !important;
+    height:220px !important;
 
     margin:0 !important;
 
-    transform:none !important;
+    overflow:hidden !important;
+
+    /* more transparent so hero BG is visible */
+    background:
+      radial-gradient(
+        circle at 50% 57%,
+        rgba(94,231,247,.045),
+        transparent 45%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.020),
+        rgba(255,255,255,.004)
+      ) !important;
+
+    border-color:
+      rgba(148,163,184,.12) !important;
+
+    box-shadow:
+      0 16px 38px rgba(0,0,0,.09) !important;
   }
 
-  .main-menu-btn::before,
-  .main-menu-btn::after{
-    content:none !important;
-    display:none !important;
+
+  /*
+   * Fit the existing graph inside the
+   * slightly shorter card without stretching it.
+   */
+  .hero-probability .probability-svg{
+    top:25px !important;
+
+    bottom:auto !important;
+
+    left:9px !important;
+    right:9px !important;
+
+    width:calc(100% - 18px) !important;
+
+    height:188px !important;
+  }
+
+
+  /* Small labels stay aligned */
+  .hero-probability .curve-title{
+    top:11px !important;
+  }
+
+  .hero-probability .formula-chip{
+    top:9px !important;
+  }
+
+  .hero-probability .axis-label{
+    bottom:3px !important;
+  }
+
+
+  /* Menu remains in its own space */
+  .main-menu-btn{
+    position:absolute !important;
+
+    top:18px !important;
+    right:18px !important;
+
+    left:auto !important;
+    bottom:auto !important;
+
+    margin:0 !important;
+
+    z-index:100 !important;
+  }
+
+}
+
+
+/* =========================================================
+   LIGHT THEME GRAPH
+   ========================================================= */
+
+@media(min-width:901px){
+
+  body[data-theme="light"] .hero-probability{
+    background:
+      radial-gradient(
+        circle at 50% 57%,
+        rgba(52,125,115,.035),
+        transparent 45%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.48),
+        rgba(244,240,230,.28)
+      ) !important;
+
+    border-color:
+      rgba(67,73,69,.10) !important;
+
+    box-shadow:
+      0 14px 32px rgba(58,53,42,.045) !important;
   }
 
 }
