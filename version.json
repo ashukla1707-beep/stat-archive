@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.5.2",
+  "versionCode": 10,
+  "versionName": "1.5.3",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "A new version of Stat Archive is available."
+  "message": "Stat Archive 1.5.3 is available with the new full-screen launch experience and latest app improvements."
 }
