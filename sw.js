@@ -1,9 +1,10 @@
-const CACHE = "stat-archive-shell-v20260901-menu-fix-v1";
+const CACHE = "stat-archive-shell-v20260901-menu-flash-fix-v2";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./assets/styles.css",
+  "./assets/scanner.css",
   "./assets/js/pdf.js",
   "./assets/js/core.js",
   "./assets/js/archive-ui.js",
@@ -56,6 +57,7 @@ self.addEventListener("fetch", event => {
   const isMutableAppAsset =
     url.pathname.includes("/assets/js/") ||
     url.pathname.endsWith("/assets/styles.css") ||
+    url.pathname.endsWith("/assets/scanner.css") ||
     url.pathname.endsWith("/manifest.json");
 
   if (isNavigation || isMutableAppAsset) {
