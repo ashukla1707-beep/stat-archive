@@ -5279,3 +5279,86 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
+/* =========================================================
+   DESKTOP HERO HEIGHT + GRAPH TRANSPARENCY
+   Mobile remains unchanged
+   ========================================================= */
+
+@media (min-width: 901px) {
+
+  /* Reduce only hero height */
+  .header{
+    min-height: 320px !important;
+    padding-top: 26px !important;
+    padding-bottom: 26px !important;
+  }
+
+  /* Graph block: keep width, make it more transparent */
+  .hero-probability{
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    height: 250px !important;
+
+    background:
+      radial-gradient(
+        circle at 62% 50%,
+        rgba(94,231,247,.06) 0%,
+        rgba(94,231,247,.03) 26%,
+        transparent 58%
+      ),
+      rgba(8,14,21,.12) !important;
+
+    border-color: rgba(148,163,184,.10) !important;
+
+    box-shadow:
+      0 8px 24px rgba(0,0,0,.04) !important;
+
+    backdrop-filter: blur(1px) !important;
+    -webkit-backdrop-filter: blur(1px) !important;
+  }
+
+  /* Fit graph nicely inside shorter graph card */
+  .hero-probability .probability-svg{
+    top: 34px !important;
+    height: 188px !important;
+  }
+
+  /* Distribution title */
+  .hero-probability .curve-title{
+    top: 18px !important;
+  }
+
+  /* Menu button stays properly placed inside graph block */
+  .main-menu-btn{
+    top: 26px !important;
+  }
+
+  /* μ label */
+  .hero-probability .axis-mid{
+    bottom: 8px !important;
+  }
+}
+
+
+/* Light theme transparency */
+@media (min-width: 901px) {
+  body[data-theme="light"] .hero-probability{
+    background:
+      radial-gradient(
+        circle at 62% 50%,
+        rgba(52,125,115,.045) 0%,
+        rgba(52,125,115,.02) 26%,
+        transparent 58%
+      ),
+      rgba(255,255,255,.18) !important;
+
+    border-color: rgba(67,73,69,.08) !important;
+
+    box-shadow:
+      0 8px 20px rgba(58,53,42,.03) !important;
+
+    backdrop-filter: blur(1px) !important;
+    -webkit-backdrop-filter: blur(1px) !important;
+  }
+}
