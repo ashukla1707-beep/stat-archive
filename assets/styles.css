@@ -4260,8 +4260,145 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 
 /* =========================================================
-   MOBILE
-   Keep existing working mobile placement
+   FINAL DESKTOP HERO GRAPH + MENU
+   Balanced spacing around graph
+   Mobile remains unchanged
+   ========================================================= */
+
+@media(min-width:901px){
+
+  /* Hero is positioning container */
+  .header{
+    position:relative !important;
+  }
+
+
+  /* =======================================================
+     GRAPH
+     Equal breathing room on top / right / bottom
+     ======================================================= */
+
+  .hero-probability{
+    position:absolute !important;
+
+    /* move graph left */
+    right:82px !important;
+
+    /* vertically center it */
+    top:50% !important;
+    bottom:auto !important;
+
+    transform:translateY(-50%) !important;
+
+    width:400px !important;
+    height:250px !important;
+
+    margin:0 !important;
+  }
+
+
+  /* =======================================================
+     MENU BUTTON
+     Inside hero at top-right
+     ======================================================= */
+
+  .main-menu-btn{
+    position:absolute !important;
+
+    top:18px !important;
+    right:18px !important;
+
+    left:auto !important;
+    bottom:auto !important;
+
+    margin:0 !important;
+
+    width:38px !important;
+    min-width:38px !important;
+    height:38px !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    padding:0 !important;
+    gap:0 !important;
+
+    z-index:100 !important;
+
+    border:
+      1px solid rgba(148,163,184,.18) !important;
+
+    border-radius:10px !important;
+
+    background:
+      rgba(9,14,21,.64) !important;
+
+    color:#cbd5e1 !important;
+
+    font-size:19px !important;
+    line-height:1 !important;
+
+    box-shadow:none !important;
+
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+
+    transform:none !important;
+
+    transition:
+      background .18s ease,
+      border-color .18s ease,
+      color .18s ease;
+  }
+
+
+  /* Remove old MENU text / pseudo styling */
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+
+  .main-menu-btn:hover{
+    background:
+      rgba(94,231,247,.07) !important;
+
+    border-color:
+      rgba(94,231,247,.38) !important;
+
+    color:
+      var(--cyan) !important;
+  }
+
+
+  /* Do NOT move the left-side heading */
+  .hero-copy .eyebrow{
+    margin-left:0 !important;
+  }
+
+
+  /* =======================================================
+     LIGHT THEME
+     ======================================================= */
+
+  body[data-theme="light"] .main-menu-btn{
+    background:
+      rgba(250,248,241,.72) !important;
+
+    border-color:
+      rgba(86,65,100,.16) !important;
+
+    color:
+      #4b365f !important;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE — KEEP CURRENT WORKING LAYOUT
    ========================================================= */
 
 @media(max-width:700px){
@@ -4271,6 +4408,7 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
     top:14px !important;
     right:14px !important;
+
     left:auto !important;
 
     width:40px !important;
@@ -4282,16 +4420,10 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     transform:none !important;
   }
 
-
   .main-menu-btn::before,
   .main-menu-btn::after{
     content:none !important;
     display:none !important;
-  }
-
-
-  .hero-copy .eyebrow{
-    margin-left:0 !important;
   }
 
 }
