@@ -4483,242 +4483,328 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 }
 
 /* =========================================================
-   HERO GRAPH + MENU FIX
+   FINAL DESKTOP GRAPH + MENU
+   Reference layout:
+   DISTRIBUTION top-left
+   MENU top-right
+   compact bell curve
    ========================================================= */
 
-.hero-probability{
-  position:relative;
-  overflow:hidden;
-}
-
-/* top left title */
-.curve-title{
-  position:absolute;
-  top:16px;
-  left:18px;
-  z-index:4;
-
-  display:flex;
-  align-items:center;
-  gap:10px;
-
-  font-size:15px !important;
-  font-weight:800;
-  letter-spacing:2.6px;
-  color:var(--text);
-  opacity:.96;
-}
-
-.curve-dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:var(--cyan);
-  box-shadow:0 0 10px rgba(94,231,247,.45);
-  flex:none;
-}
-
-/* only f(x), no long formula */
-.formula-chip{
-  position:absolute;
-  top:12px;
-  right:84px;
-  z-index:4;
-
-  min-width:70px;
-  height:42px;
-
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-
-  padding:0 16px;
-
-  border-radius:14px;
-  border:1px solid var(--line-strong);
-
-  background:rgba(8,14,24,.82);
-  color:var(--cyan);
-
-  font:800 17px 'JetBrains Mono', monospace;
-  letter-spacing:.4px;
-}
-
-/* graph area */
-.probability-svg{
-  position:absolute;
-  left:18px;
-  right:72px;
-  top:38px;
-  bottom:14px;
-
-  width:auto;
-  height:auto;
-  display:block;
-}
-
-/* menu centred vertically */
-.main-menu-btn{
-  position:absolute !important;
-  top:50% !important;
-  right:18px !important;
-  transform:translateY(-50%) !important;
-
-  width:42px !important;
-  height:42px !important;
-
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-
-  padding:0 !important;
-  margin:0 !important;
-
-  border-radius:12px !important;
-  border:1px solid rgba(148,163,184,.18) !important;
-
-  background:rgba(9,14,21,.74) !important;
-  color:#dbe4ef !important;
-
-  font-size:24px !important;
-  line-height:1 !important;
-
-  z-index:5 !important;
-  box-shadow:none !important;
-
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-}
-
-.main-menu-btn:hover{
-  background:rgba(94,231,247,.08) !important;
-  border-color:rgba(94,231,247,.36) !important;
-  color:var(--cyan) !important;
-}
-
-/* SVG styling */
-.x-axis{
-  stroke:rgba(94,231,247,.55);
-  stroke-width:1.5;
-}
-
-.mean-line{
-  stroke:rgba(94,231,247,.22);
-  stroke-width:1.6;
-  stroke-dasharray:5 7;
-}
-
-.gaussian-curve{
-  fill:none;
-  stroke:var(--cyan);
-  stroke-width:4.4;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-  filter:drop-shadow(0 0 10px rgba(94,231,247,.28));
-}
-
-.axis-dot{
-  fill:var(--cyan);
-  opacity:.9;
-}
-
-.mean-badge-box{
-  fill:rgba(10,18,28,.82);
-  stroke:rgba(148,163,184,.08);
-  stroke-width:1;
-}
-
-.mean-badge-text{
-  fill:rgba(219,228,239,.88);
-  font:800 11px 'JetBrains Mono', monospace;
-  letter-spacing:1px;
-}
-
-.axis-label{
-  fill:var(--cyan);
-  font:800 16px 'JetBrains Mono', monospace;
-}
-
-/* light theme */
-body[data-theme="light"] .formula-chip{
-  background:rgba(255,255,255,.72);
-  color:#2f7d74;
-  border-color:rgba(86,65,100,.14);
-}
-
-body[data-theme="light"] .main-menu-btn{
-  background:rgba(250,248,241,.86) !important;
-  border-color:rgba(86,65,100,.18) !important;
-  color:#4b365f !important;
-}
-
-body[data-theme="light"] .mean-badge-box{
-  fill:rgba(255,255,255,.78);
-  stroke:rgba(86,65,100,.10);
-}
-
-body[data-theme="light"] .mean-badge-text{
-  fill:#52606d;
-}
-
-/* desktop spacing */
 @media(min-width:901px){
+
+  .header{
+    position:relative !important;
+  }
+
+
+  /* =======================================================
+     GRAPH CARD
+     ======================================================= */
+
   .hero-probability{
-    min-height:260px;
+    position:absolute !important;
+
+    right:60px !important;
+
+    top:50% !important;
+    bottom:auto !important;
+
+    transform:translateY(-50%) !important;
+
+    width:400px !important;
+    height:220px !important;
+
+    margin:0 !important;
+
+    overflow:hidden !important;
+
+    border-radius:20px !important;
+
+    background:
+      radial-gradient(
+        circle at 50% 58%,
+        rgba(94,231,247,.05),
+        transparent 48%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(18,25,37,.38),
+        rgba(9,14,21,.20)
+      ) !important;
+
+    border:
+      1px solid rgba(148,163,184,.13) !important;
+
+    box-shadow:
+      0 14px 34px rgba(0,0,0,.07) !important;
+
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
   }
 
-  .probability-svg{
-    left:24px;
-    right:84px;
-    top:34px;
-    bottom:18px;
+
+  /* =======================================================
+     REMOVE FORMULA
+     ======================================================= */
+
+  .hero-probability .formula-chip{
+    display:none !important;
   }
 
-  .curve-title{
-    top:14px;
-    left:18px;
-    font-size:16px !important;
+
+  /* =======================================================
+     DISTRIBUTION
+     ======================================================= */
+
+  .hero-probability .curve-title{
+    position:absolute !important;
+
+    top:14px !important;
+    left:18px !important;
+
+    z-index:6 !important;
+
+    font-size:12.5px !important;
+    font-weight:800 !important;
+
+    letter-spacing:.16em !important;
+
+    color:#b7c4d4 !important;
   }
 
-  .formula-chip{
-    top:10px;
-    right:84px;
-  }
-}
 
-/* mobile */
-@media(max-width:700px){
-  .curve-title{
-    top:14px;
-    left:16px;
-    font-size:13px !important;
-    letter-spacing:2px;
+  .hero-probability .curve-live{
+    width:8px !important;
+    height:8px !important;
   }
 
-  .formula-chip{
-    top:12px;
-    right:16px;
-    min-width:62px;
-    height:38px;
-    font-size:16px;
-    border-radius:12px;
+
+  /* =======================================================
+     SVG / GRAPH
+     ======================================================= */
+
+  .hero-probability .probability-svg{
+    position:absolute !important;
+
+    left:18px !important;
+    right:18px !important;
+
+    top:30px !important;
+    bottom:auto !important;
+
+    width:364px !important;
+    height:184px !important;
   }
+
+
+  /*
+   * Slightly taller / narrower bell curve.
+   * Also lift tails away from x-axis.
+   */
+  .hero-probability .gaussian-curve{
+    transform-box:fill-box !important;
+
+    transform-origin:center bottom !important;
+
+    transform:
+      translateY(-7px)
+      scaleX(.94)
+      scaleY(1.10) !important;
+  }
+
+
+  /* =======================================================
+     MEAN
+     ======================================================= */
+
+  .hero-probability .curve-note.note-one{
+    position:absolute !important;
+
+    left:50% !important;
+    top:78px !important;
+
+    transform:translateX(-50%) !important;
+
+    padding:6px 9px !important;
+
+    border-radius:7px !important;
+
+    font-size:8px !important;
+    font-weight:800 !important;
+
+    letter-spacing:.12em !important;
+
+    z-index:5 !important;
+  }
+
+
+  /* μ centred below graph */
+
+  .hero-probability .axis-mid{
+    left:50% !important;
+
+    bottom:7px !important;
+
+    transform:translateX(-50%) !important;
+
+    font-size:11px !important;
+    font-weight:800 !important;
+  }
+
+
+  /* =======================================================
+     MENU
+     Takes the old f(x) position
+     ======================================================= */
 
   .main-menu-btn{
-    top:16px !important;
-    right:16px !important;
+    position:absolute !important;
+
+    /*
+     * Graph card:
+     * right = 60px
+     * menu sits inside its top-right corner
+     */
+    top:calc(50% - 96px) !important;
+    right:72px !important;
+
+    left:auto !important;
+    bottom:auto !important;
+
+    width:42px !important;
+    min-width:42px !important;
+    height:42px !important;
+
+    margin:0 !important;
+    padding:0 !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    z-index:120 !important;
+
+    border:
+      1px solid rgba(148,163,184,.18) !important;
+
+    border-radius:11px !important;
+
+    background:
+      rgba(7,12,19,.78) !important;
+
+    color:#cbd5e1 !important;
+
+    font-size:21px !important;
+    line-height:1 !important;
+
+    box-shadow:none !important;
+
     transform:none !important;
 
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+
+
+  /* Remove old MENU text / decorative pseudo-elements */
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+
+  .main-menu-btn:hover{
+    background:
+      rgba(94,231,247,.08) !important;
+
+    border-color:
+      rgba(94,231,247,.38) !important;
+
+    color:
+      var(--cyan) !important;
+  }
+
+
+  /* =======================================================
+     LIGHT THEME
+     ======================================================= */
+
+  body[data-theme="light"] .hero-probability{
+    background:
+      radial-gradient(
+        circle at 50% 58%,
+        rgba(52,125,115,.045),
+        transparent 48%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.52),
+        rgba(244,240,230,.32)
+      ) !important;
+
+    border-color:
+      rgba(67,73,69,.11) !important;
+
+    box-shadow:
+      0 12px 28px rgba(58,53,42,.04) !important;
+  }
+
+
+  body[data-theme="light"] .curve-title{
+    color:#59635e !important;
+  }
+
+
+  body[data-theme="light"] .main-menu-btn{
+    background:
+      rgba(250,248,241,.82) !important;
+
+    border-color:
+      rgba(86,65,100,.16) !important;
+
+    color:#4b365f !important;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   Preserve current working mobile layout
+   ========================================================= */
+
+@media(max-width:700px){
+
+  /* hide formula on mobile too */
+  .hero-probability .formula-chip{
+    display:none !important;
+  }
+
+
+  .main-menu-btn{
+    position:absolute !important;
+
+    top:14px !important;
+    right:14px !important;
+
+    left:auto !important;
+
     width:40px !important;
+    min-width:40px !important;
     height:40px !important;
 
-    font-size:22px !important;
+    margin:0 !important;
+
+    transform:none !important;
   }
 
-  .probability-svg{
-    left:14px;
-    right:14px;
-    top:52px;
-    bottom:10px;
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
   }
+
 }
