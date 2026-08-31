@@ -4159,28 +4159,30 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   FINAL DESKTOP HERO + MENU POSITION
-   Refined version
-   Mobile is untouched
+   DESKTOP MENU — FLOATING SIDE TAB
+   Hero and graph stay untouched
+   Mobile stays unchanged
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Slightly shift graph left for better separation */
+  /* Restore original graph placement */
   .hero-probability{
-    right:72px !important;
+    right:60px !important;
   }
 
 
-  /* Refined menu button */
+  /* Put menu outside the hero content */
   .main-menu-btn{
-    top:18px !important;
-    right:16px !important;
+    position:fixed !important;
 
-    width:36px !important;
-    height:36px !important;
+    top:175px !important;
+    right:14px !important;
 
-    z-index:60 !important;
+    left:auto !important;
+
+    width:42px !important;
+    height:54px !important;
 
     display:flex !important;
     align-items:center !important;
@@ -4188,60 +4190,63 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
     padding:0 !important;
 
-    border-radius:10px !important;
+    z-index:999 !important;
 
-    background:rgba(10,15,22,.72) !important;
-    border:1px solid rgba(148,163,184,.18) !important;
+    border-radius:12px 0 0 12px !important;
+
+    border:
+      1px solid rgba(148,163,184,.20) !important;
+
+    border-right:none !important;
+
+    background:
+      rgba(10,15,22,.90) !important;
 
     color:#dbe4ef !important;
 
-    font-size:18px !important;
+    font-size:20px !important;
     line-height:1 !important;
 
     box-shadow:
-      0 4px 14px rgba(0,0,0,.10) !important;
+      -5px 7px 22px rgba(0,0,0,.18) !important;
 
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
 
     transform:none !important;
 
     transition:
-      background .18s ease,
-      border-color .18s ease,
+      width .18s ease,
       color .18s ease,
-      transform .18s ease;
+      background .18s ease,
+      border-color .18s ease;
   }
 
 
   .main-menu-btn:hover{
-    background:rgba(94,231,247,.07) !important;
-
-    border-color:rgba(94,231,247,.38) !important;
+    width:48px !important;
 
     color:var(--cyan) !important;
 
-    transform:translateY(-1px) !important;
+    background:
+      rgba(16,27,35,.96) !important;
+
+    border-color:
+      rgba(94,231,247,.38) !important;
   }
 
-}
-
-
-/* =========================================================
-   LIGHT THEME — DESKTOP
-   ========================================================= */
-
-@media(min-width:901px){
 
   body[data-theme="light"] .main-menu-btn{
-    background:rgba(250,248,241,.80) !important;
-
-    border-color:rgba(86,65,100,.16) !important;
+    background:
+      rgba(250,248,241,.94) !important;
 
     color:#4b365f !important;
 
+    border-color:
+      rgba(86,65,100,.18) !important;
+
     box-shadow:
-      0 4px 12px rgba(58,53,42,.07) !important;
+      -5px 7px 18px rgba(58,53,42,.10) !important;
   }
 
 }
