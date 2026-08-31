@@ -33,8 +33,21 @@ document.addEventListener("pointerdown", (e) => {
     -webkit-backdrop-filter:none !important;
   }
 
-  /* Curve and x-axis use the same native SVG span: x=18 through x=502.
-     No horizontal scaling is applied, so their start/end positions match. */
+  /* Let the graph use almost the full card, like the supplied reference.
+     The card itself is unchanged; only the SVG drawing area is enlarged. */
+  .hero-probability .probability-svg{
+    position:absolute !important;
+    left:-10px !important;
+    right:auto !important;
+    top:23px !important;
+    width:475px !important;
+    height:181px !important;
+    max-width:none !important;
+    transform:none !important;
+  }
+
+  /* Curve and x-axis keep the same native horizontal span (x=18..502),
+     therefore their visible start/end positions stay aligned. */
   .hero-probability .dot-baseline{
     transform:none !important;
     transform-origin:center center !important;
@@ -45,11 +58,15 @@ document.addEventListener("pointerdown", (e) => {
   .hero-probability .gaussian-curve{
     transform-box:fill-box !important;
     transform-origin:center bottom !important;
-    transform:translateY(-6px) scaleY(1.12) !important;
+    transform:translateY(-3px) scaleY(1.16) !important;
+  }
+
+  .hero-probability .axis-mid{
+    bottom:2px !important;
   }
 
   /* Menu uses the same visual material as the graph card, so it blends
-     into the surrounding panel instead of looking like a separate cyan box. */
+     into the surrounding panel instead of looking like a separate box. */
   .main-menu-btn{
     top:34px !important;
     right:66px !important;
