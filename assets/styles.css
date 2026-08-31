@@ -4159,85 +4159,105 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   DESKTOP MENU — CLEAN FIXED TOP-RIGHT BUTTON
-   Hero and graph remain untouched
-   Mobile remains unchanged
+   DESKTOP TOP UTILITY MENU
+   Hero stays completely untouched
+   Mobile stays unchanged
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Restore graph to original placement */
-  .hero-probability{
-    right:60px !important;
+  .page{
+    padding-top:20px !important;
   }
 
-
   .main-menu-btn{
-    position:fixed !important;
+    position:relative !important;
 
-    top:22px !important;
-    right:22px !important;
-
+    top:auto !important;
+    right:auto !important;
     left:auto !important;
 
-    width:40px !important;
-    height:40px !important;
+    margin:
+      0 0
+      10px
+      auto !important;
+
+    width:auto !important;
+    height:38px !important;
 
     display:flex !important;
     align-items:center !important;
     justify-content:center !important;
 
-    padding:0 !important;
+    gap:8px;
 
-    z-index:9999 !important;
+    padding:
+      0 14px !important;
 
-    border-radius:12px !important;
+    z-index:60 !important;
 
-    border:1px solid rgba(148,163,184,.22) !important;
+    border:
+      1px solid rgba(148,163,184,.18) !important;
 
-    background:rgba(9,14,21,.88) !important;
+    border-radius:10px !important;
 
-    color:#dbe4ef !important;
+    background:
+      rgba(15,20,29,.62) !important;
 
-    font-size:19px !important;
-    line-height:1 !important;
+    color:#aeb9c8 !important;
 
-    box-shadow:
-      0 8px 24px rgba(0,0,0,.18) !important;
+    font-size:18px !important;
 
-    backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);
+    box-shadow:none !important;
 
     transform:none !important;
-
-    transition:
-      background .18s ease,
-      border-color .18s ease,
-      color .18s ease,
-      transform .18s ease;
   }
 
+  .main-menu-btn::after{
+    content:"Menu";
+
+    font:
+      700 10px
+      'JetBrains Mono',
+      monospace;
+
+    letter-spacing:.06em;
+
+    text-transform:uppercase;
+  }
 
   .main-menu-btn:hover{
-    background:rgba(15,27,35,.96) !important;
-
-    border-color:rgba(94,231,247,.42) !important;
-
     color:var(--cyan) !important;
 
-    transform:translateY(-1px) !important;
+    border-color:
+      rgba(94,231,247,.35) !important;
+
+    background:
+      rgba(94,231,247,.045) !important;
   }
 
 
+  /* IMPORTANT:
+     restore original graph positioning */
+  .hero-probability{
+    right:60px !important;
+  }
+
+}
+
+
+/* Light desktop */
+
+@media(min-width:901px){
+
   body[data-theme="light"] .main-menu-btn{
-    background:rgba(250,248,241,.94) !important;
+    background:
+      rgba(255,255,255,.45) !important;
 
-    border-color:rgba(86,65,100,.20) !important;
+    color:#62516f !important;
 
-    color:#4b365f !important;
-
-    box-shadow:
-      0 8px 22px rgba(58,53,42,.10) !important;
+    border-color:
+      rgba(86,65,100,.16) !important;
   }
 
 }
