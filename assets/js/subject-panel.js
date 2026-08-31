@@ -33,21 +33,21 @@ document.addEventListener("pointerdown", (e) => {
     -webkit-backdrop-filter:none !important;
   }
 
-  /* Let the graph use almost the full card, like the supplied reference.
-     The card itself is unchanged; only the SVG drawing area is enlarged. */
+  /* Use essentially the entire graph card. The card dimensions are not
+     changed; only the SVG canvas is enlarged to the card edges. */
   .hero-probability .probability-svg{
     position:absolute !important;
-    left:-10px !important;
+    left:-16px !important;
     right:auto !important;
-    top:23px !important;
-    width:475px !important;
-    height:181px !important;
+    top:16px !important;
+    width:488px !important;
+    height:189px !important;
     max-width:none !important;
     transform:none !important;
   }
 
   /* Curve and x-axis keep the same native horizontal span (x=18..502),
-     therefore their visible start/end positions stay aligned. */
+     so their visible start/end points remain aligned. */
   .hero-probability .dot-baseline{
     transform:none !important;
     transform-origin:center center !important;
@@ -55,14 +55,16 @@ document.addEventListener("pointerdown", (e) => {
     stroke-width:1.25 !important;
   }
 
+  /* Lift the curve tails clearly above the x-axis while making the bell
+     taller, so it occupies the maximum useful vertical area. */
   .hero-probability .gaussian-curve{
     transform-box:fill-box !important;
     transform-origin:center bottom !important;
-    transform:translateY(-3px) scaleY(1.16) !important;
+    transform:translateY(-11px) scaleY(1.18) !important;
   }
 
   .hero-probability .axis-mid{
-    bottom:2px !important;
+    bottom:1px !important;
   }
 
   /* Menu uses the same visual material as the graph card, so it blends
