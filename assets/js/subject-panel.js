@@ -116,6 +116,12 @@ document.addEventListener("pointerdown", (e) => {
     color:#4b365f !important;
   }
 }
+
+@media (max-width:700px){
+  .hero-probability .curve-note.note-one{
+    display:none !important;
+  }
+}
 `;
   document.head.appendChild(style);
 })();
