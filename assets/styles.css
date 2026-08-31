@@ -4482,9 +4482,9 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 
-
 /* =========================================================
-   DESKTOP GRAPH — COMPACT + UNIFORM SPACE + TRANSPARENCY
+   FINAL DESKTOP GRAPH + MENU
+   Taller peak + no empty strip on right
    Mobile remains unchanged
    ========================================================= */
 
@@ -4495,122 +4495,227 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 
-  /* Graph card */
+  /* =======================================================
+     GRAPH CARD
+     Card becomes wider, but graph itself does NOT stretch.
+     Extra width becomes the menu area.
+     ======================================================= */
+
   .hero-probability{
     position:absolute !important;
 
-    /* shift slightly left */
-    right:86px !important;
+    /* bring card close to right hero edge */
+    right:18px !important;
 
-    /* perfectly center vertically */
+    /* vertically centered */
     top:50% !important;
     bottom:auto !important;
 
     transform:translateY(-50%) !important;
 
-    /* keep width, reduce height */
-    width:400px !important;
+    /* wider CARD only */
+    width:460px !important;
+
+    /* compact height */
     height:220px !important;
 
     margin:0 !important;
 
     overflow:hidden !important;
 
-    /* more transparent so hero BG is visible */
     background:
       radial-gradient(
-        circle at 50% 57%,
+        circle at 48% 57%,
         rgba(94,231,247,.045),
-        transparent 45%
+        transparent 46%
       ),
       linear-gradient(
         145deg,
-        rgba(255,255,255,.020),
-        rgba(255,255,255,.004)
+        rgba(255,255,255,.018),
+        rgba(255,255,255,.003)
       ) !important;
 
     border-color:
       rgba(148,163,184,.12) !important;
 
     box-shadow:
-      0 16px 38px rgba(0,0,0,.09) !important;
+      0 15px 36px rgba(0,0,0,.08) !important;
   }
 
 
-  /*
-   * Fit the existing graph inside the
-   * slightly shorter card without stretching it.
-   */
-  .hero-probability .probability-svg{
-    top:25px !important;
+  /* =======================================================
+     ACTUAL GRAPH
+     Keep approximately original drawing width.
+     Do not stretch to new 460px container.
+     ======================================================= */
 
+  .hero-probability .probability-svg{
+    position:absolute !important;
+
+    left:14px !important;
+    right:auto !important;
+
+    top:25px !important;
     bottom:auto !important;
 
-    left:9px !important;
-    right:9px !important;
-
-    width:calc(100% - 18px) !important;
-
+    width:400px !important;
     height:188px !important;
   }
 
 
-  /* Small labels stay aligned */
+  /* =======================================================
+     MAKE GAUSSIAN CURVE MORE PEAKED
+     Slightly narrower + taller
+     ======================================================= */
+
+  .hero-probability .gaussian-curve{
+    transform-box:fill-box !important;
+
+    transform-origin:
+      center bottom !important;
+
+    transform:
+      scaleX(.92)
+      scaleY(1.16) !important;
+  }
+
+
+  /* Keep the mean line visually centered */
+  .hero-probability .mean-line{
+    transform:none !important;
+  }
+
+
+  /* =======================================================
+     LABELS
+     ======================================================= */
+
   .hero-probability .curve-title{
     top:11px !important;
+    left:14px !important;
   }
+
 
   .hero-probability .formula-chip{
     top:9px !important;
+
+    /* leave space for hamburger */
+    right:66px !important;
   }
+
 
   .hero-probability .axis-label{
     bottom:3px !important;
   }
 
 
-  /* Menu remains in its own space */
+  /* =======================================================
+     MENU
+     Visually becomes part of graph card's right section
+     ======================================================= */
+
   .main-menu-btn{
     position:absolute !important;
 
-    top:18px !important;
-    right:18px !important;
+    /*
+     * Graph card is 220px tall and vertically centered.
+     * This places the menu near its top-right corner.
+     */
+    top:calc(50% - 101px) !important;
+
+    right:28px !important;
 
     left:auto !important;
     bottom:auto !important;
 
-    margin:0 !important;
+    width:38px !important;
+    min-width:38px !important;
+    height:38px !important;
 
-    z-index:100 !important;
+    margin:0 !important;
+    padding:0 !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    z-index:110 !important;
+
+    border:
+      1px solid rgba(148,163,184,.18) !important;
+
+    border-radius:10px !important;
+
+    background:
+      rgba(9,14,21,.66) !important;
+
+    color:#cbd5e1 !important;
+
+    font-size:19px !important;
+    line-height:1 !important;
+
+    box-shadow:none !important;
+
+    transform:none !important;
+
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
   }
 
-}
+
+  /* Remove any older MENU text/pseudo elements */
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
 
 
-/* =========================================================
-   LIGHT THEME GRAPH
-   ========================================================= */
+  .main-menu-btn:hover{
+    background:
+      rgba(94,231,247,.08) !important;
 
-@media(min-width:901px){
+    border-color:
+      rgba(94,231,247,.38) !important;
+
+    color:
+      var(--cyan) !important;
+  }
+
+
+  /* =======================================================
+     LIGHT THEME
+     ======================================================= */
 
   body[data-theme="light"] .hero-probability{
     background:
       radial-gradient(
-        circle at 50% 57%,
+        circle at 48% 57%,
         rgba(52,125,115,.035),
-        transparent 45%
+        transparent 46%
       ),
       linear-gradient(
         145deg,
-        rgba(255,255,255,.48),
-        rgba(244,240,230,.28)
+        rgba(255,255,255,.44),
+        rgba(244,240,230,.24)
       ) !important;
 
     border-color:
       rgba(67,73,69,.10) !important;
 
     box-shadow:
-      0 14px 32px rgba(58,53,42,.045) !important;
+      0 14px 30px rgba(58,53,42,.04) !important;
+  }
+
+
+  body[data-theme="light"] .main-menu-btn{
+    background:
+      rgba(250,248,241,.76) !important;
+
+    border-color:
+      rgba(86,65,100,.16) !important;
+
+    color:#4b365f !important;
   }
 
 }
