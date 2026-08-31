@@ -18,8 +18,6 @@ document.addEventListener("pointerdown", (e) => {
   style.id = "statArchiveHeroFinalPolish";
   style.textContent = `
 @media (min-width:901px){
-  /* Mobile-like translucent block effect: visible outline, subtle inner
-     highlight and enough transparency for the hero grid/background. */
   .hero-probability{
     background:
       radial-gradient(circle at 52% 58%, rgba(94,231,247,.075), transparent 52%),
@@ -33,8 +31,6 @@ document.addEventListener("pointerdown", (e) => {
     -webkit-backdrop-filter:none !important;
   }
 
-  /* Use essentially the entire graph card. The card dimensions are not
-     changed; only the SVG canvas is enlarged to the card edges. */
   .hero-probability .probability-svg{
     position:absolute !important;
     left:-16px !important;
@@ -46,8 +42,6 @@ document.addEventListener("pointerdown", (e) => {
     transform:none !important;
   }
 
-  /* Curve and x-axis keep the same native horizontal span (x=18..502),
-     so their visible start/end points remain aligned. */
   .hero-probability .dot-baseline{
     transform:none !important;
     transform-origin:center center !important;
@@ -55,8 +49,6 @@ document.addEventListener("pointerdown", (e) => {
     stroke-width:1.25 !important;
   }
 
-  /* Lift the curve tails clearly above the x-axis while making the bell
-     taller, so it occupies the maximum useful vertical area. */
   .hero-probability .gaussian-curve{
     transform-box:fill-box !important;
     transform-origin:center bottom !important;
@@ -67,8 +59,6 @@ document.addEventListener("pointerdown", (e) => {
     bottom:1px !important;
   }
 
-  /* Menu uses the same visual material as the graph card, so it blends
-     into the surrounding panel instead of looking like a separate box. */
   .main-menu-btn{
     top:34px !important;
     right:66px !important;
@@ -124,4 +114,295 @@ document.addEventListener("pointerdown", (e) => {
 }
 `;
   document.head.appendChild(style);
+})();
+
+/* Mobile side-menu redesign + course level controls. */
+(() => {
+  function initMobileMenuPolish(){
+    const menu = document.getElementById("mainSideMenu");
+    if (!menu) return;
+
+    const accountSection = document.getElementById("menuAuthBtn")?.closest(".main-menu-section");
+    const appearanceSection = document.getElementById("menuDarkBtn")?.closest(".main-menu-section");
+    const librarySection = document.getElementById("menuOfflineLibraryBtn")?.closest(".main-menu-section");
+    const manualSection = document.getElementById("menuManualsBtn")?.closest(".main-menu-section");
+    const aboutSection = document.getElementById("menuAboutBtn")?.closest(".main-menu-section");
+
+    accountSection?.classList.add("mobile-menu-account-section");
+    appearanceSection?.classList.add("mobile-menu-appearance-section");
+    librarySection?.classList.add("mobile-menu-library-section");
+    manualSection?.classList.add("mobile-menu-manual-section");
+    aboutSection?.classList.add("mobile-menu-about-section");
+
+    if (librarySection && !librarySection.querySelector(".mobile-menu-injected-label")) {
+      const label = document.createElement("div");
+      label.className = "main-menu-label mobile-menu-injected-label";
+      label.textContent = "Library";
+      librarySection.prepend(label);
+    }
+
+    if (manualSection && !manualSection.querySelector(".mobile-menu-injected-label")) {
+      const label = document.createElement("div");
+      label.className = "main-menu-label mobile-menu-injected-label";
+      label.textContent = "Support";
+      manualSection.prepend(label);
+    }
+
+    let levelSection = document.getElementById("mobileMenuLevelSection");
+    if (!levelSection) {
+      levelSection = document.createElement("section");
+      levelSection.id = "mobileMenuLevelSection";
+      levelSection.className = "main-menu-section mobile-menu-level-section";
+      levelSection.innerHTML = `
+        <div class="main-menu-label">Level</div>
+        <div class="mobile-menu-level-row" role="group" aria-label="Course level">
+          <button type="button" id="menuMscLevelBtn" class="mobile-menu-level-btn">M.Sc</button>
+          <button type="button" id="menuBscLevelBtn" class="mobile-menu-level-btn">B.Sc</button>
+        </div>`;
+
+      if (appearanceSection?.parentNode) {
+        appearanceSection.parentNode.insertBefore(levelSection, appearanceSection.nextSibling);
+      } else {
+        menu.appendChild(levelSection);
+      }
+    }
+
+    const mscMenuBtn = document.getElementById("menuMscLevelBtn");
+    const bscMenuBtn = document.getElementById("menuBscLevelBtn");
+    const mscSourceBtn = document.getElementById("levelMscBtn");
+    const bscSourceBtn = document.getElementById("levelBscBtn");
+
+    function syncLevelButtons(){
+      let current = "";
+      if (mscSourceBtn?.getAttribute("aria-pressed") === "true") current = "msc";
+      if (bscSourceBtn?.getAttribute("aria-pressed") === "true") current = "bsc";
+      if (!current) {
+        current = new URLSearchParams(location.search).get("level") || "msc";
+      }
+      mscMenuBtn?.classList.toggle("is-active", current === "msc");
+      bscMenuBtn?.classList.toggle("is-active", current === "bsc");
+      mscMenuBtn?.setAttribute("aria-pressed", String(current === "msc"));
+      bscMenuBtn?.setAttribute("aria-pressed", String(current === "bsc"));
+    }
+
+    if (mscMenuBtn && !mscMenuBtn.dataset.bound) {
+      mscMenuBtn.dataset.bound = "1";
+      mscMenuBtn.addEventListener("click", () => {
+        mscSourceBtn?.click();
+        setTimeout(syncLevelButtons, 0);
+      });
+    }
+
+    if (bscMenuBtn && !bscMenuBtn.dataset.bound) {
+      bscMenuBtn.dataset.bound = "1";
+      bscMenuBtn.addEventListener("click", () => {
+        bscSourceBtn?.click();
+        setTimeout(syncLevelButtons, 0);
+      });
+    }
+
+    if (mscSourceBtn || bscSourceBtn) {
+      const observer = new MutationObserver(syncLevelButtons);
+      if (mscSourceBtn) observer.observe(mscSourceBtn, {attributes:true, attributeFilter:["aria-pressed"]});
+      if (bscSourceBtn) observer.observe(bscSourceBtn, {attributes:true, attributeFilter:["aria-pressed"]});
+    }
+
+    syncLevelButtons();
+  }
+
+  const style = document.createElement("style");
+  style.id = "statArchiveMobileMenuPolish";
+  style.textContent = `
+#mobileMenuLevelSection{display:none;}
+
+@media(max-width:700px){
+  .main-side-menu{
+    --mm-bg:#0b1119;
+    --mm-card:#111923;
+    --mm-card-soft:rgba(255,255,255,.025);
+    --mm-line:rgba(148,163,184,.16);
+    --mm-text:#f1f5f9;
+    --mm-muted:#8290a3;
+    --mm-accent:#5ee7f7;
+    --mm-accent-soft:rgba(94,231,247,.11);
+
+    width:min(392px,94vw) !important;
+    max-width:none !important;
+    height:100dvh !important;
+    padding:max(18px,env(safe-area-inset-top)) 18px max(22px,env(safe-area-inset-bottom)) !important;
+    overflow-y:auto !important;
+    background:var(--mm-bg) !important;
+    color:var(--mm-text) !important;
+    border-left:1px solid var(--mm-line) !important;
+    box-shadow:-22px 0 60px rgba(0,0,0,.32) !important;
+  }
+
+  body[data-theme="light"] .main-side-menu{
+    --mm-bg:#fbfaf7;
+    --mm-card:rgba(255,255,255,.82);
+    --mm-card-soft:rgba(75,54,95,.025);
+    --mm-line:rgba(75,54,95,.14);
+    --mm-text:#27302d;
+    --mm-muted:#817d77;
+    --mm-accent:#4b365f;
+    --mm-accent-soft:rgba(75,54,95,.09);
+    box-shadow:-18px 0 54px rgba(58,53,42,.16) !important;
+  }
+
+  .main-side-menu-head{
+    display:flex !important;
+    align-items:flex-start !important;
+    justify-content:space-between !important;
+    padding:2px 0 20px !important;
+    margin:0 !important;
+    border:0 !important;
+  }
+
+  .main-side-menu-brand{display:flex !important;flex-direction:column !important;gap:3px !important;}
+  .main-side-menu-brand strong{
+    color:var(--mm-text) !important;
+    font:800 29px/1.05 'Plus Jakarta Sans',Inter,sans-serif !important;
+    letter-spacing:-.035em !important;
+  }
+  .main-side-menu-brand span{
+    color:var(--mm-muted) !important;
+    font:500 14px/1.2 Inter,sans-serif !important;
+  }
+
+  .main-side-menu-close{
+    width:42px !important;
+    height:42px !important;
+    border-radius:50% !important;
+    border:1px solid var(--mm-line) !important;
+    background:transparent !important;
+    color:var(--mm-text) !important;
+    font-size:19px !important;
+  }
+
+  .main-menu-section{
+    padding:0 !important;
+    margin:0 0 19px !important;
+    border:0 !important;
+    background:transparent !important;
+  }
+
+  .main-menu-label{
+    margin:0 0 8px !important;
+    color:var(--mm-muted) !important;
+    font:500 13px/1.2 Inter,sans-serif !important;
+    letter-spacing:0 !important;
+    text-transform:none !important;
+  }
+
+  .mobile-menu-account-section > .main-menu-label{display:none !important;}
+
+  .main-menu-account-status{
+    position:relative !important;
+    display:flex !important;
+    align-items:center !important;
+    min-height:72px !important;
+    margin:0 0 11px !important;
+    padding:14px 15px 14px 48px !important;
+    border-radius:15px !important;
+    border:1px solid color-mix(in srgb,var(--mm-accent) 28%,transparent) !important;
+    background:var(--mm-accent-soft) !important;
+    color:var(--mm-text) !important;
+    font:500 14px/1.45 Inter,sans-serif !important;
+  }
+  .main-menu-account-status::before{
+    content:'▣';
+    position:absolute;left:17px;top:50%;transform:translateY(-50%);
+    color:var(--mm-accent);font-size:19px;
+  }
+  .main-menu-account-dot{display:none !important;}
+
+  .main-menu-action,
+  .main-menu-theme-btn,
+  .mobile-menu-level-btn{
+    border:1px solid var(--mm-line) !important;
+    background:var(--mm-card) !important;
+    color:var(--mm-text) !important;
+    box-shadow:none !important;
+  }
+
+  .main-menu-action{
+    position:relative !important;
+    width:100% !important;
+    min-height:56px !important;
+    padding:0 16px 0 48px !important;
+    border-radius:14px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    font:600 14px Inter,sans-serif !important;
+  }
+
+  #menuAuthBtn::before,#menuOfflineLibraryBtn::before,#menuManualsBtn::before,#menuAboutBtn::before{
+    position:absolute;left:17px;top:50%;transform:translateY(-50%);
+    color:var(--mm-muted);font-size:18px;font-weight:500;
+  }
+  #menuAuthBtn::before{content:'↪';}
+  #menuOfflineLibraryBtn::before{content:'⇩';}
+  #menuManualsBtn::before{content:'▣';}
+  #menuAboutBtn::before{content:'ⓘ';}
+
+  .main-menu-arrow{color:var(--mm-muted) !important;font-size:22px !important;}
+
+  .main-menu-theme-row,.mobile-menu-level-row{
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:10px !important;
+  }
+
+  .main-menu-theme-btn,.mobile-menu-level-btn{
+    min-height:54px !important;
+    border-radius:14px !important;
+    padding:0 12px !important;
+    font:600 14px Inter,sans-serif !important;
+  }
+
+  .main-menu-theme-btn[aria-pressed="true"],
+  .mobile-menu-level-btn.is-active{
+    background:var(--mm-accent-soft) !important;
+    border-color:color-mix(in srgb,var(--mm-accent) 38%,transparent) !important;
+    color:var(--mm-accent) !important;
+  }
+
+  #mobileMenuLevelSection{display:block !important;}
+
+  .mobile-menu-library-section .main-menu-side-meta{display:flex !important;align-items:center !important;gap:9px !important;}
+  #menuOfflineLibraryCount{
+    min-width:28px !important;height:28px !important;padding:0 8px !important;
+    display:inline-flex !important;align-items:center !important;justify-content:center !important;
+    border-radius:999px !important;background:var(--mm-accent-soft) !important;
+    color:var(--mm-accent) !important;font:700 12px 'JetBrains Mono',monospace !important;
+  }
+
+  .mobile-menu-manual-section{margin-bottom:0 !important;}
+  .mobile-menu-about-section{margin-top:0 !important;}
+  .mobile-menu-manual-section .main-menu-action{
+    border-radius:14px 14px 0 0 !important;border-bottom:0 !important;
+  }
+  .mobile-menu-about-section .main-menu-action{
+    border-radius:0 0 14px 14px !important;
+  }
+
+  .main-menu-footer{
+    margin-top:25px !important;
+    padding:18px 4px 4px !important;
+    border-top:1px solid var(--mm-line) !important;
+    text-align:center !important;
+    color:var(--mm-muted) !important;
+  }
+  .main-menu-footer strong{color:var(--mm-text) !important;font-size:12px !important;}
+  .main-menu-footer span{font-size:11px !important;}
+}
+`;
+  document.head.appendChild(style);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initMobileMenuPolish, {once:true});
+  } else {
+    initMobileMenuPolish();
+  }
 })();
