@@ -4053,3 +4053,52 @@ body[data-theme="light"] .main-menu-action:hover{
   }
 
 }
+@media(min-width:901px){
+
+  .main-menu-btn{
+    top:18px !important;
+    right:18px !important;
+
+    width:42px;
+    height:42px;
+
+    z-index:20 !important;
+  }
+
+  .hero-probability{
+    right:82px !important;
+    width:400px !important;
+  }
+
+}
+.main-menu-side-meta{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+
+#menuOfflineLibraryCount{
+  min-width:21px;
+  height:21px;
+
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:0 6px;
+
+  border-radius:999px;
+
+  background:rgba(94,231,247,.10);
+
+  color:var(--cyan);
+
+  font:700 9px 'JetBrains Mono',monospace;
+}
+
+
+body[data-theme="light"] #menuOfflineLibraryCount{
+  background:rgba(75,54,95,.09);
+  color:#4b365f;
+}
