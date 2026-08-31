@@ -4159,21 +4159,26 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   DESKTOP MENU BUTTON — LEFT SIDE OF HERO
-   Mobile stays unchanged
+   FINAL DESKTOP HERO + MENU POSITION
+   Refined version
+   Mobile is untouched
    ========================================================= */
 
 @media(min-width:901px){
 
+  /* Slightly shift graph left for better separation */
+  .hero-probability{
+    right:72px !important;
+  }
+
+
+  /* Refined menu button */
   .main-menu-btn{
-    position:absolute !important;
+    top:18px !important;
+    right:16px !important;
 
-    top:20px !important;
-    left:20px !important;
-    right:auto !important;
-
-    width:40px !important;
-    height:40px !important;
+    width:36px !important;
+    height:36px !important;
 
     z-index:60 !important;
 
@@ -4183,35 +4188,60 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
     padding:0 !important;
 
-    border:1px solid rgba(148,163,184,.22) !important;
     border-radius:10px !important;
 
-    background:rgba(10,15,22,.78) !important;
+    background:rgba(10,15,22,.72) !important;
+    border:1px solid rgba(148,163,184,.18) !important;
+
     color:#dbe4ef !important;
 
-    font-size:20px !important;
+    font-size:18px !important;
     line-height:1 !important;
 
-    box-shadow:none !important;
+    box-shadow:
+      0 4px 14px rgba(0,0,0,.10) !important;
+
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+
+    transform:none !important;
+
+    transition:
+      background .18s ease,
+      border-color .18s ease,
+      color .18s ease,
+      transform .18s ease;
   }
 
+
   .main-menu-btn:hover{
-    border-color:rgba(94,231,247,.42) !important;
     background:rgba(94,231,247,.07) !important;
+
+    border-color:rgba(94,231,247,.38) !important;
+
     color:var(--cyan) !important;
+
+    transform:translateY(-1px) !important;
   }
 
 }
 
 
-/* Light theme */
+/* =========================================================
+   LIGHT THEME — DESKTOP
+   ========================================================= */
 
 @media(min-width:901px){
 
   body[data-theme="light"] .main-menu-btn{
-    background:rgba(250,248,241,.86) !important;
-    border-color:rgba(86,65,100,.20) !important;
+    background:rgba(250,248,241,.80) !important;
+
+    border-color:rgba(86,65,100,.16) !important;
+
     color:#4b365f !important;
+
+    box-shadow:
+      0 4px 12px rgba(58,53,42,.07) !important;
   }
 
 }
