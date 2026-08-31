@@ -41,7 +41,6 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
    Loaded after styles.css so it cleanly overrides old trials.
    ========================================================= */
 @media (min-width:901px){
-  /* Keep the compact hero from the current desktop design. */
   .header{
     min-height:0 !important;
     height:245px !important;
@@ -52,8 +51,6 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
 
   .hero-copy{align-self:center !important;}
 
-  /* Graph card: same size, but substantially more transparent so the
-     hero grid/gradient remains visible through it, like on mobile. */
   .hero-probability{
     position:absolute !important;
     top:50% !important;
@@ -71,13 +68,11 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
     -webkit-backdrop-filter:none !important;
   }
 
-  /* Hide the formula/mean badge as in the current preferred desktop look. */
   .hero-probability .formula-chip,
   .hero-probability .curve-note.note-one{
     display:none !important;
   }
 
-  /* Use almost the full graph card without resizing the card itself. */
   .hero-probability .probability-svg{
     position:absolute !important;
     left:8px !important;
@@ -88,15 +83,12 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
     transform:none !important;
   }
 
-  /* Keep the bell curve tall but do not widen it beyond the axis. */
   .hero-probability .gaussian-curve{
     transform-box:fill-box !important;
     transform-origin:center bottom !important;
     transform:translateY(-6px) scaleY(1.12) !important;
   }
 
-  /* Extend the existing SVG baseline from x=18..502 to visually fill
-     the full 0..520 viewBox, without touching the HTML. */
   .hero-probability .dot-baseline{
     transform-box:fill-box !important;
     transform-origin:center center !important;
@@ -116,8 +108,6 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
     transform:translateX(-50%) !important;
   }
 
-  /* mainMenuBtn is a sibling of the graph card in the DOM. These values
-     place it visually INSIDE the graph card's upper-right corner. */
   .main-menu-btn{
     position:absolute !important;
     top:34px !important;
@@ -151,4 +141,24 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
     backdrop-filter:none !important;
     -webkit-backdrop-filter:none !important;
   }
+}
+
+/* =========================================================
+   STARTUP MENU FLASH GUARD
+   The polished menu styles are injected later by subject-panel.js.
+   Keep the menu/backdrop fully hidden before that JS runs so there is
+   no one-frame "menu appears then disappears" flash on app/page load.
+   ========================================================= */
+.main-side-menu:not(.is-open){
+  opacity:0 !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+  transition:none !important;
+}
+
+.main-menu-backdrop:not(.is-open){
+  opacity:0 !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+  transition:none !important;
 }
