@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260829-share-offline-v3";
+const CACHE = "stat-archive-shell-v20260901-menu-fix-v1";
 
 const APP_SHELL = [
   "./",
