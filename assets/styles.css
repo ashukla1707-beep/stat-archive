@@ -4902,223 +4902,195 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   FINAL DESKTOP HERO COMPOSITION
-   Compact, balanced, no wasted space
+   FINAL DESKTOP HERO GRAPH + MENU
+   Mobile remains unchanged
    ========================================================= */
 
-@media(min-width:901px){
+@media (min-width:901px){
 
-  /* -------------------------------------------------------
-     HERO CONTAINER
-     ------------------------------------------------------- */
+  /* ---------------- HERO ---------------- */
 
   .header{
     position:relative !important;
-
     min-height:0 !important;
-    height:250px !important;
-
-    padding:
-      26px
-      38px !important;
-
+    height:270px !important;
+    padding:26px 34px !important;
     display:flex !important;
     align-items:center !important;
-
     overflow:hidden !important;
   }
 
-
-  /* -------------------------------------------------------
-     LEFT HERO CONTENT
-     ------------------------------------------------------- */
-
   .hero-copy{
     position:relative !important;
-
-    width:calc(100% - 480px) !important;
+    width:calc(100% - 540px) !important;
     max-width:none !important;
-
-    align-self:center !important;
-
     z-index:2 !important;
   }
-
 
   .eyebrow{
     margin-bottom:14px !important;
   }
 
-
   .header h1{
     margin:0 !important;
-
-    font-size:
-      clamp(48px,5vw,66px) !important;
-
     line-height:.95 !important;
   }
 
-
   .hero-line{
-    margin-top:17px !important;
+    margin-top:18px !important;
   }
-
 
   .hero-line .sub{
-    max-width:650px !important;
-
-    font-size:13px !important;
-    line-height:1.65 !important;
+    max-width:660px !important;
+    line-height:1.58 !important;
   }
 
 
-  /* -------------------------------------------------------
-     GRAPH CARD
-     ------------------------------------------------------- */
+  /* ---------------- GRAPH BLOCK ---------------- */
 
   .hero-probability{
     position:absolute !important;
-
     top:50% !important;
-    right:74px !important;
+    right:42px !important;
+    transform:translateY(-50%) !important;
 
-    transform:
-      translateY(-50%) !important;
-
-    width:400px !important;
-    height:200px !important;
-
+    width:510px !important;
+    height:235px !important;
     margin:0 !important;
 
-    border-radius:20px !important;
-
+    border-radius:24px !important;
     overflow:hidden !important;
 
     background:
-      radial-gradient(
-        circle at 50% 58%,
-        rgba(94,231,247,.045),
-        transparent 50%
-      ),
-      rgba(15,20,29,.26) !important;
+      radial-gradient(circle at 52% 55%, rgba(94,231,247,.05), transparent 54%),
+      rgba(12,18,27,.23) !important;
 
-    border:
-      1px solid rgba(148,163,184,.12) !important;
-
-    box-shadow:
-      0 12px 30px rgba(0,0,0,.06) !important;
+    border:1px solid rgba(148,163,184,.12) !important;
+    box-shadow:0 10px 28px rgba(0,0,0,.05) !important;
 
     backdrop-filter:blur(4px);
     -webkit-backdrop-filter:blur(4px);
   }
 
-
-  /* -------------------------------------------------------
-     GRAPH DRAWING
-     ------------------------------------------------------- */
-
-  .hero-probability .probability-svg{
-    position:absolute !important;
-
-    left:18px !important;
-    right:18px !important;
-
-    top:28px !important;
-
-    width:364px !important;
-    height:164px !important;
-  }
-
-
-  /* -------------------------------------------------------
-     DISTRIBUTION
-     ------------------------------------------------------- */
-
+  /* graph title */
   .hero-probability .curve-title{
-    top:13px !important;
-    left:17px !important;
-
+    position:absolute !important;
+    top:16px !important;
+    left:18px !important;
     font-size:11px !important;
     font-weight:800 !important;
-
     letter-spacing:.16em !important;
+    z-index:5 !important;
   }
 
+  /* wider graph area + a little taller look */
+  .hero-probability .probability-svg{
+    position:absolute !important;
+    left:18px !important;
+    right:18px !important;
+    top:42px !important;
 
-  /* Formula remains hidden */
-  .hero-probability .formula-chip{
-    display:none !important;
+    width:474px !important;
+    height:168px !important;
+
+    z-index:2 !important;
   }
 
+  /* make the curve look a bit more peaked */
+  .hero-probability .probability-svg svg{
+    width:100% !important;
+    height:100% !important;
+  }
 
-  /* -------------------------------------------------------
-     MEAN ABOVE PEAK
-     ------------------------------------------------------- */
+  .hero-probability .probability-svg .curve-line,
+  .hero-probability .probability-svg path.curve-line,
+  .hero-probability .probability-svg .curve-path,
+  .hero-probability .probability-svg path.curve-path{
+    transform:translateY(-8px) scaleY(1.16) !important;
+    transform-origin:center 65% !important;
+  }
 
-  .hero-probability .curve-note.note-one{
+  /* if your curve uses a glow path too */
+  .hero-probability .probability-svg .curve-glow,
+  .hero-probability .probability-svg path.curve-glow{
+    transform:translateY(-8px) scaleY(1.16) !important;
+    transform-origin:center 65% !important;
+  }
+
+  /* keep x-axis comfortably below curve */
+  .hero-probability .axis-mid{
+    position:absolute !important;
     left:50% !important;
+    bottom:8px !important;
+    transform:translateX(-50%) !important;
+    z-index:5 !important;
+  }
 
-    top:45px !important;
 
-    transform:
-      translateX(-50%) !important;
+  /* ---------------- MEAN = MENU ---------------- */
 
-    padding:5px 8px !important;
+  /* move MEAN away from peak and place it left of menu */
+  .hero-probability .curve-note.note-one{
+    position:absolute !important;
+    top:18px !important;
+    right:88px !important;
+    left:auto !important;
+    transform:none !important;
 
-    font-size:7.5px !important;
+    padding:6px 10px !important;
+    font-size:8px !important;
+    line-height:1 !important;
 
     z-index:8 !important;
   }
 
-
-  /* -------------------------------------------------------
-     MU
-     ------------------------------------------------------- */
-
-  .hero-probability .axis-mid{
-    left:50% !important;
-
-    bottom:4px !important;
-
-    transform:
-      translateX(-50%) !important;
-
-    font-size:10px !important;
+  /* add "=" between MEAN and menu */
+  .hero-probability .curve-note.note-one::after{
+    content:"=";
+    position:absolute;
+    top:50%;
+    left:calc(100% + 12px);
+    transform:translateY(-52%);
+    color:rgba(219,228,239,.92);
+    font:700 14px 'JetBrains Mono', monospace;
+    letter-spacing:0;
   }
 
-
-  /* -------------------------------------------------------
-     MENU — TOP RIGHT OF GRAPH AREA
-     ------------------------------------------------------- */
-
+  /* menu inside graph block */
   .main-menu-btn{
     position:absolute !important;
-
-    top:38px !important;
-    right:28px !important;
-
+    top:16px !important;
+    right:18px !important;
     left:auto !important;
     bottom:auto !important;
 
-    width:40px !important;
-    min-width:40px !important;
-    height:40px !important;
-
-    padding:0 !important;
-    margin:0 !important;
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
 
     display:flex !important;
     align-items:center !important;
     justify-content:center !important;
 
-    border-radius:11px !important;
+    padding:0 !important;
+    margin:0 !important;
 
-    z-index:120 !important;
+    border-radius:12px !important;
+    z-index:20 !important;
 
+    background:rgba(9,14,21,.84) !important;
+    border:1px solid rgba(148,163,184,.18) !important;
+    color:#dbe4ef !important;
+
+    box-shadow:none !important;
     transform:none !important;
   }
 
+  .main-menu-btn:hover{
+    background:rgba(94,231,247,.07) !important;
+    border-color:rgba(94,231,247,.38) !important;
+    color:var(--cyan) !important;
+  }
 
   .main-menu-btn::before,
   .main-menu-btn::after{
@@ -5127,24 +5099,24 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 
-  /* -------------------------------------------------------
-     LIGHT THEME
-     ------------------------------------------------------- */
+  /* ---------------- LIGHT THEME ---------------- */
 
   body[data-theme="light"] .hero-probability{
     background:
-      radial-gradient(
-        circle at 50% 58%,
-        rgba(52,125,115,.035),
-        transparent 50%
-      ),
-      rgba(255,255,255,.38) !important;
+      radial-gradient(circle at 52% 55%, rgba(52,125,115,.04), transparent 54%),
+      rgba(255,255,255,.36) !important;
 
-    border-color:
-      rgba(67,73,69,.10) !important;
-
-    box-shadow:
-      0 10px 24px rgba(58,53,42,.035) !important;
+    border-color:rgba(67,73,69,.10) !important;
+    box-shadow:0 8px 20px rgba(58,53,42,.035) !important;
   }
 
+  body[data-theme="light"] .main-menu-btn{
+    background:rgba(250,248,241,.92) !important;
+    border-color:rgba(86,65,100,.16) !important;
+    color:#4b365f !important;
+  }
+
+  body[data-theme="light"] .hero-probability .curve-note.note-one::after{
+    color:#4b365f !important;
+  }
 }
