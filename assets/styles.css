@@ -4159,30 +4159,23 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
 }
 /* =========================================================
-   FINAL DESKTOP LAYOUT
-   Graph on left + Menu in separate right-side area
-   Mobile remains unchanged
+   DESKTOP MENU BUTTON — LEFT SIDE OF HERO
+   Mobile stays unchanged
    ========================================================= */
 
 @media(min-width:901px){
 
-  /* Leave room on right side for menu */
-  .hero-probability{
-    right:120px !important;
-  }
-
-
-  /* Menu centered vertically in right-side space */
   .main-menu-btn{
     position:absolute !important;
 
-    top:50% !important;
-    right:22px !important;
+    top:20px !important;
+    left:20px !important;
+    right:auto !important;
 
-    transform:translateY(-50%) !important;
+    width:40px !important;
+    height:40px !important;
 
-    width:42px !important;
-    height:42px !important;
+    z-index:60 !important;
 
     display:flex !important;
     align-items:center !important;
@@ -4190,10 +4183,8 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 
     padding:0 !important;
 
-    z-index:60 !important;
-
     border:1px solid rgba(148,163,184,.22) !important;
-    border-radius:11px !important;
+    border-radius:10px !important;
 
     background:rgba(10,15,22,.78) !important;
     color:#dbe4ef !important;
@@ -4202,32 +4193,24 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     line-height:1 !important;
 
     box-shadow:none !important;
-
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
   }
-
 
   .main-menu-btn:hover{
     border-color:rgba(94,231,247,.42) !important;
-
     background:rgba(94,231,247,.07) !important;
-
     color:var(--cyan) !important;
   }
 
 }
 
 
-/* Light theme desktop */
+/* Light theme */
 
 @media(min-width:901px){
 
   body[data-theme="light"] .main-menu-btn{
     background:rgba(250,248,241,.86) !important;
-
     border-color:rgba(86,65,100,.20) !important;
-
     color:#4b365f !important;
   }
 
