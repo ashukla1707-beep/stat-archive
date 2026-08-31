@@ -71,6 +71,15 @@
 
 <div class="page">
   <div class="header" id="statPulse">
+    <button
+  type="button"
+  class="main-menu-btn"
+  id="mainMenuBtn"
+  aria-label="Open menu"
+  aria-expanded="false"
+>
+  ☰
+</button>
     <div class="hero-copy">
       <div class="eyebrow">
         <span class="dot"></span>
@@ -518,7 +527,240 @@
      of the script (including init(), which loads all entries/subjects)
      never runs, leaving the page permanently blank/read-only. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- =========================================================
+     MAIN SIDE MENU
+     ========================================================= -->
 
+<div
+  class="main-menu-backdrop"
+  id="mainMenuBackdrop"
+  aria-hidden="true"
+></div>
+
+
+<aside
+  class="main-side-menu"
+  id="mainSideMenu"
+  aria-label="Stat Archive menu"
+  aria-hidden="true"
+>
+
+  <div class="main-side-menu-head">
+
+    <div class="main-side-menu-brand">
+      <strong>Stat Archive</strong>
+      <span>Menu</span>
+    </div>
+
+    <button
+      type="button"
+      class="main-side-menu-close"
+      id="mainMenuCloseBtn"
+      aria-label="Close menu"
+    >
+      ✕
+    </button>
+
+  </div>
+
+
+  <!-- APPEARANCE -->
+
+  <section class="main-menu-section">
+
+    <div class="main-menu-label">
+      Appearance
+    </div>
+
+    <div class="main-menu-theme-row">
+
+      <button
+        type="button"
+        class="main-menu-theme-btn"
+        id="menuDarkBtn"
+      >
+        ☾ Dark
+      </button>
+
+      <button
+        type="button"
+        class="main-menu-theme-btn"
+        id="menuLightBtn"
+      >
+        ☀ Light
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- ACCOUNT -->
+
+  <section class="main-menu-section">
+
+    <div class="main-menu-label">
+      Account
+    </div>
+
+    <div class="main-menu-account-status">
+
+      <span
+        class="main-menu-account-dot"
+        id="menuAccountDot"
+      ></span>
+
+      <span id="menuAccountStatus">
+        Read-only access
+      </span>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="main-menu-action"
+      id="menuAuthBtn"
+    >
+
+      <span id="menuAuthText">
+        Sign in
+      </span>
+
+      <span class="main-menu-arrow">
+        ›
+      </span>
+
+    </button>
+
+  </section>
+
+
+  <!-- HELP -->
+
+  <section class="main-menu-section">
+
+    <div class="main-menu-label">
+      Help
+    </div>
+
+
+    <button
+      type="button"
+      class="main-menu-action"
+      id="menuManualsBtn"
+    >
+
+      <span>
+        Help &amp; Manuals
+      </span>
+
+      <span class="main-menu-arrow">
+        ›
+      </span>
+
+    </button>
+
+
+    <button
+      type="button"
+      class="main-menu-action"
+      id="menuAboutBtn"
+    >
+
+      <span>
+        About Stat Archive
+      </span>
+
+      <span class="main-menu-arrow">
+        ›
+      </span>
+
+    </button>
+
+  </section>
+
+
+  <div class="main-menu-footer">
+
+    <strong>
+      M.Sc / B.Sc Statistics
+    </strong>
+
+    <span>
+      University of Lucknow
+    </span>
+
+  </div>
+
+</aside>
+
+
+<!-- =========================================================
+     ABOUT STAT ARCHIVE
+     ========================================================= -->
+
+<div
+  class="overlay"
+  id="aboutArchiveOverlay"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="aboutArchiveTitle"
+>
+
+  <div class="form-card about-archive-card">
+
+    <div class="form-header">
+
+      <span
+        class="form-title"
+        id="aboutArchiveTitle"
+      >
+        About Stat Archive
+      </span>
+
+      <button
+        type="button"
+        class="close-btn"
+        id="closeAboutArchiveBtn"
+        aria-label="Close About Stat Archive"
+      >
+        ✕
+      </button>
+
+    </div>
+
+
+    <div class="about-archive-body">
+
+      <p>
+        Stat Archive is an academic archive for
+        M.Sc and B.Sc Statistics students of the
+        University of Lucknow.
+      </p>
+
+      <p>
+        It brings notes, books, previous-year
+        questions, mid-term questions and other
+        study material together in one organized
+        archive.
+      </p>
+
+      <div class="about-archive-meta">
+
+        <span>Stat Archive</span>
+
+        <small>
+          Learn · Analyze · Grow
+        </small>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
 
     <script src="assets/js/pdf.js"></script>
   <script src="assets/js/core.js"></script>
