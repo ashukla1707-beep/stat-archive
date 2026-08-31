@@ -4901,3 +4901,250 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
+/* =========================================================
+   FINAL DESKTOP HERO COMPOSITION
+   Compact, balanced, no wasted space
+   ========================================================= */
+
+@media(min-width:901px){
+
+  /* -------------------------------------------------------
+     HERO CONTAINER
+     ------------------------------------------------------- */
+
+  .header{
+    position:relative !important;
+
+    min-height:0 !important;
+    height:250px !important;
+
+    padding:
+      26px
+      38px !important;
+
+    display:flex !important;
+    align-items:center !important;
+
+    overflow:hidden !important;
+  }
+
+
+  /* -------------------------------------------------------
+     LEFT HERO CONTENT
+     ------------------------------------------------------- */
+
+  .hero-copy{
+    position:relative !important;
+
+    width:calc(100% - 480px) !important;
+    max-width:none !important;
+
+    align-self:center !important;
+
+    z-index:2 !important;
+  }
+
+
+  .eyebrow{
+    margin-bottom:14px !important;
+  }
+
+
+  .header h1{
+    margin:0 !important;
+
+    font-size:
+      clamp(48px,5vw,66px) !important;
+
+    line-height:.95 !important;
+  }
+
+
+  .hero-line{
+    margin-top:17px !important;
+  }
+
+
+  .hero-line .sub{
+    max-width:650px !important;
+
+    font-size:13px !important;
+    line-height:1.65 !important;
+  }
+
+
+  /* -------------------------------------------------------
+     GRAPH CARD
+     ------------------------------------------------------- */
+
+  .hero-probability{
+    position:absolute !important;
+
+    top:50% !important;
+    right:74px !important;
+
+    transform:
+      translateY(-50%) !important;
+
+    width:400px !important;
+    height:200px !important;
+
+    margin:0 !important;
+
+    border-radius:20px !important;
+
+    overflow:hidden !important;
+
+    background:
+      radial-gradient(
+        circle at 50% 58%,
+        rgba(94,231,247,.045),
+        transparent 50%
+      ),
+      rgba(15,20,29,.26) !important;
+
+    border:
+      1px solid rgba(148,163,184,.12) !important;
+
+    box-shadow:
+      0 12px 30px rgba(0,0,0,.06) !important;
+
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+  }
+
+
+  /* -------------------------------------------------------
+     GRAPH DRAWING
+     ------------------------------------------------------- */
+
+  .hero-probability .probability-svg{
+    position:absolute !important;
+
+    left:18px !important;
+    right:18px !important;
+
+    top:28px !important;
+
+    width:364px !important;
+    height:164px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     DISTRIBUTION
+     ------------------------------------------------------- */
+
+  .hero-probability .curve-title{
+    top:13px !important;
+    left:17px !important;
+
+    font-size:11px !important;
+    font-weight:800 !important;
+
+    letter-spacing:.16em !important;
+  }
+
+
+  /* Formula remains hidden */
+  .hero-probability .formula-chip{
+    display:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     MEAN ABOVE PEAK
+     ------------------------------------------------------- */
+
+  .hero-probability .curve-note.note-one{
+    left:50% !important;
+
+    top:45px !important;
+
+    transform:
+      translateX(-50%) !important;
+
+    padding:5px 8px !important;
+
+    font-size:7.5px !important;
+
+    z-index:8 !important;
+  }
+
+
+  /* -------------------------------------------------------
+     MU
+     ------------------------------------------------------- */
+
+  .hero-probability .axis-mid{
+    left:50% !important;
+
+    bottom:4px !important;
+
+    transform:
+      translateX(-50%) !important;
+
+    font-size:10px !important;
+  }
+
+
+  /* -------------------------------------------------------
+     MENU — TOP RIGHT OF GRAPH AREA
+     ------------------------------------------------------- */
+
+  .main-menu-btn{
+    position:absolute !important;
+
+    top:38px !important;
+    right:28px !important;
+
+    left:auto !important;
+    bottom:auto !important;
+
+    width:40px !important;
+    min-width:40px !important;
+    height:40px !important;
+
+    padding:0 !important;
+    margin:0 !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    border-radius:11px !important;
+
+    z-index:120 !important;
+
+    transform:none !important;
+  }
+
+
+  .main-menu-btn::before,
+  .main-menu-btn::after{
+    content:none !important;
+    display:none !important;
+  }
+
+
+  /* -------------------------------------------------------
+     LIGHT THEME
+     ------------------------------------------------------- */
+
+  body[data-theme="light"] .hero-probability{
+    background:
+      radial-gradient(
+        circle at 50% 58%,
+        rgba(52,125,115,.035),
+        transparent 50%
+      ),
+      rgba(255,255,255,.38) !important;
+
+    border-color:
+      rgba(67,73,69,.10) !important;
+
+    box-shadow:
+      0 10px 24px rgba(58,53,42,.035) !important;
+  }
+
+}
