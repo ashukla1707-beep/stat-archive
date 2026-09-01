@@ -75,6 +75,25 @@
     const style = document.createElement("style");
     style.id = "statArchiveDirectHeroFix";
     style.textContent = `
+/* Do not allow the decorative hero subtitle to be text-selected.
+   This removes the cyan/blue selection highlight in browser and Android WebView. */
+html body .header .hero-line .sub,
+html body .header .hero-line .sub *{
+  user-select:none !important;
+  -webkit-user-select:none !important;
+  -webkit-touch-callout:none !important;
+}
+html body .header .hero-line .sub::selection,
+html body .header .hero-line .sub *::selection{
+  background:transparent !important;
+  color:inherit !important;
+}
+html body .header .hero-line .sub::-moz-selection,
+html body .header .hero-line .sub *::-moz-selection{
+  background:transparent !important;
+  color:inherit !important;
+}
+
 /* FULL DESKTOP */
 @media (min-width:1101px){
   html body .header .hero-copy{
