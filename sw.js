@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-reader-polish-v1";
+const CACHE = "stat-archive-shell-v20260901-reader-polish-v2";
 
 const APP_SHELL = [
   "./",
@@ -30,65 +30,6 @@ const MENU_FLASH_GUARD = `
 .main-menu-backdrop:not(.is-open){display:none !important;}
 `;
 
-const SITE_VISUAL_POLISH = `
-/* =========================================================
-   DESKTOP READER VISUAL POLISH
-   ========================================================= */
-@media (min-width:1101px){
-  .hero-probability{
-    right:28px !important;
-  }
-}
-
-/* Reader-only: keep the Archive entries label, remove the long rule. */
-body:has(#authDot.off) #archiveEntriesDivider i,
-body:has(#authDot.off) .archive-entries-divider i,
-body:has(#authDot.off) #archiveEntriesDivider::after,
-body:has(#authDot.off) .archive-entries-divider::after{
-  display:none !important;
-  content:none !important;
-}
-body:has(#authDot.off) #archiveEntriesDivider,
-body:has(#authDot.off) .archive-entries-divider{
-  gap:0 !important;
-}
-
-/* Give the page a restrained statistical/ambient depth without clutter. */
-body:not([data-theme="light"]){
-  background:
-    radial-gradient(850px 520px at 8% -6%,rgba(50,174,207,.14),transparent 62%),
-    radial-gradient(720px 460px at 95% 8%,rgba(74,222,165,.075),transparent 64%),
-    radial-gradient(900px 620px at 58% 88%,rgba(94,231,247,.038),transparent 68%),
-    linear-gradient(180deg,#070a0f 0%,#060a0f 48%,#05080c 100%) !important;
-}
-body:not([data-theme="light"]) .grid-bg{
-  opacity:.68 !important;
-  background-image:
-    linear-gradient(rgba(148,163,184,.032) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(148,163,184,.032) 1px,transparent 1px),
-    radial-gradient(circle at 18% 22%,rgba(94,231,247,.055) 0 1px,transparent 1.5px),
-    radial-gradient(circle at 78% 68%,rgba(74,222,165,.045) 0 1px,transparent 1.5px) !important;
-  background-size:48px 48px,48px 48px,180px 180px,230px 230px !important;
-}
-
-body[data-theme="light"]{
-  background:
-    radial-gradient(900px 560px at 7% -5%,rgba(52,125,115,.11),transparent 64%),
-    radial-gradient(760px 500px at 96% 10%,rgba(217,111,95,.075),transparent 64%),
-    radial-gradient(900px 620px at 54% 92%,rgba(75,54,95,.04),transparent 68%),
-    linear-gradient(180deg,#f7f3e9 0%,#f4f0e7 52%,#f2eee6 100%) !important;
-}
-body[data-theme="light"] .grid-bg{
-  opacity:.42 !important;
-  background-image:
-    linear-gradient(rgba(39,48,45,.032) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(39,48,45,.032) 1px,transparent 1px),
-    radial-gradient(circle at 20% 24%,rgba(52,125,115,.055) 0 1px,transparent 1.5px),
-    radial-gradient(circle at 82% 70%,rgba(217,111,95,.05) 0 1px,transparent 1.5px) !important;
-  background-size:48px 48px,48px 48px,190px 190px,240px 240px !important;
-}
-`;
-
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE)
@@ -116,7 +57,7 @@ async function fetchMutable(request, url, isNavigation) {
 
     if (url.pathname.endsWith("/assets/scanner.css")) {
       const css = await response.text();
-      finalResponse = new Response(css + MENU_FLASH_GUARD + SITE_VISUAL_POLISH, {
+      finalResponse = new Response(css + MENU_FLASH_GUARD, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers
@@ -141,7 +82,7 @@ async function fetchMutable(request, url, isNavigation) {
 
     if (url.pathname.endsWith("/assets/scanner.css")) {
       const css = await cached.text();
-      return new Response(css + MENU_FLASH_GUARD + SITE_VISUAL_POLISH, {
+      return new Response(css + MENU_FLASH_GUARD, {
         status: cached.status,
         statusText: cached.statusText,
         headers: cached.headers
