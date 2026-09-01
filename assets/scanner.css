@@ -28,8 +28,6 @@ body[data-theme="light"] .main-side-menu.stat-menu-polished .main-menu-account-s
 
 /* =========================================================
    LIGHT THEME — SCANNER / ENTRY UPLOAD CONTRAST FIX
-   Dark scanner controls inherited very dark text in light
-   mode. Give every scanner action a clear light-theme state.
    ========================================================= */
 body[data-theme="light"] .scanner-card,
 body[data-theme="light"] .scanner-editor,
@@ -137,9 +135,6 @@ body[data-theme="light"] .scanner-progress span{
 
 /* =========================================================
    TABLET / MOBILE-BROWSER DESKTOP-MODE HERO FIX
-   Normal mobile (<701px) and full desktop (>1100px) remain
-   unchanged. This handles the ~980px CSS viewport used by
-   mobile browsers when "Desktop site" is enabled.
    ========================================================= */
 @media (min-width:701px) and (max-width:1100px){
   .header{
@@ -229,4 +224,59 @@ body[data-theme="light"] .scanner-progress span{
     min-width:38px !important;
     height:38px !important;
   }
+}
+
+/* =========================================================
+   DESKTOP READER POLISH — DIRECT CSS
+   ========================================================= */
+@media (min-width:1101px){
+  /* Push the probability card visibly toward the hero's right edge. */
+  .hero-probability{
+    right:8px !important;
+  }
+}
+
+/* Reader-only: retain the ARCHIVE ENTRIES label, remove its long horizontal rule. */
+body:has(#authDot.off) .archive-entries-divider > i{
+  display:none !important;
+}
+body:has(#authDot.off) .archive-entries-divider{
+  gap:0 !important;
+}
+
+/* Stronger but still restrained ambient background depth. */
+body:not([data-theme="light"]){
+  background:
+    radial-gradient(900px 560px at 4% -5%,rgba(47,197,225,.19),transparent 61%),
+    radial-gradient(760px 520px at 98% 8%,rgba(74,222,165,.11),transparent 63%),
+    radial-gradient(780px 520px at 72% 72%,rgba(45,122,160,.065),transparent 67%),
+    linear-gradient(180deg,#071017 0%,#060b10 48%,#05080c 100%) !important;
+}
+
+body:not([data-theme="light"]) .grid-bg{
+  opacity:.78 !important;
+  background-image:
+    linear-gradient(rgba(148,163,184,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.045) 1px,transparent 1px),
+    radial-gradient(circle at 16% 20%,rgba(94,231,247,.09) 0 1px,transparent 1.6px),
+    radial-gradient(circle at 82% 66%,rgba(74,222,165,.065) 0 1px,transparent 1.6px) !important;
+  background-size:48px 48px,48px 48px,180px 180px,230px 230px !important;
+}
+
+body[data-theme="light"]{
+  background:
+    radial-gradient(900px 560px at 5% -5%,rgba(52,125,115,.14),transparent 62%),
+    radial-gradient(760px 520px at 98% 9%,rgba(217,111,95,.10),transparent 64%),
+    radial-gradient(820px 560px at 68% 76%,rgba(75,54,95,.055),transparent 68%),
+    linear-gradient(180deg,#f8f4ea 0%,#f4f0e7 52%,#f1ede4 100%) !important;
+}
+
+body[data-theme="light"] .grid-bg{
+  opacity:.5 !important;
+  background-image:
+    linear-gradient(rgba(39,48,45,.038) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(39,48,45,.038) 1px,transparent 1px),
+    radial-gradient(circle at 18% 22%,rgba(52,125,115,.065) 0 1px,transparent 1.6px),
+    radial-gradient(circle at 82% 68%,rgba(217,111,95,.06) 0 1px,transparent 1.6px) !important;
+  background-size:48px 48px,48px 48px,190px 190px,240px 240px !important;
 }
