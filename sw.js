@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-desktop-balance-v1";
+const CACHE = "stat-archive-shell-v20260901-feature-polish-v1";
 
 const APP_SHELL = [
   "./",
@@ -17,6 +17,7 @@ const APP_SHELL = [
   "./assets/js/hero-animation.js",
   "./assets/js/subject-panel.js",
   "./assets/js/accessibility.js",
+  "./assets/js/feature-polish.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
@@ -29,6 +30,20 @@ const MENU_FLASH_GUARD = `
 .main-side-menu:not(.is-open),
 .main-menu-backdrop:not(.is-open){display:none !important;}
 `;
+
+const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js"></script>';
+
+function decorateNavigationHtml(html) {
+  let out = html;
+  out = out.replace(
+    'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for every batch.',
+    'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
+  );
+  if (!out.includes('assets/js/feature-polish.js')) {
+    out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
+  }
+  return out;
+}
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -55,7 +70,14 @@ async function fetchMutable(request, url, isNavigation) {
 
     let finalResponse = response;
 
-    if (url.pathname.endsWith("/assets/scanner.css")) {
+    if (isNavigation) {
+      const html = await response.text();
+      finalResponse = new Response(decorateNavigationHtml(html), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      });
+    } else if (url.pathname.endsWith("/assets/scanner.css")) {
       const css = await response.text();
       finalResponse = new Response(css + MENU_FLASH_GUARD, {
         status: response.status,
@@ -71,10 +93,16 @@ async function fetchMutable(request, url, isNavigation) {
     const cache = await caches.open(CACHE);
 
     if (isNavigation) {
-      return (await cache.match(request)) ||
-             (await cache.match("./index.html")) ||
-             (await cache.match("./")) ||
-             Response.error();
+      const cached = (await cache.match(request)) ||
+                     (await cache.match("./index.html")) ||
+                     (await cache.match("./"));
+      if (!cached) return Response.error();
+      const html = await cached.text();
+      return new Response(decorateNavigationHtml(html), {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers: cached.headers
+      });
     }
 
     const cached = await cache.match(request);
