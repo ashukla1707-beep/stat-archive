@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-hero-layout-fix-v1";
+const CACHE = "stat-archive-shell-v20260901-hero-layout-fix-v2";
 
 const APP_SHELL = [
   "./",
@@ -33,7 +33,7 @@ const MENU_FLASH_GUARD = `
 `;
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260901-4"></script>';
-const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-1"></script>';
+const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
