@@ -1,101 +1,119 @@
-/* Final hero layout repair for desktop + mobile. */
+/* Final hero layout repair: overrides only the subtitle/layout rules that were conflicting. */
 (() => {
+  const old = document.getElementById('statArchiveHeroLayoutFix');
+  if (old) old.remove();
+
   const style = document.createElement('style');
   style.id = 'statArchiveHeroLayoutFix';
   style.textContent = `
-/* Desktop: stable two-line subtitle, no overlap, aligned with decorative line. */
+/* FULL DESKTOP */
 @media (min-width:1101px){
-  .hero-copy{
-    width:64% !important;
-    max-width:860px !important;
-    transform:none !important;
-    position:relative !important;
-    z-index:3 !important;
+  html body .header .hero-copy{
+    width:62% !important;
+    max-width:900px !important;
+    transform:translateY(-18px) !important;
+    overflow:visible !important;
   }
 
-  .hero-line{
-    display:flex !important;
-    align-items:flex-start !important;
-    gap:14px !important;
+  html body .header .hero-line{
+    display:grid !important;
+    grid-template-columns:44px minmax(0,1fr) !important;
+    column-gap:14px !important;
+    align-items:start !important;
     width:100% !important;
+    margin-top:18px !important;
     padding:0 !important;
-    margin:0 !important;
-    position:relative !important;
+    overflow:visible !important;
   }
 
-  .hero-line > span[aria-hidden="true"]{
-    position:static !important;
-    flex:0 0 44px !important;
-    width:44px !important;
-    margin:10px 0 0 !important;
-    transform:none !important;
-  }
-
-  .hero-line .sub{
+  html body .header .hero-line > span[aria-hidden="true"]{
     position:static !important;
     display:block !important;
-    flex:1 1 auto !important;
-    width:auto !important;
+    width:44px !important;
+    min-width:44px !important;
+    height:1px !important;
+    margin:11px 0 0 !important;
+    padding:0 !important;
+    transform:none !important;
+  }
+
+  html body .header .hero-line .sub{
+    position:static !important;
+    display:block !important;
+    width:100% !important;
     min-width:0 !important;
     max-width:none !important;
-    margin:0 !important;
-    padding:0 !important;
-    font-size:13.5px !important;
-    line-height:1.55 !important;
-    white-space:normal !important;
-    overflow:visible !important;
     height:auto !important;
     max-height:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow:visible !important;
+    white-space:normal !important;
     transform:none !important;
-  }
-
-  .hero-sub-lead{
-    display:block !important;
-    white-space:nowrap !important;
+    font-size:13.5px !important;
     line-height:1.55 !important;
   }
 
-  .hero-sub-tail{
+  html body .header .hero-sub-lead,
+  html body .header .hero-sub-tail{
+    position:static !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    line-height:1.55 !important;
+  }
+
+  html body .header .hero-sub-lead{
     display:block !important;
     white-space:nowrap !important;
-    margin-top:2px !important;
-    line-height:1.55 !important;
+  }
+
+  html body .header .hero-sub-tail{
+    display:block !important;
+    white-space:nowrap !important;
+    margin:2px 0 0 !important;
   }
 }
 
-/* Tablet / phone: allow natural wrapping and never clip final line. */
+/* TABLET + PHONE: preserve the original mobile composition and only prevent clipping. */
 @media (max-width:1100px){
-  .hero-copy{
+  html body .header .hero-copy{
     transform:none !important;
-  }
-
-  .hero-line{
     overflow:visible !important;
   }
 
-  .hero-line .sub{
-    display:block !important;
+  html body .header .hero-line,
+  html body .header .hero-line .sub{
     overflow:visible !important;
-    max-height:none !important;
     height:auto !important;
-    line-height:1.55 !important;
+    max-height:none !important;
   }
 
-  .hero-sub-lead,
-  .hero-sub-tail{
+  html body .header .hero-sub-lead,
+  html body .header .hero-sub-tail{
     display:inline !important;
+    position:static !important;
     white-space:normal !important;
-    line-height:1.55 !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    line-height:inherit !important;
   }
 }
 
 @media (max-width:700px){
-  .header{
-    overflow:visible !important;
+  html body .header{
+    height:auto !important;
+    min-height:0 !important;
+    overflow:hidden !important;
   }
 
-  .hero-line .sub{
-    padding-bottom:4px !important;
+  html body .header .hero-copy{
+    padding-bottom:0 !important;
+  }
+
+  html body .header .hero-line .sub{
+    padding-bottom:8px !important;
   }
 }
 `;
