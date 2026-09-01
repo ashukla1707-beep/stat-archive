@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-hero-no-selection-v1";
+const CACHE = "stat-archive-shell-v20260901-hero-no-selection-v2";
 
 const APP_SHELL = [
   "./",
@@ -15,6 +15,7 @@ const APP_SHELL = [
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
   "./assets/js/hero-animation.js",
+  "./assets/js/hero-selection-guard.js",
   "./assets/js/subject-panel.js",
   "./assets/js/accessibility.js",
   "./assets/js/feature-polish.js",
@@ -34,6 +35,7 @@ const MENU_FLASH_GUARD = `
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260901-5"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
+const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -46,6 +48,9 @@ function decorateNavigationHtml(html) {
   }
   if (!out.includes('assets/js/hero-layout-fix.js')) {
     out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\n</body>`);
+  }
+  if (!out.includes('assets/js/hero-selection-guard.js')) {
+    out = out.replace('</body>', `${HERO_SELECTION_GUARD_TAG}\n</body>`);
   }
   return out;
 }
