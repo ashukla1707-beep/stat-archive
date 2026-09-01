@@ -1,26 +1,10 @@
-/* Stat Archive feature polish: hero copy, centered desktop menu, web offline access, spacing, search suggestions, and filing-card rounding. */
+/* Stat Archive feature polish: centered desktop menu, web offline access, spacing, search suggestions, and filing-card rounding. */
 (() => {
   function installStyles(){
     if (document.getElementById('statArchiveFeaturePolishStyles')) return;
     const style = document.createElement('style');
     style.id = 'statArchiveFeaturePolishStyles';
     style.textContent = `
-@media (min-width:1101px){
-  .hero-copy{width:58% !important;max-width:none !important;transform:translateY(-24px) !important;}
-  .hero-line{display:block !important;position:relative !important;width:100% !important;padding-left:58px !important;box-sizing:border-box !important;}
-  .hero-line > span[aria-hidden="true"]{position:absolute !important;left:0 !important;top:12px !important;width:44px !important;margin:0 !important;}
-  .hero-line .sub{display:block !important;width:auto !important;max-width:none !important;min-width:0 !important;margin:0 !important;font-size:13.5px !important;line-height:1.55 !important;white-space:normal !important;}
-  .hero-sub-lead{display:block !important;white-space:nowrap !important;}
-  .hero-sub-tail{display:block !important;margin-top:2px !important;white-space:nowrap !important;}
-}
-@media (min-width:701px) and (max-width:1100px){
-  .hero-line .sub{max-width:none !important;}
-  .hero-sub-lead,.hero-sub-tail{display:inline !important;white-space:normal !important;}
-}
-@media (max-width:700px){
-  .hero-sub-lead,.hero-sub-tail{display:inline !important;white-space:normal !important;}
-}
-
 @media (min-width:701px){
   body .main-side-menu,
   body .main-side-menu.stat-menu-polished{
@@ -62,12 +46,6 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
 @media(max-width:700px){.stat-filing-card{border-radius:22px !important;}}
 `;
     document.head.appendChild(style);
-  }
-
-  function updateHeroCopy(){
-    const sub = document.querySelector('.hero-line .sub');
-    if (!sub) return;
-    sub.innerHTML = '<span class="hero-sub-lead">A focused academic archive of notes and books, curated specifically for University of Lucknow</span><span class="hero-sub-tail"> — organized by subject and kept useful for everyone.</span>';
   }
 
   function enableWebOfflineLibrary(){
@@ -181,7 +159,6 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
 
   function init(){
     installStyles();
-    updateHeroCopy();
     removeOldAdvancedControls();
     enableWebOfflineLibrary();
     installSearchSuggestions();
