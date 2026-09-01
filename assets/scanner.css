@@ -27,6 +27,115 @@ body[data-theme="light"] .main-side-menu.stat-menu-polished .main-menu-account-s
 }
 
 /* =========================================================
+   LIGHT THEME — SCANNER / ENTRY UPLOAD CONTRAST FIX
+   Dark scanner controls inherited very dark text in light
+   mode. Give every scanner action a clear light-theme state.
+   ========================================================= */
+body[data-theme="light"] .scanner-card,
+body[data-theme="light"] .scanner-editor,
+body[data-theme="light"] .scanner-editor-head,
+body[data-theme="light"] .scanner-controls,
+body[data-theme="light"] .scanner-source-sheet{
+  color:#27302d !important;
+}
+
+body[data-theme="light"] .scanner-head strong,
+body[data-theme="light"] .scanner-pages-head,
+body[data-theme="light"] .scanner-editor-title-row,
+body[data-theme="light"] .scanner-editor-nav span,
+body[data-theme="light"] .scanner-strength output{
+  color:#27302d !important;
+}
+
+body[data-theme="light"] .scanner-head small,
+body[data-theme="light"] .scanner-source-sheet button small,
+body[data-theme="light"] .scanner-thumb-add small,
+body[data-theme="light"] .scanner-progress small,
+body[data-theme="light"] .scanner-strength{
+  color:#77736c !important;
+}
+
+body[data-theme="light"] .scanner-thumb-strip{
+  background:rgba(75,54,95,.045) !important;
+  border-color:rgba(75,54,95,.16) !important;
+}
+
+body[data-theme="light"] .scanner-head button,
+body[data-theme="light"] .scanner-editor button,
+body[data-theme="light"] .scanner-source-sheet button,
+body[data-theme="light"] .scanner-add-btn,
+body[data-theme="light"] .scanner-thumb button{
+  background:#ffffff !important;
+  color:#27302d !important;
+  border-color:rgba(75,54,95,.20) !important;
+  box-shadow:0 2px 8px rgba(58,53,42,.04) !important;
+}
+
+body[data-theme="light"] .scanner-head > button{
+  background:transparent !important;
+  color:#6f7680 !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+body[data-theme="light"] .scanner-add-btn:not(:disabled),
+body[data-theme="light"] .scanner-editor button:not(:disabled),
+body[data-theme="light"] .scanner-source-sheet button:not(:disabled){
+  opacity:1 !important;
+}
+
+body[data-theme="light"] .scanner-add-btn:disabled,
+body[data-theme="light"] .scanner-editor button:disabled,
+body[data-theme="light"] .scanner-source-sheet button:disabled{
+  background:#ece8df !important;
+  color:#9b978f !important;
+  border-color:rgba(75,54,95,.10) !important;
+  opacity:1 !important;
+}
+
+body[data-theme="light"] .scanner-primary,
+body[data-theme="light"] .scanner-generate,
+body[data-theme="light"] .scanner-apply-row .scanner-primary{
+  background:linear-gradient(135deg,#3c8f84,#63d6e7) !important;
+  color:#071416 !important;
+  border-color:transparent !important;
+  font-weight:800 !important;
+  box-shadow:0 8px 18px rgba(52,125,115,.16) !important;
+}
+
+body[data-theme="light"] .scanner-primary:disabled,
+body[data-theme="light"] .scanner-generate:disabled{
+  background:#d9d7d0 !important;
+  color:#8f8b84 !important;
+  border:1px solid rgba(75,54,95,.10) !important;
+  box-shadow:none !important;
+}
+
+body[data-theme="light"] .scanner-control-row [data-filter].active{
+  background:#63d6e7 !important;
+  color:#071416 !important;
+  border-color:transparent !important;
+  font-weight:800 !important;
+}
+
+body[data-theme="light"] #scannerCropBox{
+  border-color:#36b9d2 !important;
+}
+
+body[data-theme="light"] #scannerCropBox [data-handle]{
+  background:#ffffff !important;
+  border-color:#36b9d2 !important;
+}
+
+body[data-theme="light"] .scanner-progress > div{
+  background:#dcd8cf !important;
+}
+
+body[data-theme="light"] .scanner-progress span{
+  background:#36b9d2 !important;
+}
+
+/* =========================================================
    TABLET / MOBILE-BROWSER DESKTOP-MODE HERO FIX
    Normal mobile (<701px) and full desktop (>1100px) remain
    unchanged. This handles the ~980px CSS viewport used by
