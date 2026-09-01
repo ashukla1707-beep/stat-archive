@@ -165,3 +165,13 @@
 
   syncModalFocus();
 })();
+
+/* Load feature polish last, after archive data/filter/menu scripts exist. */
+(() => {
+  if (document.querySelector('script[data-stat-feature-polish]')) return;
+  const script = document.createElement('script');
+  script.src = 'assets/js/feature-polish.js?v=20260901-3';
+  script.dataset.statFeaturePolish = '1';
+  script.async = false;
+  document.body.appendChild(script);
+})();
