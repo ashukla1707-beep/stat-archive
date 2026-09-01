@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-reader-polish-v2";
+const CACHE = "stat-archive-shell-v20260901-desktop-balance-v1";
 
 const APP_SHELL = [
   "./",
