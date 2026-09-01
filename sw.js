@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-feature-polish-v5";
+const CACHE = "stat-archive-shell-v20260901-hero-layout-fix-v1";
 
 const APP_SHELL = [
   "./",
@@ -18,6 +18,7 @@ const APP_SHELL = [
   "./assets/js/subject-panel.js",
   "./assets/js/accessibility.js",
   "./assets/js/feature-polish.js",
+  "./assets/js/hero-layout-fix.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
@@ -31,7 +32,8 @@ const MENU_FLASH_GUARD = `
 .main-menu-backdrop:not(.is-open){display:none !important;}
 `;
 
-const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260901-5"></script>';
+const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260901-4"></script>';
+const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -41,6 +43,9 @@ function decorateNavigationHtml(html) {
   );
   if (!out.includes('assets/js/feature-polish.js')) {
     out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
+  }
+  if (!out.includes('assets/js/hero-layout-fix.js')) {
+    out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\n</body>`);
   }
   return out;
 }
