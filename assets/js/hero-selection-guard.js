@@ -9,14 +9,12 @@
     sub.style.webkitUserSelect='none';
     sub.style.webkitTouchCallout='none';
     sub.style.webkitTapHighlightColor='transparent';
-    sub.style.pointerEvents='none';
 
     sub.querySelectorAll('*').forEach(el=>{
       el.style.userSelect='none';
       el.style.webkitUserSelect='none';
       el.style.webkitTouchCallout='none';
       el.style.webkitTapHighlightColor='transparent';
-      el.style.pointerEvents='none';
     });
 
     const sel=window.getSelection?.();
@@ -42,8 +40,21 @@ html body .header .hero-line .sub *{
   user-select:none !important;
   -webkit-touch-callout:none !important;
   -webkit-tap-highlight-color:transparent !important;
-  pointer-events:none !important;
 }
+
+/* The base stylesheet uses .hero-line span for the small decorative line.
+   The hero subtitle is also split into spans, so reset those text spans. */
+html body .header .hero-line .hero-sub-lead,
+html body .header .hero-line .hero-sub-tail{
+  width:auto !important;
+  min-width:0 !important;
+  height:auto !important;
+  min-height:0 !important;
+  background:none !important;
+  background-image:none !important;
+  box-shadow:none !important;
+}
+
 html body .header .hero-line .sub::selection,
 html body .header .hero-line .sub *::selection,
 html body .header .hero-line .sub::-moz-selection,
@@ -59,7 +70,6 @@ html body .header .hero-line .sub *::-moz-selection{
     clearHeroSelection();
     requestAnimationFrame(clearHeroSelection);
     setTimeout(clearHeroSelection,120);
-    setTimeout(clearHeroSelection,500);
   }
 
   document.addEventListener('selectionchange',clearHeroSelection,true);
