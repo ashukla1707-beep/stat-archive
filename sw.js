@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-hero-span-fix-v1";
+const CACHE = "stat-archive-shell-v20260901-hero-span-fix-v2";
 
 const APP_SHELL = [
   "./",
