@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-feature-polish-v4";
+const CACHE = "stat-archive-shell-v20260901-feature-polish-v5";
 
 const APP_SHELL = [
   "./",
@@ -31,7 +31,7 @@ const MENU_FLASH_GUARD = `
 .main-menu-backdrop:not(.is-open){display:none !important;}
 `;
 
-const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260901-4"></script>';
+const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260901-5"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
