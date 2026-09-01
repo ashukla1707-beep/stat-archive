@@ -34,12 +34,13 @@
 }
 
 /* More breathing room between search and Subjects on web + APK. */
-.toolbar .search-row{margin-bottom:14px !important;}
-.stat-search-tools{margin:0 0 15px !important;}
-.stat-search-tools + .archive-filter-section{margin-top:4px !important;}
+.toolbar .search-row{margin-bottom:14px !important;position:relative !important;z-index:30 !important;}
+.stat-search-tools{margin:0 0 16px !important;}
+.stat-search-tools + .archive-filter-section{margin-top:7px !important;}
 @media(max-width:700px){
-  .toolbar .search-row{margin-bottom:16px !important;}
-  .stat-search-tools{margin-bottom:18px !important;}
+  .toolbar .search-row{margin-bottom:18px !important;}
+  .stat-search-tools{margin-bottom:20px !important;}
+  .stat-search-tools + .archive-filter-section{margin-top:8px !important;}
 }
 
 /* Offline Library is a browser feature too: IndexedDB works in normal web mode. */
@@ -91,6 +92,45 @@ body[data-theme='light'] .stat-filter-toggle.is-active{
     padding:0 10px !important;
   }
 }
+
+/* Search suggestions */
+.stat-search-suggestions{
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc(100% + 7px);
+  z-index:1000;
+  display:none;
+  overflow:hidden;
+  border:1px solid var(--line-strong);
+  border-radius:13px;
+  background:#0d141e;
+  box-shadow:0 18px 45px rgba(0,0,0,.28);
+}
+.stat-search-suggestions.is-open{display:block;}
+.stat-search-suggestion{
+  width:100%;
+  border:0;
+  border-bottom:1px solid rgba(148,163,184,.10);
+  background:transparent;
+  color:var(--text);
+  padding:10px 13px;
+  text-align:left;
+  cursor:pointer;
+  font:600 11px/1.35 'JetBrains Mono',monospace;
+}
+.stat-search-suggestion:last-child{border-bottom:0;}
+.stat-search-suggestion:hover,
+.stat-search-suggestion.is-active{background:rgba(94,231,247,.08);color:var(--cyan);}
+.stat-search-suggestion small{display:block;margin-top:2px;color:var(--muted);font:500 9px Inter,sans-serif;}
+body[data-theme='light'] .stat-search-suggestions{
+  background:#fffdf8;
+  border-color:rgba(75,54,95,.16);
+  box-shadow:0 16px 40px rgba(58,53,42,.14);
+}
+body[data-theme='light'] .stat-search-suggestion{color:#27302d;border-bottom-color:rgba(75,54,95,.09);}
+body[data-theme='light'] .stat-search-suggestion:hover,
+body[data-theme='light'] .stat-search-suggestion.is-active{background:rgba(75,54,95,.07);color:#4b365f;}
 `;
     document.head.appendChild(style);
   }
@@ -121,6 +161,109 @@ body[data-theme='light'] .stat-filter-toggle.is-active{
     try {
       if (typeof loadOfflineLibraryState === 'function') loadOfflineLibraryState();
     } catch (_) {}
+  }
+
+  function getSubjectSuggestionNames(){
+    const names = new Set();
+
+    try {
+      if (Array.isArray(entries)) {
+        entries.forEach(entry => {
+          try {
+            const name = subjectMeta(entry.subject)?.name || entry.subject || '';
+            if (name) names.add(String(name).trim());
+          } catch (_) {
+            if (entry?.subject) names.add(String(entry.subject).trim());
+          }
+        });
+      }
+    } catch (_) {}
+
+    document.querySelectorAll('#subjectFilterRow .pill, #subjectFilterExpanded .pill, .subject-row-name').forEach(el => {
+      const text = String(el.textContent || '').trim();
+      if (text && !/^all subjects$/i.test(text) && !/^more$/i.test(text)) names.add(text);
+    });
+
+    return [...names].filter(Boolean).sort((a,b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+  }
+
+  function installSubjectSuggestions(){
+    const form = document.getElementById('searchForm');
+    const input = document.getElementById('searchInput');
+    if (!form || !input || document.getElementById('statSearchSuggestions')) return;
+
+    const box = document.createElement('div');
+    box.id = 'statSearchSuggestions';
+    box.className = 'stat-search-suggestions';
+    box.setAttribute('role','listbox');
+    box.setAttribute('aria-label','Subject suggestions');
+    form.appendChild(box);
+
+    let activeIndex = -1;
+    let currentMatches = [];
+
+    function close(){
+      activeIndex = -1;
+      currentMatches = [];
+      box.classList.remove('is-open');
+      box.innerHTML = '';
+      input.removeAttribute('aria-activedescendant');
+    }
+
+    function choose(name){
+      input.value = name;
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+      input.focus();
+      close();
+    }
+
+    function renderSuggestions(){
+      const q = String(input.value || '').trim().toLowerCase();
+      if (!q) { close(); return; }
+
+      currentMatches = getSubjectSuggestionNames()
+        .filter(name => name.toLowerCase().startsWith(q))
+        .slice(0,8);
+
+      if (!currentMatches.length) { close(); return; }
+
+      activeIndex = -1;
+      box.innerHTML = currentMatches.map((name,index) => `
+        <button type="button" class="stat-search-suggestion" role="option" id="statSuggestion${index}" data-index="${index}">
+          ${name}
+          <small>Subject</small>
+        </button>
+      `).join('');
+      box.classList.add('is-open');
+
+      box.querySelectorAll('.stat-search-suggestion').forEach(btn => {
+        btn.addEventListener('mousedown', event => event.preventDefault());
+        btn.addEventListener('click', () => choose(currentMatches[Number(btn.dataset.index)]));
+      });
+    }
+
+    input.addEventListener('input', renderSuggestions);
+    input.addEventListener('focus', () => { if (input.value.trim()) renderSuggestions(); });
+    input.addEventListener('keydown', event => {
+      if (!box.classList.contains('is-open') || !currentMatches.length) return;
+
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const dir = event.key === 'ArrowDown' ? 1 : -1;
+        activeIndex = (activeIndex + dir + currentMatches.length) % currentMatches.length;
+        box.querySelectorAll('.stat-search-suggestion').forEach((btn,index) => btn.classList.toggle('is-active', index === activeIndex));
+        input.setAttribute('aria-activedescendant', `statSuggestion${activeIndex}`);
+      } else if (event.key === 'Enter' && activeIndex >= 0) {
+        event.preventDefault();
+        choose(currentMatches[activeIndex]);
+      } else if (event.key === 'Escape') {
+        close();
+      }
+    });
+
+    document.addEventListener('pointerdown', event => {
+      if (!form.contains(event.target)) close();
+    }, {passive:true});
   }
 
   function installAdvancedFilters(){
@@ -243,6 +386,7 @@ body[data-theme='light'] .stat-filter-toggle.is-active{
     updateHeroCopy();
     enableWebOfflineLibrary();
     installAdvancedFilters();
+    installSubjectSuggestions();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
