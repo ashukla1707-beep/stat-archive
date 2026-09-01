@@ -7,11 +7,11 @@
     style.textContent = `
 @media (min-width:1101px){
   .hero-copy{width:58% !important;max-width:none !important;}
-  .hero-line{display:grid !important;grid-template-columns:44px minmax(0,1fr) !important;align-items:start !important;gap:14px !important;width:100% !important;}
-  .hero-line > span[aria-hidden="true"]{margin-top:10px !important;}
-  .hero-line .sub{display:block !important;width:100% !important;max-width:none !important;min-width:0 !important;margin:0 !important;font-size:13.5px !important;line-height:1.55 !important;}
+  .hero-line{display:block !important;position:relative !important;width:100% !important;padding-left:58px !important;box-sizing:border-box !important;}
+  .hero-line > span[aria-hidden="true"]{position:absolute !important;left:0 !important;top:12px !important;width:44px !important;margin:0 !important;}
+  .hero-line .sub{display:block !important;width:auto !important;max-width:none !important;min-width:0 !important;margin:0 !important;font-size:13.5px !important;line-height:1.55 !important;white-space:normal !important;}
   .hero-sub-lead{display:block !important;white-space:nowrap !important;}
-  .hero-sub-tail{display:block !important;margin-top:2px !important;white-space:normal !important;}
+  .hero-sub-tail{display:block !important;margin-top:2px !important;white-space:nowrap !important;}
 }
 @media (min-width:701px) and (max-width:1100px){
   .hero-line .sub{max-width:none !important;}
