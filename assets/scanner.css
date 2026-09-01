@@ -230,9 +230,8 @@ body[data-theme="light"] .scanner-progress span{
    DESKTOP READER POLISH — DIRECT CSS
    ========================================================= */
 @media (min-width:1101px){
-  /* Push the probability card visibly toward the hero's right edge. */
   .hero-probability{
-    right:8px !important;
+    right:36px !important;
   }
 }
 
@@ -247,36 +246,114 @@ body:has(#authDot.off) .archive-entries-divider{
 /* Stronger but still restrained ambient background depth. */
 body:not([data-theme="light"]){
   background:
+    linear-gradient(rgba(148,163,184,.028) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.028) 1px,transparent 1px),
     radial-gradient(900px 560px at 4% -5%,rgba(47,197,225,.19),transparent 61%),
     radial-gradient(760px 520px at 98% 8%,rgba(74,222,165,.11),transparent 63%),
     radial-gradient(780px 520px at 72% 72%,rgba(45,122,160,.065),transparent 67%),
     linear-gradient(180deg,#071017 0%,#060b10 48%,#05080c 100%) !important;
+  background-size:48px 48px,48px 48px,auto,auto,auto,auto !important;
+  background-attachment:fixed !important;
 }
 
 body:not([data-theme="light"]) .grid-bg{
-  opacity:.78 !important;
+  opacity:.86 !important;
   background-image:
-    linear-gradient(rgba(148,163,184,.045) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(148,163,184,.045) 1px,transparent 1px),
-    radial-gradient(circle at 16% 20%,rgba(94,231,247,.09) 0 1px,transparent 1.6px),
-    radial-gradient(circle at 82% 66%,rgba(74,222,165,.065) 0 1px,transparent 1.6px) !important;
+    linear-gradient(rgba(148,163,184,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.05) 1px,transparent 1px),
+    radial-gradient(circle at 16% 20%,rgba(94,231,247,.10) 0 1px,transparent 1.6px),
+    radial-gradient(circle at 82% 66%,rgba(74,222,165,.075) 0 1px,transparent 1.6px) !important;
   background-size:48px 48px,48px 48px,180px 180px,230px 230px !important;
 }
 
 body[data-theme="light"]{
   background:
+    linear-gradient(rgba(39,48,45,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(39,48,45,.022) 1px,transparent 1px),
     radial-gradient(900px 560px at 5% -5%,rgba(52,125,115,.14),transparent 62%),
     radial-gradient(760px 520px at 98% 9%,rgba(217,111,95,.10),transparent 64%),
     radial-gradient(820px 560px at 68% 76%,rgba(75,54,95,.055),transparent 68%),
     linear-gradient(180deg,#f8f4ea 0%,#f4f0e7 52%,#f1ede4 100%) !important;
+  background-size:48px 48px,48px 48px,auto,auto,auto,auto !important;
+  background-attachment:fixed !important;
 }
 
 body[data-theme="light"] .grid-bg{
-  opacity:.5 !important;
+  opacity:.58 !important;
   background-image:
-    linear-gradient(rgba(39,48,45,.038) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(39,48,45,.038) 1px,transparent 1px),
-    radial-gradient(circle at 18% 22%,rgba(52,125,115,.065) 0 1px,transparent 1.6px),
-    radial-gradient(circle at 82% 68%,rgba(217,111,95,.06) 0 1px,transparent 1.6px) !important;
+    linear-gradient(rgba(39,48,45,.042) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(39,48,45,.042) 1px,transparent 1px),
+    radial-gradient(circle at 18% 22%,rgba(52,125,115,.07) 0 1px,transparent 1.6px),
+    radial-gradient(circle at 82% 68%,rgba(217,111,95,.065) 0 1px,transparent 1.6px) !important;
   background-size:48px 48px,48px 48px,190px 190px,240px 240px !important;
+}
+
+/* =========================================================
+   DESKTOP MENU — COMPACT FLOATING PANEL
+   Keeps the desktop menu polished without looking like a
+   full-height mobile sheet.
+   ========================================================= */
+@media (min-width:701px){
+  html body .main-menu-backdrop{
+    background:rgba(2,6,12,.46) !important;
+    backdrop-filter:blur(2px) !important;
+    -webkit-backdrop-filter:blur(2px) !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished{
+    top:50% !important;
+    right:26px !important;
+    bottom:auto !important;
+    left:auto !important;
+    width:360px !important;
+    max-width:calc(100vw - 52px) !important;
+    height:auto !important;
+    max-height:calc(100dvh - 52px) !important;
+    padding:18px 16px !important;
+    border-radius:20px !important;
+    overflow-y:auto !important;
+    scrollbar-width:none !important;
+    transform:translateY(calc(-50% + 8px)) scale(.995) !important;
+    box-shadow:0 24px 68px rgba(0,0,0,.44) !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished::-webkit-scrollbar{
+    width:0 !important;
+    height:0 !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished.is-open{
+    transform:translateY(-50%) scale(1) !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-side-menu-head{
+    padding-bottom:14px !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-side-menu-brand strong{
+    font-size:22px !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-menu-section{
+    margin-bottom:12px !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-menu-account-status{
+    min-height:56px !important;
+    margin-bottom:8px !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-menu-action{
+    min-height:46px !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-menu-theme-btn,
+  html body .main-side-menu.stat-menu-polished .mobile-menu-level-btn{
+    min-height:44px !important;
+  }
+
+  html body .main-side-menu.stat-menu-polished .main-menu-footer{
+    margin-top:14px !important;
+    padding-top:12px !important;
+  }
 }
