@@ -55,8 +55,6 @@
 
   /* =========================================================
      SINGLE AUTHORITATIVE HERO COPY/LAYOUT
-     This file is loaded directly by index.html, so the same
-     repair runs in normal web, PWA and the Android WebView.
      ========================================================= */
 
   function repairHeroCopy() {
@@ -75,19 +73,40 @@
     const style = document.createElement("style");
     style.id = "statArchiveDirectHeroFix";
     style.textContent = `
-/* Do not allow the decorative hero subtitle to be text-selected.
-   This removes the cyan/blue selection highlight in browser and Android WebView. */
+/* IMPORTANT: the original stylesheet uses .hero-line span for the small
+   decorative line. These subtitle spans must never inherit that rule. */
+html body .header .hero-line .sub .hero-sub-lead,
+html body .header .hero-line .sub .hero-sub-tail{
+  background:none !important;
+  background-color:transparent !important;
+  background-image:none !important;
+  box-shadow:none !important;
+  border:0 !important;
+  width:auto !important;
+  min-width:0 !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  padding:0 !important;
+  color:inherit !important;
+  -webkit-box-decoration-break:clone !important;
+  box-decoration-break:clone !important;
+}
+
 html body .header .hero-line .sub,
 html body .header .hero-line .sub *{
   user-select:none !important;
   -webkit-user-select:none !important;
   -webkit-touch-callout:none !important;
+  -webkit-tap-highlight-color:transparent !important;
 }
+
 html body .header .hero-line .sub::selection,
 html body .header .hero-line .sub *::selection{
   background:transparent !important;
   color:inherit !important;
 }
+
 html body .header .hero-line .sub::-moz-selection,
 html body .header .hero-line .sub *::-moz-selection{
   background:transparent !important;
@@ -147,9 +166,6 @@ html body .header .hero-line .sub *::-moz-selection{
   html body .header .hero-sub-tail{
     display:block !important;
     position:static !important;
-    height:auto !important;
-    max-height:none !important;
-    overflow:visible !important;
     line-height:1.58 !important;
   }
 
@@ -218,9 +234,6 @@ html body .header .hero-line .sub *::-moz-selection{
     display:inline !important;
     position:static !important;
     white-space:normal !important;
-    height:auto !important;
-    max-height:none !important;
-    overflow:visible !important;
     line-height:inherit !important;
   }
 }
@@ -228,15 +241,16 @@ html body .header .hero-line .sub *::-moz-selection{
     document.head.appendChild(style);
   }
 
-  repairHeroCopy();
-  installHeroLayout();
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      repairHeroCopy();
-      installHeroLayout();
-    }, { once: true });
+  function applyHeroFix() {
+    repairHeroCopy();
+    installHeroLayout();
   }
 
-  window.addEventListener("pageshow", repairHeroCopy);
+  applyHeroFix();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", applyHeroFix, { once: true });
+  }
+
+  window.addEventListener("pageshow", applyHeroFix);
 })();
