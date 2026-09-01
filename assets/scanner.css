@@ -25,3 +25,99 @@ body[data-theme="light"] .main-side-menu.stat-menu-polished .main-menu-account-s
   content:none !important;
   display:none !important;
 }
+
+/* =========================================================
+   TABLET / MOBILE-BROWSER DESKTOP-MODE HERO FIX
+   Normal mobile (<701px) and full desktop (>1100px) remain
+   unchanged. This handles the ~980px CSS viewport used by
+   mobile browsers when "Desktop site" is enabled.
+   ========================================================= */
+@media (min-width:701px) and (max-width:1100px){
+  .header{
+    min-height:0 !important;
+    height:238px !important;
+    padding:22px 24px !important;
+    align-items:center !important;
+  }
+
+  .hero-copy{
+    width:47% !important;
+    max-width:47% !important;
+    align-self:center !important;
+  }
+
+  .eyebrow{
+    margin-bottom:12px !important;
+    font-size:8.5px !important;
+    letter-spacing:.12em !important;
+    white-space:nowrap !important;
+  }
+
+  .header h1{
+    font-size:52px !important;
+    line-height:.98 !important;
+    letter-spacing:-.055em !important;
+    white-space:nowrap !important;
+  }
+
+  .hero-line{
+    margin-top:14px !important;
+    gap:9px !important;
+  }
+
+  .hero-line > span{
+    width:30px !important;
+    flex:0 0 30px !important;
+  }
+
+  .sub{
+    max-width:100% !important;
+    font-size:11.5px !important;
+    line-height:1.55 !important;
+  }
+
+  .hero-probability{
+    top:50% !important;
+    right:22px !important;
+    width:46% !important;
+    height:194px !important;
+    transform:translateY(-50%) !important;
+  }
+
+  .hero-probability .probability-svg{
+    left:0 !important;
+    right:auto !important;
+    top:19px !important;
+    width:100% !important;
+    height:170px !important;
+    max-width:none !important;
+    transform:none !important;
+  }
+
+  .hero-probability .gaussian-curve{
+    transform-box:fill-box !important;
+    transform-origin:center bottom !important;
+    transform:translateY(-8px) scaleY(1.13) !important;
+  }
+
+  .hero-probability .dot-baseline{
+    transform:none !important;
+  }
+
+  .hero-probability .curve-title{
+    top:13px !important;
+    left:14px !important;
+  }
+
+  .hero-probability .axis-mid{
+    bottom:1px !important;
+  }
+
+  .main-menu-btn{
+    top:34px !important;
+    right:34px !important;
+    width:38px !important;
+    min-width:38px !important;
+    height:38px !important;
+  }
+}
