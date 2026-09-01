@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260901-hero-layout-fix-v4";
+const CACHE = "stat-archive-shell-v20260901-hero-no-selection-v1";
 
 const APP_SHELL = [
   "./",
