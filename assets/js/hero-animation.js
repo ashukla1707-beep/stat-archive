@@ -6,136 +6,218 @@
   function startHeroAnimation() {
     if (started) return;
 
-    const curve =
-      document.querySelector(".gaussian-curve");
-
-    const dots =
-      document.querySelectorAll(".data-dot");
+    const curve = document.querySelector(".gaussian-curve");
+    const dots = document.querySelectorAll(".data-dot");
 
     if (!curve) return;
-
     started = true;
 
-    /*
-     * SVG pathLength="1" normalizes the entire curve.
-     *
-     * 1 = completely hidden
-     * 0 = completely visible
-     *
-     * No getTotalLength(), no guessed 1000/1400 values.
-     */
-
-    curve.style.setProperty(
-      "animation",
-      "none",
-      "important"
-    );
-
-    curve.style.setProperty(
-      "transition",
-      "none",
-      "important"
-    );
-
-    curve.style.setProperty(
-      "stroke-dasharray",
-      "1",
-      "important"
-    );
-
-    curve.style.setProperty(
-      "stroke-dashoffset",
-      "1",
-      "important"
-    );
-
-    curve.style.setProperty(
-      "opacity",
-      "1",
-      "important"
-    );
+    curve.style.setProperty("animation", "none", "important");
+    curve.style.setProperty("transition", "none", "important");
+    curve.style.setProperty("stroke-dasharray", "1", "important");
+    curve.style.setProperty("stroke-dashoffset", "1", "important");
+    curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
-      dot.style.setProperty(
-        "animation",
-        "none",
-        "important"
-      );
+      dot.style.setProperty("animation", "none", "important");
     });
 
-    /*
-     * Force initial hidden state to render.
-     */
     void curve.getBoundingClientRect();
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-
         curve.style.setProperty(
           "transition",
           "stroke-dashoffset 3.4s cubic-bezier(.22,.61,.36,1)",
           "important"
         );
-
-        curve.style.setProperty(
-          "stroke-dashoffset",
-          "0",
-          "important"
-        );
-
-        dots.forEach(dot => {
-          dot.style.removeProperty(
-            "animation"
-          );
-        });
-
+        curve.style.setProperty("stroke-dashoffset", "0", "important");
+        dots.forEach(dot => dot.style.removeProperty("animation"));
       });
     });
 
-    /*
-     * Once drawing is complete, remove the dash mechanism.
-     * The entire original SVG curve remains visible.
-     */
     setTimeout(() => {
-
-      curve.style.setProperty(
-        "transition",
-        "none",
-        "important"
-      );
-
-      curve.style.setProperty(
-        "stroke-dasharray",
-        "none",
-        "important"
-      );
-
-      curve.style.setProperty(
-        "stroke-dashoffset",
-        "0",
-        "important"
-      );
-
+      curve.style.setProperty("transition", "none", "important");
+      curve.style.setProperty("stroke-dasharray", "none", "important");
+      curve.style.setProperty("stroke-dashoffset", "0", "important");
     }, 3800);
   }
 
-
   function scheduleStart() {
-    setTimeout(
-      startHeroAnimation,
-      250
-    );
+    setTimeout(startHeroAnimation, 250);
   }
-
 
   if (document.readyState === "complete") {
     scheduleStart();
   } else {
-    window.addEventListener(
-      "load",
-      scheduleStart,
-      { once: true }
-    );
+    window.addEventListener("load", scheduleStart, { once: true });
   }
 
+  /* =========================================================
+     SINGLE AUTHORITATIVE HERO COPY/LAYOUT
+     This file is loaded directly by index.html, so the same
+     repair runs in normal web, PWA and the Android WebView.
+     ========================================================= */
+
+  function repairHeroCopy() {
+    const sub = document.querySelector(".hero-line .sub");
+    if (!sub) return;
+
+    sub.innerHTML =
+      '<span class="hero-sub-lead">A focused academic archive of notes and books, curated specifically for University of Lucknow</span>' +
+      '<span class="hero-sub-tail"> — organized by subject and kept useful for everyone.</span>';
+  }
+
+  function installHeroLayout() {
+    const old = document.getElementById("statArchiveDirectHeroFix");
+    if (old) old.remove();
+
+    const style = document.createElement("style");
+    style.id = "statArchiveDirectHeroFix";
+    style.textContent = `
+/* FULL DESKTOP */
+@media (min-width:1101px){
+  html body .header .hero-copy{
+    width:58% !important;
+    max-width:850px !important;
+    position:relative !important;
+    z-index:3 !important;
+    transform:translateY(-18px) !important;
+    overflow:visible !important;
+  }
+
+  html body .header .hero-line{
+    display:flex !important;
+    align-items:flex-start !important;
+    gap:14px !important;
+    width:100% !important;
+    margin-top:18px !important;
+    padding:0 !important;
+    overflow:visible !important;
+  }
+
+  html body .header .hero-line > span[aria-hidden="true"]{
+    position:static !important;
+    flex:0 0 44px !important;
+    width:44px !important;
+    min-width:44px !important;
+    height:1px !important;
+    margin:10px 0 0 !important;
+    padding:0 !important;
+    transform:none !important;
+  }
+
+  html body .header .hero-line .sub{
+    display:block !important;
+    flex:1 1 auto !important;
+    width:auto !important;
+    max-width:none !important;
+    min-width:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow:visible !important;
+    white-space:normal !important;
+    font-size:13px !important;
+    line-height:1.58 !important;
+    transform:none !important;
+  }
+
+  html body .header .hero-sub-lead,
+  html body .header .hero-sub-tail{
+    display:block !important;
+    position:static !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    line-height:1.58 !important;
+  }
+
+  html body .header .hero-sub-lead{
+    white-space:nowrap !important;
+  }
+
+  html body .header .hero-sub-tail{
+    white-space:nowrap !important;
+    margin-top:1px !important;
+  }
+}
+
+/* TABLET / MOBILE BROWSER DESKTOP MODE */
+@media (min-width:701px) and (max-width:1100px){
+  html body .header .hero-copy{
+    transform:none !important;
+    overflow:visible !important;
+  }
+
+  html body .header .hero-line,
+  html body .header .hero-line .sub{
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    white-space:normal !important;
+  }
+
+  html body .header .hero-sub-lead,
+  html body .header .hero-sub-tail{
+    display:inline !important;
+    white-space:normal !important;
+    line-height:inherit !important;
+  }
+}
+
+/* PHONE / APK */
+@media (max-width:700px){
+  html body .header .hero-copy{
+    transform:none !important;
+    overflow:visible !important;
+  }
+
+  html body .header .hero-line{
+    display:flex !important;
+    align-items:flex-start !important;
+    width:100% !important;
+    overflow:visible !important;
+  }
+
+  html body .header .hero-line .sub{
+    display:block !important;
+    width:calc(100% - 41px) !important;
+    max-width:none !important;
+    height:auto !important;
+    max-height:none !important;
+    margin:0 !important;
+    padding:0 0 8px !important;
+    overflow:visible !important;
+    white-space:normal !important;
+    line-height:1.6 !important;
+  }
+
+  html body .header .hero-sub-lead,
+  html body .header .hero-sub-tail{
+    display:inline !important;
+    position:static !important;
+    white-space:normal !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    line-height:inherit !important;
+  }
+}
+`;
+    document.head.appendChild(style);
+  }
+
+  repairHeroCopy();
+  installHeroLayout();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      repairHeroCopy();
+      installHeroLayout();
+    }, { once: true });
+  }
+
+  window.addEventListener("pageshow", repairHeroCopy);
 })();
