@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-divider-spacing-v5";
+const CACHE = "stat-archive-shell-v20260905-action-spacing-v6";
 
 const APP_SHELL = [
   "./",
@@ -20,6 +20,7 @@ const APP_SHELL = [
   "./assets/js/accessibility.js",
   "./assets/js/feature-polish.js",
   "./assets/js/hero-layout-fix.js",
+  "./assets/js/action-spacing-fix.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
@@ -36,6 +37,7 @@ const MENU_FLASH_GUARD = `
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-5"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-3"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -51,6 +53,9 @@ function decorateNavigationHtml(html) {
   }
   if (!out.includes('assets/js/hero-selection-guard.js')) {
     out = out.replace('</body>', `${HERO_SELECTION_GUARD_TAG}\n</body>`);
+  }
+  if (!out.includes('assets/js/action-spacing-fix.js')) {
+    out = out.replace('</body>', `${ACTION_SPACING_FIX_TAG}\n</body>`);
   }
   return out;
 }
