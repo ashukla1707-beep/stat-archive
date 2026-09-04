@@ -25,7 +25,60 @@
 }
 
 .toolbar .search-row{margin-bottom:22px !important;position:relative !important;z-index:30 !important;}
-@media(max-width:700px){.toolbar .search-row{margin-bottom:24px !important;}}
+
+/* Uniform mobile vertical rhythm: summary -> search -> Subjects -> Types -> Archive entries. */
+@media(max-width:700px){
+  body .archive-summary{
+    margin-bottom:24px !important;
+  }
+
+  body .toolbar{
+    gap:0 !important;
+    margin-bottom:24px !important;
+  }
+
+  body .toolbar > .search-row{
+    margin:0 0 24px !important;
+  }
+
+  body .toolbar > .archive-filter-section{
+    margin:0 !important;
+    padding:0 !important;
+  }
+
+  body .toolbar > .archive-filter-section + .archive-filter-section{
+    margin-top:24px !important;
+    padding-top:24px !important;
+  }
+
+  body .archive-filter-label{
+    margin:0 0 12px !important;
+  }
+
+  body #subjectFilterRow,
+  body #typeFilterRow{
+    margin:0 !important;
+  }
+
+  body .archive-action-row{
+    margin-top:24px !important;
+  }
+
+  body #permissionHint{
+    margin-top:12px !important;
+  }
+
+  body .archive-entries-divider{
+    margin-top:24px !important;
+    margin-bottom:24px !important;
+  }
+
+  body .archive-entries-divider + .empty-state,
+  body .archive-entries-divider + .empty-state + .grid,
+  body .archive-entries-divider + .grid{
+    margin-top:0 !important;
+  }
+}
 
 #statSearchTools,.stat-search-tools,#statYearFilter,#statExactSearch,#statResetFilters{display:none !important;}
 
