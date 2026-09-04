@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-archive-divider-gap-v8";
+const CACHE = "stat-archive-shell-v20260905-archive-divider-padding-v9";
 
 const APP_SHELL = [
   "./",
@@ -37,7 +37,7 @@ const MENU_FLASH_GUARD = `
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-5"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-3"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-4"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
