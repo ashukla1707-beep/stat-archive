@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-archive-divider-padding-v9";
+const CACHE = "stat-archive-shell-v20260905-archive-line-gap-v10";
 
 const APP_SHELL = [
   "./",
