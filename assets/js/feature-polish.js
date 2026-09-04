@@ -1,4 +1,4 @@
-/* Stat Archive feature polish: centered desktop menu, web offline access, spacing, search suggestions, and filing-card rounding. */
+/* Stat Archive feature polish: centered desktop menu, web offline access, uniform spacing, search suggestions, and filing-card rounding. */
 (() => {
   function installStyles(){
     if (document.getElementById('statArchiveFeaturePolishStyles')) return;
@@ -24,62 +24,82 @@
   }
 }
 
-.toolbar .search-row{margin-bottom:22px !important;position:relative !important;z-index:30 !important;}
+/* =========================================================
+   ONE SPACING SYSTEM FOR THE ARCHIVE CONTROLS
+   Desktop/tablet: 28px between blocks.
+   Phone/APK:      24px between blocks.
+   Label -> pills: 12px everywhere.
+   No stacked margin + padding and no empty action-row gap.
+   ========================================================= */
+body .archive-summary{
+  margin-bottom:28px !important;
+}
 
-/* One real 24px gap between mobile blocks. Do not stack margin + padding. */
+body .toolbar{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:28px !important;
+  margin-bottom:0 !important;
+}
+
+body .toolbar > .search-row,
+body .toolbar > .archive-filter-section,
+body .toolbar > .archive-action-row,
+body .toolbar > #permissionHint{
+  margin:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+}
+
+body .toolbar > .search-row{
+  position:relative !important;
+  z-index:30 !important;
+}
+
+body .toolbar > .archive-filter-section + .archive-filter-section{
+  margin-top:0 !important;
+  padding-top:0 !important;
+}
+
+body .archive-filter-label{
+  margin:0 0 12px !important;
+  padding:0 !important;
+}
+
+body #subjectFilterRow,
+body #typeFilterRow{
+  margin:0 !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+}
+
+/* Reader mode leaves this container in the DOM even when every button is hidden.
+   Hide that empty container so it cannot create a phantom vertical gap. */
+body .archive-action-row:not(:has(> button:not([style*="display:none"]))) {
+  display:none !important;
+}
+
+body .archive-entries-divider{
+  margin:28px auto 28px !important;
+}
+
+body .archive-entries-divider + .empty-state,
+body .archive-entries-divider + .empty-state + .grid,
+body .archive-entries-divider + .grid{
+  margin-top:0 !important;
+}
+
 @media(max-width:700px){
   body .archive-summary{
     margin-bottom:24px !important;
   }
 
   body .toolbar{
-    gap:0 !important;
-    margin-bottom:0 !important;
-  }
-
-  body .toolbar > .search-row{
-    margin:0 0 24px !important;
-    padding:0 !important;
-  }
-
-  body .toolbar > .archive-filter-section{
-    margin:0 !important;
-    padding:0 !important;
-  }
-
-  body .toolbar > .archive-filter-section + .archive-filter-section{
-    margin-top:24px !important;
-    padding-top:0 !important;
-  }
-
-  body .archive-filter-label{
-    margin:0 0 12px !important;
-    padding:0 !important;
-  }
-
-  body #subjectFilterRow,
-  body #typeFilterRow{
-    margin:0 !important;
-    padding-top:0 !important;
-    padding-bottom:0 !important;
-  }
-
-  body .archive-action-row{
-    margin:24px 0 0 !important;
-  }
-
-  body #permissionHint{
-    margin:12px 0 0 !important;
+    gap:24px !important;
   }
 
   body .archive-entries-divider{
     margin:24px auto 24px !important;
-  }
-
-  body .archive-entries-divider + .empty-state,
-  body .archive-entries-divider + .empty-state + .grid,
-  body .archive-entries-divider + .grid{
-    margin-top:0 !important;
   }
 }
 
