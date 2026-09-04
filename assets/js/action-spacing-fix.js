@@ -21,32 +21,31 @@ body .toolbar > .archive-action-row::after{
   border:0 !important;
 }
 
-/* The visible horizontal line is the Types section's bottom border.
-   Add real internal space before the Archive Entries label so the
-   line-to-heading gap matches the breathing room above Types. */
+/* Keep the Archive Entries wrapper itself compact. */
 body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
-  padding-top:22px !important;
+  padding-top:0 !important;
   margin-bottom:16px !important;
 }
 
-/* Prevent adjacent sibling rules from collapsing that gap. */
-body .toolbar + .archive-entries-divider,
-body .archive-action-row + .archive-entries-divider,
-body #permissionHint + .archive-entries-divider{
-  padding-top:22px !important;
-  margin-top:0 !important;
+/* IMPORTANT: create the visible gap on the heading itself.
+   This guarantees clear space between the Types horizontal line
+   and the ARCHIVE ENTRIES text, even if parent margins are collapsed
+   or overridden elsewhere. */
+body .archive-entries-divider > span{
+  display:block !important;
+  padding-top:20px !important;
 }
 
 @media(max-width:700px){
-  body .archive-entries-divider,
-  body .toolbar + .archive-entries-divider,
-  body .archive-action-row + .archive-entries-divider,
-  body #permissionHint + .archive-entries-divider{
-    padding-top:18px !important;
+  body .archive-entries-divider{
     margin-top:0 !important;
+    padding-top:0 !important;
     margin-bottom:12px !important;
+  }
+  body .archive-entries-divider > span{
+    padding-top:18px !important;
   }
 }
 `;
