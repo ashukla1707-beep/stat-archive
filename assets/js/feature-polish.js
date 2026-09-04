@@ -52,7 +52,13 @@ body .toolbar > .archive-filter-section{
   border-bottom:1px solid var(--line) !important;
 }
 
-/* Subjects and Types use identical line spacing. */
+/* The old stylesheet also adds a TOP border to Types.
+   Remove it so Subjects -> Types has only one divider line. */
+body .toolbar > .archive-type-filter-section{
+  border-top:0 !important;
+}
+
+/* Subjects and Types use identical internal spacing. */
 body .archive-filter-label{
   margin:0 0 10px !important;
   padding:0 !important;
@@ -69,9 +75,12 @@ body .archive-action-row:not(:has(> button:not([style*="display:none"]))) {
   display:none !important;
 }
 
-/* Keep Archive Entries compact after the Types divider line. */
+/* Use the Types bottom border as the only line before Archive Entries.
+   Remove the divider's own old top border/padding and pull the heading upward. */
 body .archive-entries-divider{
-  margin:18px auto 14px !important;
+  border-top:0 !important;
+  padding-top:0 !important;
+  margin:8px auto 10px !important;
 }
 
 body .archive-entries-divider + .empty-state,
@@ -85,7 +94,7 @@ body .archive-entries-divider + .grid{
   body .toolbar{gap:16px !important;}
   body .toolbar > .archive-filter-section{padding-bottom:14px !important;}
   body .archive-filter-label{margin-bottom:9px !important;}
-  body .archive-entries-divider{margin:16px auto 12px !important;}
+  body .archive-entries-divider{margin:6px auto 8px !important;}
 }
 
 #statSearchTools,.stat-search-tools,#statYearFilter,#statExactSearch,#statResetFilters{display:none !important;}
