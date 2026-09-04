@@ -1,4 +1,5 @@
-const CACHE = "stat-archive-shell-v20260905-archive-label-gap-v11";
+const CACHE = "stat-archive-shell-v20260905-speed-v12";
+const EXTERNAL_CACHE = "stat-archive-external-v1";
 
 const APP_SHELL = [
   "./",
@@ -11,6 +12,7 @@ const APP_SHELL = [
   "./assets/js/preview.js",
   "./assets/js/offline.js",
   "./assets/js/management.js",
+  "./assets/js/speed-boost.js",
   "./assets/js/runtime.js",
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
@@ -38,13 +40,40 @@ const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=2026090
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-5"></script>';
+const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
+
   out = out.replace(
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for every batch.',
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
+
+  /* Start runtime/init before the heavy scanner libraries. Those libraries
+     are only needed when the scanner is opened, so they must not hold up the
+     archive's first useful paint or data request. */
+  out = out.replace('<script src="assets/js/runtime.js"></script>', '');
+
+  const pdfLibTag = '<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>';
+  if (out.includes(pdfLibTag)) {
+    out = out.replace(
+      pdfLibTag,
+      `${SPEED_SCRIPT_TAG}\n<script src="assets/js/runtime.js"></script>\n<script defer src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>`
+    );
+  } else if (!out.includes('assets/js/speed-boost.js')) {
+    out = out.replace('</body>', `${SPEED_SCRIPT_TAG}\n<script src="assets/js/runtime.js"></script>\n</body>`);
+  }
+
+  out = out.replace(
+    '<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>',
+    '<script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>'
+  );
+  out = out.replace(
+    '<script src="assets/js/scanner.js"></script>',
+    '<script defer src="assets/js/scanner.js"></script>'
+  );
+
   if (!out.includes('assets/js/feature-polish.js')) {
     out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
   }
@@ -72,7 +101,9 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(key => key !== CACHE).map(key => caches.delete(key))
+        keys
+          .filter(key => key !== CACHE && key !== EXTERNAL_CACHE)
+          .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -136,13 +167,41 @@ async function fetchMutable(request, url, isNavigation) {
   }
 }
 
+async function fetchExternalFast(request) {
+  const cache = await caches.open(EXTERNAL_CACHE);
+  const cached = await cache.match(request);
+  if (cached) {
+    /* Refresh quietly, never make the page wait for the CDN again. */
+    fetch(request)
+      .then(response => {
+        if (response && (response.ok || response.type === 'opaque')) {
+          return cache.put(request, response.clone());
+        }
+      })
+      .catch(() => {});
+    return cached;
+  }
+
+  const response = await fetch(request);
+  if (response && (response.ok || response.type === 'opaque')) {
+    cache.put(request, response.clone()).catch(() => {});
+  }
+  return response;
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
-    event.respondWith(fetch(request));
+    const cacheableExternal =
+      url.hostname === 'cdn.jsdelivr.net' ||
+      url.hostname === 'cdnjs.cloudflare.com' ||
+      url.hostname === 'fonts.googleapis.com' ||
+      url.hostname === 'fonts.gstatic.com';
+
+    event.respondWith(cacheableExternal ? fetchExternalFast(request) : fetch(request));
     return;
   }
 
