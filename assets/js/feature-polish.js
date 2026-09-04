@@ -26,7 +26,7 @@
 
 .toolbar .search-row{margin-bottom:22px !important;position:relative !important;z-index:30 !important;}
 
-/* Uniform mobile vertical rhythm: summary -> search -> Subjects -> Types -> Archive entries. */
+/* One real 24px gap between mobile blocks. Do not stack margin + padding. */
 @media(max-width:700px){
   body .archive-summary{
     margin-bottom:24px !important;
@@ -34,11 +34,12 @@
 
   body .toolbar{
     gap:0 !important;
-    margin-bottom:24px !important;
+    margin-bottom:0 !important;
   }
 
   body .toolbar > .search-row{
     margin:0 0 24px !important;
+    padding:0 !important;
   }
 
   body .toolbar > .archive-filter-section{
@@ -48,29 +49,31 @@
 
   body .toolbar > .archive-filter-section + .archive-filter-section{
     margin-top:24px !important;
-    padding-top:24px !important;
+    padding-top:0 !important;
   }
 
   body .archive-filter-label{
     margin:0 0 12px !important;
+    padding:0 !important;
   }
 
   body #subjectFilterRow,
   body #typeFilterRow{
     margin:0 !important;
+    padding-top:0 !important;
+    padding-bottom:0 !important;
   }
 
   body .archive-action-row{
-    margin-top:24px !important;
+    margin:24px 0 0 !important;
   }
 
   body #permissionHint{
-    margin-top:12px !important;
+    margin:12px 0 0 !important;
   }
 
   body .archive-entries-divider{
-    margin-top:24px !important;
-    margin-bottom:24px !important;
+    margin:24px auto 24px !important;
   }
 
   body .archive-entries-divider + .empty-state,
