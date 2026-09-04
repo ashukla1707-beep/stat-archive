@@ -13,7 +13,10 @@
     try { return JSON.parse(raw); } catch (_) { return null; }
   };
 
-  const currentLevelKey = () => String(window.currentLevel || 'msc');
+  const currentLevelKey = () => {
+    try { return String(typeof currentLevel !== 'undefined' ? currentLevel : 'msc'); }
+    catch (_) { return 'msc'; }
+  };
 
   function readSnapshot(key) {
     try {
@@ -37,7 +40,8 @@
 
   function updateStorageTotal() {
     try {
-      window.totalStorageBytes = (window.entries || []).reduce((sum, entry) => {
+      if (typeof entries === 'undefined' || typeof totalStorageBytes === 'undefined') return;
+      totalStorageBytes = entries.reduce((sum, entry) => {
         const n = Number(entry?.size);
         return sum + (Number.isFinite(n) && n > 0 ? n : 0);
       }, 0);
@@ -47,16 +51,16 @@
   function refreshUiAfterBackgroundData() {
     try {
       updateStorageTotal();
-      window.renderSubjectFilters?.();
-      window.renderTypeFilters?.();
-      window.renderSubjectOptions?.();
-      window.render?.();
+      if (typeof renderSubjectFilters === 'function') renderSubjectFilters();
+      if (typeof renderTypeFilters === 'function') renderTypeFilters();
+      if (typeof renderSubjectOptions === 'function') renderSubjectOptions();
+      if (typeof render === 'function') render();
     } catch (_) {}
   }
 
   /* Wrap entries loader before runtime.js calls init(). */
-  if (typeof window.loadEntries === 'function' && !window.loadEntries.__statFastWrapped) {
-    const originalLoadEntries = window.loadEntries;
+  if (typeof loadEntries === 'function' && !loadEntries.__statFastWrapped) {
+    const originalLoadEntries = loadEntries;
     let backgroundEntriesPromise = null;
 
     const wrapped = async function fastLoadEntries(...args) {
@@ -69,7 +73,7 @@
             .then(fresh => {
               if (Array.isArray(fresh)) {
                 writeSnapshot(ENTRY_CACHE_KEY, fresh);
-                window.entries = fresh;
+                entries = fresh;
                 refreshUiAfterBackgroundData();
               }
               return fresh;
@@ -91,26 +95,26 @@
 
     wrapped.__statFastWrapped = true;
     wrapped.__original = originalLoadEntries;
-    window.loadEntries = wrapped;
+    loadEntries = wrapped;
   }
 
   /* Same idea for subjects. loadSubjectsFromWorker mutates global subjects. */
-  if (typeof window.loadSubjectsFromWorker === 'function' && !window.loadSubjectsFromWorker.__statFastWrapped) {
-    const originalLoadSubjects = window.loadSubjectsFromWorker;
+  if (typeof loadSubjectsFromWorker === 'function' && !loadSubjectsFromWorker.__statFastWrapped) {
+    const originalLoadSubjects = loadSubjectsFromWorker;
     let backgroundSubjectsPromise = null;
 
     const wrapped = async function fastLoadSubjects(...args) {
       const snapshot = readSnapshot(SUBJECT_CACHE_KEY);
 
       if (snapshot && Array.isArray(snapshot.data)) {
-        window.subjects = snapshot.data;
+        subjects = snapshot.data;
 
         if (!backgroundSubjectsPromise) {
           backgroundSubjectsPromise = Promise.resolve()
             .then(() => originalLoadSubjects.apply(this, args))
             .then(result => {
-              if (Array.isArray(window.subjects)) {
-                writeSnapshot(SUBJECT_CACHE_KEY, window.subjects);
+              if (Array.isArray(subjects)) {
+                writeSnapshot(SUBJECT_CACHE_KEY, subjects);
                 refreshUiAfterBackgroundData();
               }
               return result;
@@ -122,17 +126,17 @@
             .finally(() => { backgroundSubjectsPromise = null; });
         }
 
-        return window.subjects;
+        return subjects;
       }
 
       const result = await originalLoadSubjects.apply(this, args);
-      if (Array.isArray(window.subjects)) writeSnapshot(SUBJECT_CACHE_KEY, window.subjects);
+      if (Array.isArray(subjects)) writeSnapshot(SUBJECT_CACHE_KEY, subjects);
       return result;
     };
 
     wrapped.__statFastWrapped = true;
     wrapped.__original = originalLoadSubjects;
-    window.loadSubjectsFromWorker = wrapped;
+    loadSubjectsFromWorker = wrapped;
   }
 
   /* Reuse downloaded archive files. This especially speeds repeat previews,
@@ -148,10 +152,19 @@
         method = String(init?.method || input?.method || 'GET').toUpperCase();
       } catch (_) {}
 
+      let workerBase = '';
+      try { workerBase = typeof WORKER_URL === 'string' ? WORKER_URL : ''; } catch (_) {}
+
+      const headers = init?.headers || input?.headers || null;
+      const hasRange = !!(
+        headers &&
+        ((typeof headers.get === 'function' && headers.get('range')) || headers.Range || headers.range)
+      );
+
       const isArchiveFile = method === 'GET' &&
-        typeof window.WORKER_URL === 'string' &&
-        url.startsWith(`${window.WORKER_URL}/file?id=`) &&
-        !init?.headers?.Range && !init?.headers?.range;
+        workerBase &&
+        url.startsWith(`${workerBase}/file?id=`) &&
+        !hasRange;
 
       if (!isArchiveFile || !('caches' in window)) {
         return nativeFetch(input, init);
@@ -183,9 +196,11 @@
 
   /* Remove pdf.js CDN/setup latency from the first Preview click. */
   const warmPdf = () => {
-    if (typeof window.loadPdfJs === 'function') {
-      Promise.resolve(window.loadPdfJs()).catch(() => {});
-    }
+    try {
+      if (typeof loadPdfJs === 'function') {
+        Promise.resolve(loadPdfJs()).catch(() => {});
+      }
+    } catch (_) {}
   };
 
   if ('requestIdleCallback' in window) {
