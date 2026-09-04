@@ -1,4 +1,4 @@
-/* Stat Archive feature polish: centered desktop menu, web offline access, uniform spacing, search suggestions, and filing-card rounding. */
+/* Stat Archive feature polish: centered desktop menu, web offline access, compact spacing, search suggestions, and filing-card rounding. */
 (() => {
   function installStyles(){
     if (document.getElementById('statArchiveFeaturePolishStyles')) return;
@@ -24,21 +24,13 @@
   }
 }
 
-/* =========================================================
-   ONE SPACING SYSTEM FOR THE ARCHIVE CONTROLS
-   Desktop/tablet: 28px between blocks.
-   Phone/APK:      24px between blocks.
-   Label -> pills: 12px everywhere.
-   No stacked margin + padding and no empty action-row gap.
-   ========================================================= */
-body .archive-summary{
-  margin-bottom:28px !important;
-}
+/* Compact, balanced archive-control rhythm. */
+body .archive-summary{margin-bottom:18px !important;}
 
 body .toolbar{
   display:flex !important;
   flex-direction:column !important;
-  gap:28px !important;
+  gap:18px !important;
   margin-bottom:0 !important;
 }
 
@@ -47,40 +39,39 @@ body .toolbar > .archive-filter-section,
 body .toolbar > .archive-action-row,
 body .toolbar > #permissionHint{
   margin:0 !important;
-  padding-top:0 !important;
-  padding-bottom:0 !important;
 }
 
 body .toolbar > .search-row{
+  padding:0 !important;
   position:relative !important;
   z-index:30 !important;
 }
 
-body .toolbar > .archive-filter-section + .archive-filter-section{
-  margin-top:0 !important;
-  padding-top:0 !important;
+body .toolbar > .archive-filter-section{
+  padding:0 0 16px !important;
+  border-bottom:1px solid var(--line) !important;
 }
 
+/* Subjects and Types use identical line spacing. */
 body .archive-filter-label{
-  margin:0 0 12px !important;
+  margin:0 0 10px !important;
   padding:0 !important;
 }
 
 body #subjectFilterRow,
 body #typeFilterRow{
   margin:0 !important;
-  padding-top:0 !important;
-  padding-bottom:0 !important;
+  padding:0 !important;
 }
 
-/* Reader mode leaves this container in the DOM even when every button is hidden.
-   Hide that empty container so it cannot create a phantom vertical gap. */
+/* Reader mode leaves this container in the DOM even when every button is hidden. */
 body .archive-action-row:not(:has(> button:not([style*="display:none"]))) {
   display:none !important;
 }
 
+/* Keep Archive Entries compact after the Types divider line. */
 body .archive-entries-divider{
-  margin:28px auto 28px !important;
+  margin:18px auto 14px !important;
 }
 
 body .archive-entries-divider + .empty-state,
@@ -90,17 +81,11 @@ body .archive-entries-divider + .grid{
 }
 
 @media(max-width:700px){
-  body .archive-summary{
-    margin-bottom:24px !important;
-  }
-
-  body .toolbar{
-    gap:24px !important;
-  }
-
-  body .archive-entries-divider{
-    margin:24px auto 24px !important;
-  }
+  body .archive-summary{margin-bottom:16px !important;}
+  body .toolbar{gap:16px !important;}
+  body .toolbar > .archive-filter-section{padding-bottom:14px !important;}
+  body .archive-filter-label{margin-bottom:9px !important;}
+  body .archive-entries-divider{margin:16px auto 12px !important;}
 }
 
 #statSearchTools,.stat-search-tools,#statYearFilter,#statExactSearch,#statResetFilters{display:none !important;}
