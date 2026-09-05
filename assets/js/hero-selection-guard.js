@@ -70,12 +70,28 @@ html body .header .hero-line .sub *::-moz-selection{
     setTimeout(clearHeroSelection,120);
   }
 
+  function loadPdfAnchorFix(){
+    if(document.querySelector('script[data-stat-pdf-anchor-fix]')) return;
+    const script=document.createElement('script');
+    script.src='assets/js/pdf-anchor-fix.js?v=20260905-1';
+    script.dataset.statPdfAnchorFix='1';
+    script.async=false;
+    document.body.appendChild(script);
+  }
+
   document.addEventListener('selectionchange',clearHeroSelection,true);
-  window.addEventListener('pageshow',installGuard);
+  window.addEventListener('pageshow',()=>{
+    installGuard();
+    loadPdfAnchorFix();
+  });
 
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',installGuard,{once:true});
+    document.addEventListener('DOMContentLoaded',()=>{
+      installGuard();
+      loadPdfAnchorFix();
+    },{once:true});
   }else{
     installGuard();
+    loadPdfAnchorFix();
   }
 })();
