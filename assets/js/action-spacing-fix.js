@@ -21,28 +21,28 @@ body .toolbar > .archive-action-row::after{
   border:0 !important;
 }
 
-/* Keep the Archive Entries wrapper itself compact. */
+/* Keep the Archive Entries wrapper compact and move the whole row down
+   together so the label and horizontal rule stay vertically aligned. */
 body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
-  padding-top:0 !important;
+  padding-top:20px !important;
   margin-bottom:16px !important;
 }
 
-/* Create the visible gap on the heading itself. */
 body .archive-entries-divider > span{
   display:block !important;
-  padding-top:20px !important;
+  padding-top:0 !important;
 }
 
 @media(max-width:700px){
   body .archive-entries-divider{
     margin-top:0 !important;
-    padding-top:0 !important;
+    padding-top:18px !important;
     margin-bottom:12px !important;
   }
   body .archive-entries-divider > span{
-    padding-top:18px !important;
+    padding-top:0 !important;
   }
 }
 `;
