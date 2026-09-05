@@ -18,8 +18,8 @@
     const zoomLabel = document.getElementById("pdfZoomLevel");
 
     if (!wrap || !pages || !zoomOut || !zoomIn || !zoomReset || !zoomLabel) return;
-    if (wrap.dataset.statZoomFixed === "1") return;
-    wrap.dataset.statZoomFixed = "1";
+    if (wrap.dataset.statZoomFixed === "2") return;
+    wrap.dataset.statZoomFixed = "2";
 
     let zoom = 1;
     let pinchActive = false;
@@ -67,6 +67,36 @@
       zoomIn.disabled = zoom >= MAX_ZOOM - 0.001;
     }
 
+    function findAnchor(viewportX, viewportY) {
+      const wrapRect = wrap.getBoundingClientRect();
+      const clientX = wrapRect.left + viewportX;
+      const clientY = wrapRect.top + viewportY;
+
+      let page = document.elementFromPoint(clientX, clientY)?.closest?.(".pdf-page");
+      if (!page || !pages.contains(page)) {
+        const candidates = Array.from(pages.querySelectorAll(".pdf-page"));
+        page = candidates.find(el => {
+          const r = el.getBoundingClientRect();
+          return r.bottom >= clientY && r.top <= clientY;
+        }) || candidates[0] || null;
+      }
+
+      if (!page) return null;
+
+      const pageTop = page.offsetTop;
+      const pageLeft = page.offsetLeft;
+      const pageHeight = Math.max(1, page.offsetHeight);
+      const pageWidth = Math.max(1, page.offsetWidth);
+      const contentY = wrap.scrollTop + viewportY;
+      const contentX = wrap.scrollLeft + viewportX;
+
+      return {
+        page,
+        yFraction: Math.max(0, Math.min(1, (contentY - pageTop) / pageHeight)),
+        xFraction: Math.max(0, Math.min(1, (contentX - pageLeft) / pageWidth))
+      };
+    }
+
     function resizePages(nextZoom, anchorClientX, anchorClientY) {
       nextZoom = clamp(nextZoom);
       if (Math.abs(nextZoom - zoom) < 0.003) return;
@@ -75,15 +105,13 @@
 
       const rect = wrap.getBoundingClientRect();
       const viewportX = Number.isFinite(anchorClientX)
-        ? anchorClientX - rect.left
+        ? Math.max(0, Math.min(wrap.clientWidth, anchorClientX - rect.left))
         : wrap.clientWidth / 2;
       const viewportY = Number.isFinite(anchorClientY)
-        ? anchorClientY - rect.top
+        ? Math.max(0, Math.min(wrap.clientHeight, anchorClientY - rect.top))
         : wrap.clientHeight / 2;
 
-      const oldZoom = zoom;
-      const contentX = wrap.scrollLeft + viewportX;
-      const contentY = wrap.scrollTop + viewportY;
+      const anchor = findAnchor(viewportX, viewportY);
 
       zoom = nextZoom;
       applying = true;
@@ -101,9 +129,15 @@
       updateControls();
 
       requestAnimationFrame(() => {
-        const ratio = zoom / oldZoom;
-        wrap.scrollLeft = Math.max(0, contentX * ratio - viewportX);
-        wrap.scrollTop = Math.max(0, contentY * ratio - viewportY);
+        if (anchor && anchor.page?.isConnected) {
+          const newTop = anchor.page.offsetTop;
+          const newLeft = anchor.page.offsetLeft;
+          const newHeight = Math.max(1, anchor.page.offsetHeight);
+          const newWidth = Math.max(1, anchor.page.offsetWidth);
+
+          wrap.scrollTop = Math.max(0, newTop + anchor.yFraction * newHeight - viewportY);
+          wrap.scrollLeft = Math.max(0, newLeft + anchor.xFraction * newWidth - viewportX);
+        }
         applying = false;
       });
     }
