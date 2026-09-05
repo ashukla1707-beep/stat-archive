@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-archive-divider-removed-v19";
+const CACHE = "stat-archive-shell-v20260905-download-fix-v20";
 const EXTERNAL_CACHE = "stat-archive-external-v1";
 
 const APP_SHELL = [
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "./assets/js/offline.js",
   "./assets/js/management.js",
   "./assets/js/speed-boost.js",
+  "./assets/js/download-fix.js",
   "./assets/js/runtime.js",
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
@@ -41,6 +42,7 @@ const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-12"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-1"></script>';
+const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -82,6 +84,9 @@ function decorateNavigationHtml(html) {
   }
   if (!out.includes('assets/js/action-spacing-fix.js')) {
     out = out.replace('</body>', `${ACTION_SPACING_FIX_TAG}\n</body>`);
+  }
+  if (!out.includes('assets/js/download-fix.js')) {
+    out = out.replace('</body>', `${DOWNLOAD_FIX_TAG}\n</body>`);
   }
   return out;
 }
