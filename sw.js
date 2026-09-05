@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260906-pdf-native-scroll-v41";
+const CACHE = "stat-archive-shell-v20260906-pdf-per-page-v42";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -11,7 +11,6 @@ const APP_SHELL = [
   "./assets/js/archive-ui.js",
   "./assets/js/preview.js",
   "./assets/js/pdf-preview-v2.js",
-  "./assets/js/pdf-touch-lock.js",
   "./assets/js/offline.js",
   "./assets/js/management.js",
   "./assets/js/speed-boost.js",
@@ -51,8 +50,7 @@ const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const PDF_TITLE_FIX_TAG = '<script src="./assets/js/pdf-title-fix.js?v=20260905-1"></script>';
-const PDF_PREVIEW_V2_TAG = '<script src="./assets/js/pdf-preview-v2.js?v=20260906-5"></script>';
-const PDF_TOUCH_LOCK_TAG = '<script data-stat-pdf-touch-lock="1" src="./assets/js/pdf-touch-lock.js?v=20260906-2"></script>';
+const PDF_PREVIEW_V2_TAG = '<script src="./assets/js/pdf-preview-v2.js?v=20260906-6"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -92,7 +90,6 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/pdf-title-fix.js')) out = out.replace('</body>', `${PDF_TITLE_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/pdf-preview-v2.js')) out = out.replace('</body>', `${PDF_PREVIEW_V2_TAG}\n</body>`);
-  if (!out.includes('assets/js/pdf-touch-lock.js')) out = out.replace('</body>', `${PDF_TOUCH_LOCK_TAG}\n</body>`);
   return out;
 }
 
