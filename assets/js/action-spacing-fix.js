@@ -44,29 +44,6 @@ html body .archive-entries-divider > i{
   display:none !important;
 }
 
-/* Desktop/web menu fallback. Inline-important values below are the final authority. */
-@media(min-width:701px){
-  html body .main-side-menu,
-  html body .main-side-menu.stat-menu-polished{
-    position:fixed !important;
-    top:50% !important;
-    left:50% !important;
-    right:auto !important;
-    bottom:auto !important;
-    width:min(440px,calc(100vw - 48px)) !important;
-    max-width:calc(100vw - 48px) !important;
-    height:auto !important;
-    max-height:calc(100dvh - 48px) !important;
-    transform:translate(-50%,-50%) scale(.985) !important;
-    transform-origin:center center !important;
-  }
-
-  html body .main-side-menu.is-open,
-  html body .main-side-menu.stat-menu-polished.is-open{
-    transform:translate(-50%,-50%) scale(1) !important;
-  }
-}
-
 @media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
@@ -77,25 +54,62 @@ html body .archive-entries-divider > i{
 `;
   document.head.appendChild(style);
 
-  function forceDesktopMenuCenter(){
-    if (!window.matchMedia('(min-width:701px)').matches) return;
-    const menu = document.querySelector('.main-side-menu.stat-menu-polished, .main-side-menu');
-    if (!menu) return;
-    menu.style.setProperty('position','fixed','important');
-    menu.style.setProperty('top','50%','important');
-    menu.style.setProperty('left','50%','important');
-    menu.style.setProperty('right','auto','important');
-    menu.style.setProperty('bottom','auto','important');
-    menu.style.setProperty('width','min(440px, calc(100vw - 48px))','important');
-    menu.style.setProperty('max-width','calc(100vw - 48px)','important');
-    menu.style.setProperty('height','auto','important');
-    menu.style.setProperty('max-height','calc(100dvh - 48px)','important');
-    menu.style.setProperty('transform', menu.classList.contains('is-open') ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(.985)','important');
-    menu.style.setProperty('transform-origin','center center','important');
+  const CENTER_PROPS = ['position','top','left','right','bottom','width','max-width','height','max-height','transform','transform-origin'];
+
+  function clearOldWrongTarget(el){
+    if (!el) return;
+    CENTER_PROPS.forEach(prop => el.style.removeProperty(prop));
   }
 
-  forceDesktopMenuCenter();
-  window.addEventListener('resize', forceDesktopMenuCenter, {passive:true});
-  document.addEventListener('click', () => requestAnimationFrame(forceDesktopMenuCenter), true);
-  new MutationObserver(forceDesktopMenuCenter).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
+  function findActualMenuPanel(){
+    const marker = document.getElementById('menuOfflineLibraryBtn') ||
+                   document.getElementById('mainMenuCloseBtn') ||
+                   Array.from(document.querySelectorAll('button,div,a')).find(el => /About Stat Archive/i.test(el.textContent || ''));
+    if (!marker) return null;
+
+    let node = marker;
+    let best = null;
+    while (node && node !== document.body) {
+      const cs = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      const looksLikePanel =
+        (cs.position === 'fixed' || cs.position === 'absolute') &&
+        rect.width >= 280 && rect.width <= 650 &&
+        rect.height >= 300 && rect.height <= window.innerHeight;
+      if (looksLikePanel) best = node;
+      node = node.parentElement;
+    }
+    return best;
+  }
+
+  function centerActualDesktopMenu(){
+    if (!window.matchMedia('(min-width:701px)').matches) return;
+    const actual = findActualMenuPanel();
+    if (!actual) return;
+
+    document.querySelectorAll('.main-side-menu').forEach(el => {
+      if (el !== actual) clearOldWrongTarget(el);
+    });
+
+    actual.style.setProperty('position','fixed','important');
+    actual.style.setProperty('top','50%','important');
+    actual.style.setProperty('left','50%','important');
+    actual.style.setProperty('right','auto','important');
+    actual.style.setProperty('bottom','auto','important');
+    actual.style.setProperty('width','min(440px, calc(100vw - 48px))','important');
+    actual.style.setProperty('max-width','calc(100vw - 48px)','important');
+    actual.style.setProperty('height','auto','important');
+    actual.style.setProperty('max-height','calc(100dvh - 48px)','important');
+    actual.style.setProperty('transform','translate(-50%, -50%)','important');
+    actual.style.setProperty('transform-origin','center center','important');
+  }
+
+  requestAnimationFrame(centerActualDesktopMenu);
+  window.addEventListener('resize', centerActualDesktopMenu, {passive:true});
+  document.getElementById('mainMenuBtn')?.addEventListener('click', () => {
+    setTimeout(centerActualDesktopMenu, 0);
+    setTimeout(centerActualDesktopMenu, 80);
+  });
+  new MutationObserver(() => requestAnimationFrame(centerActualDesktopMenu))
+    .observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
 })();
