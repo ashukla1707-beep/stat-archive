@@ -24,71 +24,22 @@
   }
 }
 
-/* Compact, balanced archive-control rhythm. */
 body .archive-summary{margin-bottom:18px !important;}
-
-body .toolbar{
-  display:flex !important;
-  flex-direction:column !important;
-  gap:18px !important;
-  margin-bottom:0 !important;
-}
-
+body .toolbar{display:flex !important;flex-direction:column !important;gap:18px !important;margin-bottom:0 !important;}
 body .toolbar > .search-row,
 body .toolbar > .archive-filter-section,
 body .toolbar > .archive-action-row,
-body .toolbar > #permissionHint{
-  margin:0 !important;
-}
-
-body .toolbar > .search-row{
-  padding:0 !important;
-  position:relative !important;
-  z-index:30 !important;
-}
-
-body .toolbar > .archive-filter-section{
-  padding:0 0 16px !important;
-  border-bottom:1px solid var(--line) !important;
-}
-
-/* The old stylesheet also adds a TOP border to Types.
-   Remove it so Subjects -> Types has only one divider line. */
-body .toolbar > .archive-type-filter-section{
-  border-top:0 !important;
-}
-
-/* Subjects and Types use identical internal spacing. */
-body .archive-filter-label{
-  margin:0 0 10px !important;
-  padding:0 !important;
-}
-
-body #subjectFilterRow,
-body #typeFilterRow{
-  margin:0 !important;
-  padding:0 !important;
-}
-
-/* Reader mode leaves this container in the DOM even when every button is hidden. */
-body .archive-action-row:not(:has(> button:not([style*="display:none"]))) {
-  display:none !important;
-}
-
-/* Use the Types bottom border as the only line before Archive Entries.
-   Remove the divider's own old top border/padding and pull the heading upward. */
-body .archive-entries-divider{
-  border-top:0 !important;
-  padding-top:0 !important;
-  margin:8px auto 10px !important;
-}
-
+body .toolbar > #permissionHint{margin:0 !important;}
+body .toolbar > .search-row{padding:0 !important;position:relative !important;z-index:30 !important;}
+body .toolbar > .archive-filter-section{padding:0 0 16px !important;border-bottom:1px solid var(--line) !important;}
+body .toolbar > .archive-type-filter-section{border-top:0 !important;}
+body .archive-filter-label{margin:0 0 10px !important;padding:0 !important;}
+body #subjectFilterRow,body #typeFilterRow{margin:0 !important;padding:0 !important;}
+body .archive-action-row:not(:has(> button:not([style*="display:none"]))){display:none !important;}
+body .archive-entries-divider{border-top:0 !important;padding-top:0 !important;margin:8px auto 10px !important;}
 body .archive-entries-divider + .empty-state,
 body .archive-entries-divider + .empty-state + .grid,
-body .archive-entries-divider + .grid{
-  margin-top:0 !important;
-}
-
+body .archive-entries-divider + .grid{margin-top:0 !important;}
 @media(max-width:700px){
   body .archive-summary{margin-bottom:16px !important;}
   body .toolbar{gap:16px !important;}
@@ -96,12 +47,9 @@ body .archive-entries-divider + .grid{
   body .archive-filter-label{margin-bottom:9px !important;}
   body .archive-entries-divider{margin:6px auto 8px !important;}
 }
-
 #statSearchTools,.stat-search-tools,#statYearFilter,#statExactSearch,#statResetFilters{display:none !important;}
-
 .card-actions .offline-btn{display:inline-flex !important;}
 #menuOfflineLibraryBtn{display:flex !important;}
-
 .stat-search-suggestions{position:absolute;left:0;right:0;top:calc(100% + 7px);z-index:1000;display:none;overflow:hidden;border:1px solid var(--line-strong);border-radius:14px;background:#0d141e;box-shadow:0 18px 45px rgba(0,0,0,.28);}
 .stat-search-suggestions.is-open{display:block;}
 .stat-search-suggestion{width:100%;border:0;border-bottom:1px solid rgba(148,163,184,.10);background:transparent;color:var(--text);padding:10px 13px;text-align:left;cursor:pointer;font:600 11px/1.35 'JetBrains Mono',monospace;}
@@ -111,7 +59,6 @@ body .archive-entries-divider + .grid{
 body[data-theme='light'] .stat-search-suggestions{background:#fffdf8;border-color:rgba(75,54,95,.16);box-shadow:0 16px 40px rgba(58,53,42,.14);}
 body[data-theme='light'] .stat-search-suggestion{color:#27302d;border-bottom-color:rgba(75,54,95,.09);}
 body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] .stat-search-suggestion.is-active{background:rgba(75,54,95,.07);color:#4b365f;}
-
 .stat-filing-card{border-radius:24px !important;overflow:hidden !important;}
 @media(max-width:700px){.stat-filing-card{border-radius:22px !important;}}
 `;
@@ -129,13 +76,17 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
     try { if (typeof loadOfflineLibraryState === 'function') loadOfflineLibraryState(); } catch (_) {}
   }
 
-  function removeOldAdvancedControls(){
-    document.getElementById('statSearchTools')?.remove();
-  }
+  function removeOldAdvancedControls(){document.getElementById('statSearchTools')?.remove();}
 
   function safeHtml(value){
     try { if (typeof escapeHtml === 'function') return escapeHtml(value); } catch (_) {}
     return String(value || '').replace(/[&<>"']/g,ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  function isQuestionPaperType(type){
+    const t = String(type || '').trim().toLowerCase();
+    return t === 'previous year question' || t === 'previous-year question' || t === 'previous year questions' ||
+           t === 'mid-term question' || t === 'mid term question' || t === 'midterm question';
   }
 
   function collectSuggestions(query){
@@ -173,6 +124,10 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
 
           const type = String(entry?.type || '').trim().toLowerCase();
           const title = String(entry?.title || entry?.filename || '').trim();
+
+          // Question papers stay searchable in the Archive Entries results,
+          // but are intentionally excluded from the autocomplete dropdown.
+          if (isQuestionPaperType(type)) return;
 
           if (type === 'book' || type === 'books') {
             if (title) add(title,'Book',subjectName);
