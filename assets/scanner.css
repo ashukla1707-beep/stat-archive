@@ -357,3 +357,27 @@ body[data-theme="light"] .grid-bg{
     padding-top:12px !important;
   }
 }
+
+/* =========================================================
+   ARCHIVE FILTER SPACING / SINGLE DIVIDER FIX
+   ========================================================= */
+.archive-type-filter-section{
+  padding-bottom:8px !important;
+}
+
+.archive-action-row{
+  width:100%;
+  margin-top:6px !important;
+  padding-top:15px !important;
+  border-top:1px solid var(--line) !important;
+}
+
+.archive-type-filter-section + .archive-action-row{
+  border-bottom:0 !important;
+}
+
+.archive-entries-divider{
+  margin-top:12px !important;
+  padding-top:14px !important;
+  border-top:0 !important;
+}
