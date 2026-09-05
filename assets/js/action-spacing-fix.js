@@ -44,8 +44,7 @@ html body .archive-entries-divider > i{
   display:none !important;
 }
 
-/* Desktop/web menu: force the floating menu to the exact viewport centre.
-   This intentionally outranks the older scanner.css right-side rule. */
+/* Desktop/web menu fallback. Inline-important values below are the final authority. */
 @media(min-width:701px){
   html body .main-side-menu,
   html body .main-side-menu.stat-menu-polished{
@@ -77,4 +76,26 @@ html body .archive-entries-divider > i{
 }
 `;
   document.head.appendChild(style);
+
+  function forceDesktopMenuCenter(){
+    if (!window.matchMedia('(min-width:701px)').matches) return;
+    const menu = document.querySelector('.main-side-menu.stat-menu-polished, .main-side-menu');
+    if (!menu) return;
+    menu.style.setProperty('position','fixed','important');
+    menu.style.setProperty('top','50%','important');
+    menu.style.setProperty('left','50%','important');
+    menu.style.setProperty('right','auto','important');
+    menu.style.setProperty('bottom','auto','important');
+    menu.style.setProperty('width','min(440px, calc(100vw - 48px))','important');
+    menu.style.setProperty('max-width','calc(100vw - 48px)','important');
+    menu.style.setProperty('height','auto','important');
+    menu.style.setProperty('max-height','calc(100dvh - 48px)','important');
+    menu.style.setProperty('transform', menu.classList.contains('is-open') ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(.985)','important');
+    menu.style.setProperty('transform-origin','center center','important');
+  }
+
+  forceDesktopMenuCenter();
+  window.addEventListener('resize', forceDesktopMenuCenter, {passive:true});
+  document.addEventListener('click', () => requestAnimationFrame(forceDesktopMenuCenter), true);
+  new MutationObserver(forceDesktopMenuCenter).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
 })();
