@@ -44,6 +44,30 @@ html body .archive-entries-divider > i{
   display:none !important;
 }
 
+/* Desktop/web menu: force the floating menu to the exact viewport centre.
+   This intentionally outranks the older scanner.css right-side rule. */
+@media(min-width:701px){
+  html body .main-side-menu,
+  html body .main-side-menu.stat-menu-polished{
+    position:fixed !important;
+    top:50% !important;
+    left:50% !important;
+    right:auto !important;
+    bottom:auto !important;
+    width:min(440px,calc(100vw - 48px)) !important;
+    max-width:calc(100vw - 48px) !important;
+    height:auto !important;
+    max-height:calc(100dvh - 48px) !important;
+    transform:translate(-50%,-50%) scale(.985) !important;
+    transform-origin:center center !important;
+  }
+
+  html body .main-side-menu.is-open,
+  html body .main-side-menu.stat-menu-polished.is-open{
+    transform:translate(-50%,-50%) scale(1) !important;
+  }
+}
+
 @media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
