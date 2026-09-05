@@ -1,6 +1,6 @@
 (() => {
-  if (window.__statArchiveSearchSuggestionsLoadedV2) return;
-  window.__statArchiveSearchSuggestionsLoadedV2 = true;
+  if (window.__statArchiveSearchSuggestionsLoadedV3) return;
+  window.__statArchiveSearchSuggestionsLoadedV3 = true;
 
   const esc = value => String(value ?? "").replace(/[&<>"]/g, ch => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
@@ -90,8 +90,8 @@
 
   function setup() {
     const input = findInput();
-    if (!input || input.dataset.searchSuggestionsV2 === "1") return;
-    input.dataset.searchSuggestionsV2 = "1";
+    if (!input || input.dataset.searchSuggestionsV3 === "1") return;
+    input.dataset.searchSuggestionsV3 = "1";
 
     const panel = document.createElement("div");
     panel.className = "archive-search-suggestions-v2";
@@ -129,7 +129,7 @@
       active = -1;
     }
 
-    function render() {
+    function renderSuggestions() {
       const q = input.value.trim();
       if (!q) return close();
 
@@ -150,12 +150,23 @@
       positionPanel();
     }
 
+    function applyLiveArchiveFilter() {
+      const q = input.value.trim().toLowerCase();
+      try {
+        if (typeof searchQ !== "undefined") searchQ = q;
+        const clearBtn = document.getElementById("searchClear");
+        if (clearBtn) clearBtn.style.display = q ? "inline-flex" : "none";
+        if (typeof render === "function") render();
+      } catch (_) {}
+    }
+
     function updateActive() {
       panel.querySelectorAll(".archive-search-suggestion-v2").forEach((b,i)=>b.classList.toggle("is-active",i===active));
     }
 
     function choose(m) {
       input.value = m.label;
+      applyLiveArchiveFilter();
       input.dispatchEvent(new Event("input",{bubbles:true}));
       close();
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -170,8 +181,11 @@
       }));
     }
 
-    input.addEventListener("input", () => requestAnimationFrame(render));
-    input.addEventListener("focus", render);
+    input.addEventListener("input", () => {
+      applyLiveArchiveFilter();
+      requestAnimationFrame(renderSuggestions);
+    });
+    input.addEventListener("focus", renderSuggestions);
     input.addEventListener("keydown", e => {
       if (panel.hidden || !matches.length) return;
       if (e.key === "ArrowDown") { e.preventDefault(); active=(active+1)%matches.length; updateActive(); }
