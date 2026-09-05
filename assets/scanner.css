@@ -385,23 +385,24 @@ body[data-theme="light"] .grid-bg{
    ARCHIVE ENTRIES DIVIDER ALIGNMENT FIX
    ========================================================= */
 .archive-entries-divider{
-  display:flex !important;
-  align-items:center !important;
-  gap:14px !important;
+  display:block !important;
+  gap:0 !important;
 }
 
 .archive-entries-divider > span{
-  display:inline-flex !important;
-  align-items:center !important;
+  display:inline-block !important;
   line-height:1 !important;
   margin:0 !important;
 }
 
-.archive-entries-divider > i{
-  flex:1 1 auto !important;
-  display:block !important;
-  align-self:center !important;
-  height:1px !important;
-  margin:0 !important;
-  transform:translateY(1px) !important;
+/* No horizontal rule after ARCHIVE ENTRIES. */
+html body #archiveEntriesDivider > i,
+html body #archiveEntriesDivider::before,
+html body #archiveEntriesDivider::after{
+  display:none !important;
+  content:none !important;
+  width:0 !important;
+  height:0 !important;
+  border:0 !important;
+  background:none !important;
 }
