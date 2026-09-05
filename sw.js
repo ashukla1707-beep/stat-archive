@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-speed-v12";
+const CACHE = "stat-archive-shell-v20260905-types-divider-down-v13";
 const EXTERNAL_CACHE = "stat-archive-external-v1";
 
 const APP_SHELL = [
@@ -39,7 +39,7 @@ const MENU_FLASH_GUARD = `
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-5"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-5"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-6"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-1"></script>';
 
 function decorateNavigationHtml(html) {
@@ -50,9 +50,6 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
 
-  /* Start runtime/init before the heavy scanner libraries. Those libraries
-     are only needed when the scanner is opened, so they must not hold up the
-     archive's first useful paint or data request. */
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
 
   const pdfLibTag = '<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>';
@@ -171,7 +168,6 @@ async function fetchExternalFast(request) {
   const cache = await caches.open(EXTERNAL_CACHE);
   const cached = await cache.match(request);
   if (cached) {
-    /* Refresh quietly, never make the page wait for the CDN again. */
     fetch(request)
       .then(response => {
         if (response && (response.ok || response.type === 'opaque')) {
