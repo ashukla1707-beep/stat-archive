@@ -1,6 +1,6 @@
 (() => {
-  if (window.__statArchiveSearchSuggestionsLoadedV3) return;
-  window.__statArchiveSearchSuggestionsLoadedV3 = true;
+  if (window.__statArchiveSearchSuggestionsLoadedV4) return;
+  window.__statArchiveSearchSuggestionsLoadedV4 = true;
 
   const esc = value => String(value ?? "").replace(/[&<>"]/g, ch => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
@@ -28,6 +28,12 @@
     return [];
   }
 
+  function isQuestionPaperType(type) {
+    const t = String(type || "").trim().toLowerCase();
+    return t === "previous year question" || t === "previous-year question" || t === "previous year questions" ||
+           t === "mid-term question" || t === "mid term question" || t === "midterm question";
+  }
+
   function labelFor(entry) {
     const type = String(entry?.type || "").trim();
     const title = String(entry?.title || entry?.filename || "Untitled").trim();
@@ -43,6 +49,7 @@
   function entryMatches(query) {
     const q = query.toLowerCase();
     return dataEntries()
+      .filter(e => !isQuestionPaperType(e?.type))
       .filter(e => entryHay(e).includes(q))
       .sort((a,b) => {
         const la = labelFor(a).toLowerCase();
@@ -74,10 +81,12 @@
         return {
           id: card.dataset.id || "",
           label: label.trim(),
+          type: type.trim(),
           meta: [subject.trim(), year.trim()].filter(Boolean).join(" · "),
           hay: `${label} ${title} ${type} ${subject} ${year}`.toLowerCase()
         };
       })
+      .filter(x => !isQuestionPaperType(x.type))
       .filter(x => x.label && x.hay.includes(q))
       .sort((a,b) => {
         const la=a.label.toLowerCase(), lb=b.label.toLowerCase();
@@ -90,8 +99,8 @@
 
   function setup() {
     const input = findInput();
-    if (!input || input.dataset.searchSuggestionsV3 === "1") return;
-    input.dataset.searchSuggestionsV3 = "1";
+    if (!input || input.dataset.searchSuggestionsV4 === "1") return;
+    input.dataset.searchSuggestionsV4 = "1";
 
     const panel = document.createElement("div");
     panel.className = "archive-search-suggestions-v2";
