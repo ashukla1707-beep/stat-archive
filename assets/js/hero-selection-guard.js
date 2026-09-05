@@ -73,7 +73,7 @@ html body .header .hero-line .sub *::-moz-selection{
   function loadPdfZoomFix(){
     if(document.querySelector('script[data-stat-pdf-zoom-fix]')) return;
     const script=document.createElement('script');
-    script.src='assets/js/pdf-zoom-fix.js?v=20260905-4';
+    script.src='assets/js/pdf-zoom-fix.js?v=20260905-5';
     script.dataset.statPdfZoomFix='1';
     script.async=false;
     document.body.appendChild(script);
