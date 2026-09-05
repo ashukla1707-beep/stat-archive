@@ -70,36 +70,12 @@ html body .header .hero-line .sub *::-moz-selection{
     setTimeout(clearHeroSelection,120);
   }
 
-  /*
-   * IMPORTANT: do not load pdf-anchor-fix.js here.
-   * It changes scrollTop while the main PDF viewer is zooming and was the
-   * source of the visible previous-page -> original-page bounce.
-   *
-   * Load the fixed viewer once with a new query string so Android WebView
-   * does not reuse the old cached zoom implementation.
-   */
-  function loadStablePdfViewer(){
-    if(document.querySelector('script[data-stat-pdf-stable-pinch]')) return;
-    const script=document.createElement('script');
-    script.src='assets/js/pdf-preview-v2.js?v=20260906-stable-pinch-1';
-    script.dataset.statPdfStablePinch='1';
-    script.async=false;
-    document.body.appendChild(script);
-  }
-
   document.addEventListener('selectionchange',clearHeroSelection,true);
-  window.addEventListener('pageshow',()=>{
-    installGuard();
-    loadStablePdfViewer();
-  });
+  window.addEventListener('pageshow',installGuard);
 
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>{
-      installGuard();
-      loadStablePdfViewer();
-    },{once:true});
+    document.addEventListener('DOMContentLoaded',installGuard,{once:true});
   }else{
     installGuard();
-    loadStablePdfViewer();
   }
 })();
