@@ -1,5 +1,5 @@
-const CACHE = "stat-archive-shell-v20260905-search-suggestion-types-v25";
-const EXTERNAL_CACHE = "stat-archive-external-v1";
+const CACHE = "stat-archive-shell-v20260905-superfast-v26";
+const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
   "./",
@@ -43,7 +43,7 @@ const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=2026090
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260901-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-12"></script>';
-const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-1"></script>';
+const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
@@ -77,119 +77,126 @@ function decorateNavigationHtml(html) {
     '<script defer src="assets/js/scanner.js"></script>'
   );
 
-  if (!out.includes('assets/js/feature-polish.js')) {
-    out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
-  }
-  if (!out.includes('assets/js/hero-layout-fix.js')) {
-    out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\n</body>`);
-  }
-  if (!out.includes('assets/js/hero-selection-guard.js')) {
-    out = out.replace('</body>', `${HERO_SELECTION_GUARD_TAG}\n</body>`);
-  }
-  if (!out.includes('assets/js/action-spacing-fix.js')) {
-    out = out.replace('</body>', `${ACTION_SPACING_FIX_TAG}\n</body>`);
-  }
-  if (!out.includes('assets/js/download-fix.js')) {
-    out = out.replace('</body>', `${DOWNLOAD_FIX_TAG}\n</body>`);
-  }
-  if (!out.includes('assets/js/search-suggestions.js')) {
-    out = out.replace('</body>', `${SEARCH_SUGGESTIONS_TAG}\n</body>`);
-  }
-  if (!out.includes('assets/js/search-filter-fix.js')) {
-    out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
-  }
+  if (!out.includes('assets/js/feature-polish.js')) out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
+  if (!out.includes('assets/js/hero-layout-fix.js')) out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\n</body>`);
+  if (!out.includes('assets/js/hero-selection-guard.js')) out = out.replace('</body>', `${HERO_SELECTION_GUARD_TAG}\n</body>`);
+  if (!out.includes('assets/js/action-spacing-fix.js')) out = out.replace('</body>', `${ACTION_SPACING_FIX_TAG}\n</body>`);
+  if (!out.includes('assets/js/download-fix.js')) out = out.replace('</body>', `${DOWNLOAD_FIX_TAG}\n</body>`);
+  if (!out.includes('assets/js/search-suggestions.js')) out = out.replace('</body>', `${SEARCH_SUGGESTIONS_TAG}\n</body>`);
+  if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
   return out;
 }
 
+function cloneWithHeaders(response, extraHeaders = {}) {
+  const headers = new Headers(response.headers);
+  Object.entries(extraHeaders).forEach(([key, value]) => headers.set(key, value));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+async function normalizeSameOriginResponse(response, url, isNavigation) {
+  if (!response || !response.ok) return response;
+
+  if (isNavigation) {
+    const html = await response.text();
+    return new Response(decorateNavigationHtml(html), {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+  }
+
+  if (url.pathname.endsWith('/assets/scanner.css')) {
+    const css = await response.text();
+    return new Response(css + MENU_FLASH_GUARD, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
+  }
+
+  return response;
+}
+
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.allSettled(APP_SHELL.map(async asset => {
+      try {
+        const request = new Request(asset, { cache: 'reload' });
+        const response = await fetch(request);
+        if (!response || !response.ok) return;
+        const url = new URL(request.url);
+        const isNavigation = asset === './' || asset === './index.html';
+        const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
+        await cache.put(request, finalResponse.clone());
+      } catch (_) {}
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys
-          .filter(key => key !== CACHE && key !== EXTERNAL_CACHE)
-          .map(key => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter(key => key !== CACHE && key !== EXTERNAL_CACHE)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-async function fetchMutable(request, url, isNavigation) {
+async function updateSameOriginInBackground(request, url, isNavigation) {
+  try {
+    const response = await fetch(request);
+    if (!response || !response.ok) return;
+    const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
+    const cache = await caches.open(CACHE);
+    await cache.put(request, finalResponse.clone());
+  } catch (_) {}
+}
+
+async function serveAppShellFast(request, url, isNavigation, event) {
+  const cache = await caches.open(CACHE);
+  let cached = await cache.match(request);
+
+  if (!cached && isNavigation) {
+    cached = (await cache.match('./index.html')) || (await cache.match('./'));
+  }
+
+  if (cached) {
+    event.waitUntil(updateSameOriginInBackground(request, url, isNavigation));
+    return cached;
+  }
+
   try {
     const response = await fetch(request);
     if (!response || !response.ok) return response;
-
-    let finalResponse = response;
-
-    if (isNavigation) {
-      const html = await response.text();
-      finalResponse = new Response(decorateNavigationHtml(html), {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      });
-    } else if (url.pathname.endsWith("/assets/scanner.css")) {
-      const css = await response.text();
-      finalResponse = new Response(css + MENU_FLASH_GUARD, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      });
-    }
-
-    const copy = finalResponse.clone();
-    caches.open(CACHE).then(cache => cache.put(request, copy));
+    const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
+    cache.put(request, finalResponse.clone()).catch(() => {});
     return finalResponse;
   } catch (_) {
-    const cache = await caches.open(CACHE);
-
-    if (isNavigation) {
-      const cached = (await cache.match(request)) ||
-                     (await cache.match("./index.html")) ||
-                     (await cache.match("./"));
-      if (!cached) return Response.error();
-      const html = await cached.text();
-      return new Response(decorateNavigationHtml(html), {
-        status: cached.status,
-        statusText: cached.statusText,
-        headers: cached.headers
-      });
-    }
-
-    const cached = await cache.match(request);
-    if (!cached) return Response.error();
-
-    if (url.pathname.endsWith("/assets/scanner.css")) {
-      const css = await cached.text();
-      return new Response(css + MENU_FLASH_GUARD, {
-        status: cached.status,
-        statusText: cached.statusText,
-        headers: cached.headers
-      });
-    }
-
-    return cached;
+    return Response.error();
   }
 }
 
-async function fetchExternalFast(request) {
+async function fetchExternalFast(request, event) {
   const cache = await caches.open(EXTERNAL_CACHE);
   const cached = await cache.match(request);
+
   if (cached) {
-    fetch(request)
-      .then(response => {
-        if (response && (response.ok || response.type === 'opaque')) {
-          return cache.put(request, response.clone());
-        }
-      })
-      .catch(() => {});
+    event.waitUntil(
+      fetch(request)
+        .then(response => {
+          if (response && (response.ok || response.type === 'opaque')) {
+            return cache.put(request, response.clone());
+          }
+        })
+        .catch(() => {})
+    );
     return cached;
   }
 
@@ -205,6 +212,7 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+
   if (url.origin !== self.location.origin) {
     const cacheableExternal =
       url.hostname === 'cdn.jsdelivr.net' ||
@@ -212,35 +220,28 @@ self.addEventListener("fetch", event => {
       url.hostname === 'fonts.googleapis.com' ||
       url.hostname === 'fonts.gstatic.com';
 
-    event.respondWith(cacheableExternal ? fetchExternalFast(request) : fetch(request));
+    event.respondWith(cacheableExternal ? fetchExternalFast(request, event) : fetch(request));
     return;
   }
 
-  const isNavigation =
-    request.mode === "navigate" ||
-    url.pathname.endsWith("/index.html");
-
+  const isNavigation = request.mode === "navigate" || url.pathname.endsWith('/index.html');
   const isMutableAppAsset =
-    url.pathname.includes("/assets/js/") ||
-    url.pathname.endsWith("/assets/styles.css") ||
-    url.pathname.endsWith("/assets/scanner.css") ||
-    url.pathname.endsWith("/manifest.json");
+    url.pathname.includes('/assets/js/') ||
+    url.pathname.endsWith('/assets/styles.css') ||
+    url.pathname.endsWith('/assets/scanner.css') ||
+    url.pathname.endsWith('/manifest.json');
 
   if (isNavigation || isMutableAppAsset) {
-    event.respondWith(fetchMutable(request, url, isNavigation));
+    event.respondWith(serveAppShellFast(request, url, isNavigation, event));
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
-        if (response && response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(request, copy));
-        }
-        return response;
-      });
-    })
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response && response.ok) cache.put(request, response.clone()).catch(() => {});
+    return response;
+  })());
 });
