@@ -1,15 +1,19 @@
 /* Stat Archive performance boost
- * - instant stale-while-revalidate archive boot from localStorage
- * - background network refresh so cached UI never stays stale
- * - warm pdf.js during idle time
- * - Cache API reuse for PDF/file responses
+ * Fast cached archive boot + background refresh
+ * Fast repeat PDF/file access
+ * Network warm-up without blocking first paint
+ * Lightweight mobile/PWA/APK rendering mode
  */
 (() => {
-  const ENTRY_CACHE_KEY = 'statArchiveFastEntriesV1';
-  const SUBJECT_CACHE_KEY = 'statArchiveFastSubjectsV1';
-  const PDF_CACHE = 'stat-archive-pdf-files-v1';
+  if (window.__statArchiveSpeedBoostV2) return;
+  window.__statArchiveSpeedBoostV2 = true;
 
-  const safeParse = (raw) => {
+  const ENTRY_CACHE_KEY = 'statArchiveFastEntriesV2';
+  const SUBJECT_CACHE_KEY = 'statArchiveFastSubjectsV2';
+  const PDF_CACHE = 'stat-archive-pdf-files-v2';
+  const SNAPSHOT_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+  const safeParse = raw => {
     try { return JSON.parse(raw); } catch (_) { return null; }
   };
 
@@ -21,7 +25,8 @@
   function readSnapshot(key) {
     try {
       const value = safeParse(localStorage.getItem(key));
-      if (!value || value.level !== currentLevelKey()) return null;
+      if (!value || value.level !== currentLevelKey() || !Array.isArray(value.data)) return null;
+      if (!Number.isFinite(value.at) || Date.now() - value.at > SNAPSHOT_MAX_AGE) return null;
       return value;
     } catch (_) {
       return null;
@@ -29,44 +34,99 @@
   }
 
   function writeSnapshot(key, data) {
+    if (!Array.isArray(data)) return;
     try {
-      localStorage.setItem(key, JSON.stringify({
-        level: currentLevelKey(),
-        at: Date.now(),
-        data
-      }));
+      localStorage.setItem(key, JSON.stringify({ level: currentLevelKey(), at: Date.now(), data }));
     } catch (_) {}
   }
+
+  function addConnectionHint(rel, href, crossOrigin = false) {
+    try {
+      if (!href || document.head.querySelector(`link[rel="${rel}"][href="${href}"]`)) return;
+      const link = document.createElement('link');
+      link.rel = rel;
+      link.href = href;
+      if (crossOrigin) link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    } catch (_) {}
+  }
+
+  function warmConnections() {
+    try {
+      const worker = typeof WORKER_URL === 'string' ? new URL(WORKER_URL).origin : '';
+      const supabase = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).origin : '';
+      if (worker) {
+        addConnectionHint('dns-prefetch', worker);
+        addConnectionHint('preconnect', worker, true);
+      }
+      if (supabase) {
+        addConnectionHint('dns-prefetch', supabase);
+        addConnectionHint('preconnect', supabase, true);
+      }
+    } catch (_) {}
+  }
+
+  warmConnections();
+
+  /* Remove desktop-only pointer effects on touch/low-power devices. They add
+     continuous paint/compositing work in Android WebView/PWA but provide no
+     useful interaction on a coarse pointer. */
+  try {
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    const lowCpu = Number(navigator.hardwareConcurrency || 8) <= 4;
+    const lowMemory = Number(navigator.deviceMemory || 8) <= 4;
+    if (coarse || lowCpu || lowMemory) {
+      document.documentElement.dataset.statPerf = 'lite';
+      const style = document.createElement('style');
+      style.id = 'statArchiveLitePerfStyles';
+      style.textContent = `
+        html[data-stat-perf="lite"] .cursor-ring,
+        html[data-stat-perf="lite"] .cursor-dot,
+        html[data-stat-perf="lite"] .mouse-spotlight{display:none!important;}
+        html[data-stat-perf="lite"] .card{will-change:auto!important;transform:none;}
+        @media (hover:none){html[data-stat-perf="lite"] .card:hover{transform:none!important;}}
+      `;
+      document.head.appendChild(style);
+    }
+  } catch (_) {}
 
   function updateStorageTotal() {
     try {
       if (typeof entries === 'undefined' || typeof totalStorageBytes === 'undefined') return;
-      totalStorageBytes = entries.reduce((sum, entry) => {
+      let sum = 0;
+      for (const entry of entries) {
         const n = Number(entry?.size);
-        return sum + (Number.isFinite(n) && n > 0 ? n : 0);
-      }, 0);
+        if (Number.isFinite(n) && n > 0) sum += n;
+      }
+      totalStorageBytes = sum;
     } catch (_) {}
   }
 
+  let uiRefreshQueued = false;
   function refreshUiAfterBackgroundData() {
-    try {
-      updateStorageTotal();
-      if (typeof renderSubjectFilters === 'function') renderSubjectFilters();
-      if (typeof renderTypeFilters === 'function') renderTypeFilters();
-      if (typeof renderSubjectOptions === 'function') renderSubjectOptions();
-      if (typeof render === 'function') render();
-    } catch (_) {}
+    if (uiRefreshQueued) return;
+    uiRefreshQueued = true;
+    requestAnimationFrame(() => {
+      uiRefreshQueued = false;
+      try {
+        updateStorageTotal();
+        if (typeof renderSubjectFilters === 'function') renderSubjectFilters();
+        if (typeof renderTypeFilters === 'function') renderTypeFilters();
+        if (typeof renderSubjectOptions === 'function') renderSubjectOptions();
+        if (typeof render === 'function') render();
+      } catch (_) {}
+    });
   }
 
-  /* Wrap entries loader before runtime.js calls init(). */
+  /* Instant archive boot from the last successful snapshot, then silently
+     revalidate in the background. */
   if (typeof loadEntries === 'function' && !loadEntries.__statFastWrapped) {
     const originalLoadEntries = loadEntries;
     let backgroundEntriesPromise = null;
 
     const wrapped = async function fastLoadEntries(...args) {
       const snapshot = readSnapshot(ENTRY_CACHE_KEY);
-
-      if (snapshot && Array.isArray(snapshot.data)) {
+      if (snapshot) {
         if (!backgroundEntriesPromise) {
           backgroundEntriesPromise = Promise.resolve()
             .then(() => originalLoadEntries.apply(this, args))
@@ -84,12 +144,11 @@
             })
             .finally(() => { backgroundEntriesPromise = null; });
         }
-
         return snapshot.data;
       }
 
       const fresh = await originalLoadEntries.apply(this, args);
-      if (Array.isArray(fresh)) writeSnapshot(ENTRY_CACHE_KEY, fresh);
+      writeSnapshot(ENTRY_CACHE_KEY, fresh);
       return fresh;
     };
 
@@ -98,25 +157,20 @@
     loadEntries = wrapped;
   }
 
-  /* Same idea for subjects. loadSubjectsFromWorker mutates global subjects. */
   if (typeof loadSubjectsFromWorker === 'function' && !loadSubjectsFromWorker.__statFastWrapped) {
     const originalLoadSubjects = loadSubjectsFromWorker;
     let backgroundSubjectsPromise = null;
 
     const wrapped = async function fastLoadSubjects(...args) {
       const snapshot = readSnapshot(SUBJECT_CACHE_KEY);
-
-      if (snapshot && Array.isArray(snapshot.data)) {
+      if (snapshot) {
         subjects = snapshot.data;
-
         if (!backgroundSubjectsPromise) {
           backgroundSubjectsPromise = Promise.resolve()
             .then(() => originalLoadSubjects.apply(this, args))
             .then(result => {
-              if (Array.isArray(subjects)) {
-                writeSnapshot(SUBJECT_CACHE_KEY, subjects);
-                refreshUiAfterBackgroundData();
-              }
+              writeSnapshot(SUBJECT_CACHE_KEY, subjects);
+              refreshUiAfterBackgroundData();
               return result;
             })
             .catch(err => {
@@ -125,12 +179,11 @@
             })
             .finally(() => { backgroundSubjectsPromise = null; });
         }
-
         return subjects;
       }
 
       const result = await originalLoadSubjects.apply(this, args);
-      if (Array.isArray(subjects)) writeSnapshot(SUBJECT_CACHE_KEY, subjects);
+      writeSnapshot(SUBJECT_CACHE_KEY, subjects);
       return result;
     };
 
@@ -139,8 +192,8 @@
     loadSubjectsFromWorker = wrapped;
   }
 
-  /* Reuse downloaded archive files. This especially speeds repeat previews,
-     reopening a PDF, print-after-preview and APK revisits. */
+  /* Cache complete archive-file responses. Repeat previews/downloads then
+     open from local storage instead of downloading the same PDF again. */
   if (typeof window.fetch === 'function' && !window.fetch.__statFastWrapped) {
     const nativeFetch = window.fetch.bind(window);
 
@@ -156,33 +209,18 @@
       try { workerBase = typeof WORKER_URL === 'string' ? WORKER_URL : ''; } catch (_) {}
 
       const headers = init?.headers || input?.headers || null;
-      const hasRange = !!(
-        headers &&
-        ((typeof headers.get === 'function' && headers.get('range')) || headers.Range || headers.range)
-      );
+      const hasRange = !!(headers && ((typeof headers.get === 'function' && headers.get('range')) || headers.Range || headers.range));
+      const isArchiveFile = method === 'GET' && workerBase && url.startsWith(`${workerBase}/file?id=`) && !hasRange;
 
-      const isArchiveFile = method === 'GET' &&
-        workerBase &&
-        url.startsWith(`${workerBase}/file?id=`) &&
-        !hasRange;
-
-      if (!isArchiveFile || !('caches' in window)) {
-        return nativeFetch(input, init);
-      }
+      if (!isArchiveFile || !('caches' in window)) return nativeFetch(input, init);
 
       try {
         const cache = await caches.open(PDF_CACHE);
         const hit = await cache.match(url);
         if (hit) return hit.clone();
 
-        const response = await nativeFetch(input, {
-          ...init,
-          cache: init?.cache === 'no-store' ? 'default' : (init?.cache || 'default')
-        });
-
-        if (response?.ok) {
-          cache.put(url, response.clone()).catch(() => {});
-        }
+        const response = await nativeFetch(input, init);
+        if (response?.ok) cache.put(url, response.clone()).catch(() => {});
         return response;
       } catch (_) {
         return nativeFetch(input, init);
@@ -194,18 +232,15 @@
     window.fetch = fastFetch;
   }
 
-  /* Remove pdf.js CDN/setup latency from the first Preview click. */
+  /* Warm pdf.js only after the critical UI has settled and only when the
+     connection is not explicitly in data-saver mode. */
   const warmPdf = () => {
     try {
-      if (typeof loadPdfJs === 'function') {
-        Promise.resolve(loadPdfJs()).catch(() => {});
-      }
+      if (navigator.connection?.saveData) return;
+      if (typeof loadPdfJs === 'function') Promise.resolve(loadPdfJs()).catch(() => {});
     } catch (_) {}
   };
 
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(warmPdf, { timeout: 1800 });
-  } else {
-    setTimeout(warmPdf, 700);
-  }
+  if ('requestIdleCallback' in window) requestIdleCallback(warmPdf, { timeout: 2500 });
+  else setTimeout(warmPdf, 1200);
 })();
