@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-centered-menu-v29";
+const CACHE = "stat-archive-shell-v20260905-centered-menu-v30";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
