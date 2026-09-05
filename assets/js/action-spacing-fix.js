@@ -21,31 +21,37 @@ body .toolbar > .archive-action-row::after{
   border:0 !important;
 }
 
-/* Keep the Archive Entries wrapper itself compact. */
+/* Move the actual horizontal divider downward.
+   The visible line is the bottom border of the Types section, so adding
+   bottom padding here moves the LINE itself, not only the heading below it. */
+body .toolbar > .archive-type-filter-section{
+  padding-bottom:30px !important;
+  border-bottom:1px solid var(--line) !important;
+}
+
+/* Keep a modest, clean gap from the moved line to ARCHIVE ENTRIES. */
 body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
   padding-top:0 !important;
   margin-bottom:16px !important;
 }
-
-/* IMPORTANT: create the visible gap on the heading itself.
-   This guarantees clear space between the Types horizontal line
-   and the ARCHIVE ENTRIES text, even if parent margins are collapsed
-   or overridden elsewhere. */
 body .archive-entries-divider > span{
   display:block !important;
-  padding-top:20px !important;
+  padding-top:14px !important;
 }
 
 @media(max-width:700px){
+  body .toolbar > .archive-type-filter-section{
+    padding-bottom:24px !important;
+  }
   body .archive-entries-divider{
     margin-top:0 !important;
     padding-top:0 !important;
     margin-bottom:12px !important;
   }
   body .archive-entries-divider > span{
-    padding-top:18px !important;
+    padding-top:12px !important;
   }
 }
 `;
