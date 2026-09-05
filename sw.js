@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-search-live-filter-v22";
+const CACHE = "stat-archive-shell-v20260905-search-filter-fix-v23";
 const EXTERNAL_CACHE = "stat-archive-external-v1";
 
 const APP_SHELL = [
@@ -15,6 +15,7 @@ const APP_SHELL = [
   "./assets/js/speed-boost.js",
   "./assets/js/download-fix.js",
   "./assets/js/search-suggestions.js",
+  "./assets/js/search-filter-fix.js",
   "./assets/js/runtime.js",
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
@@ -45,6 +46,7 @@ const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-1"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-3"></script>';
+const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -92,6 +94,9 @@ function decorateNavigationHtml(html) {
   }
   if (!out.includes('assets/js/search-suggestions.js')) {
     out = out.replace('</body>', `${SEARCH_SUGGESTIONS_TAG}\n</body>`);
+  }
+  if (!out.includes('assets/js/search-filter-fix.js')) {
+    out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
   }
   return out;
 }
