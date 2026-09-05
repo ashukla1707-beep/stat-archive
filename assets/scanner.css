@@ -381,3 +381,27 @@ body[data-theme="light"] .grid-bg{
   padding-top:14px !important;
   border-top:0 !important;
 }
+/* =========================================================
+   ARCHIVE ENTRIES DIVIDER ALIGNMENT FIX
+   ========================================================= */
+.archive-entries-divider{
+  display:flex !important;
+  align-items:center !important;
+  gap:14px !important;
+}
+
+.archive-entries-divider > span{
+  display:inline-flex !important;
+  align-items:center !important;
+  line-height:1 !important;
+  margin:0 !important;
+}
+
+.archive-entries-divider > i{
+  flex:1 1 auto !important;
+  display:block !important;
+  align-self:center !important;
+  height:1px !important;
+  margin:0 !important;
+  transform:translateY(1px) !important;
+}
