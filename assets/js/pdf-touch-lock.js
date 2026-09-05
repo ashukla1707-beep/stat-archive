@@ -1,9 +1,7 @@
 /* Stat Archive PDF touch controller.
- * Android WebView was still allowed to perform its own pan while the custom
- * PDF pinch engine was running (touch-action: pan-x pan-y). That is what made
- * pages visibly run backwards/forwards during a pinch. This controller owns
- * touch scrolling inside #pdfCanvasWrap: one finger pans the scroll container,
- * two fingers are reserved for the existing PDF pinch engine.
+ * One finger: direct, responsive manual pan with native-like fling.
+ * Two fingers: reserved exclusively for the PDF pinch engine so Android
+ * WebView cannot fight the custom zoom with its own gesture scrolling.
  */
 (function(){
   "use strict";
@@ -15,9 +13,6 @@
     if(!wrap||installed.has(wrap)) return;
     installed.add(wrap);
 
-    // Critical: WebView must not start a compositor/native pan gesture here.
-    // We implement one-finger panning ourselves; the existing pdf-preview-v2
-    // listeners continue to handle two-finger pinch zoom.
     wrap.style.setProperty("touch-action","none","important");
     wrap.style.setProperty("overscroll-behavior","contain","important");
     wrap.style.setProperty("overflow-anchor","none","important");
@@ -26,12 +21,17 @@
 
     let mode="none";
     let lastX=0,lastY=0,lastT=0;
-    let vx=0,vy=0;
+    let velocityX=0,velocityY=0;
     let inertia=0;
 
+    const DRAG_GAIN=1.08;
+    const FLING_GAIN=1.75;
+    const FRICTION=0.955;
+    const MAX_SPEED=85;
+
     function cancelInertia(){
-      if(inertia){ cancelAnimationFrame(inertia); inertia=0; }
-      vx=vy=0;
+      if(inertia){cancelAnimationFrame(inertia);inertia=0;}
+      velocityX=velocityY=0;
     }
 
     function beginPan(t){
@@ -39,36 +39,47 @@
       lastX=t.clientX;
       lastY=t.clientY;
       lastT=performance.now();
-      vx=vy=0;
+      velocityX=velocityY=0;
     }
 
-    function runInertia(){
-      const friction=.92;
+    function startFling(){
+      let fx=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,velocityX*FLING_GAIN));
+      let fy=Math.max(-MAX_SPEED,Math.min(MAX_SPEED,velocityY*FLING_GAIN));
+
+      if(Math.abs(fx)<1.2&&Math.abs(fy)<1.2) return;
+
       function frame(){
-        vx*=friction;
-        vy*=friction;
-        if(Math.abs(vx)<.12&&Math.abs(vy)<.12){ inertia=0; return; }
-        const oldLeft=wrap.scrollLeft;
-        const oldTop=wrap.scrollTop;
-        wrap.scrollLeft-=vx*16;
-        wrap.scrollTop-=vy*16;
-        // Stop velocity on an axis if we hit an edge.
-        if(Math.abs(wrap.scrollLeft-oldLeft)<.1) vx=0;
-        if(Math.abs(wrap.scrollTop-oldTop)<.1) vy=0;
+        fx*=FRICTION;
+        fy*=FRICTION;
+
+        if(Math.abs(fx)<0.35&&Math.abs(fy)<0.35){
+          inertia=0;
+          return;
+        }
+
+        const beforeX=wrap.scrollLeft;
+        const beforeY=wrap.scrollTop;
+        wrap.scrollLeft-=fx;
+        wrap.scrollTop-=fy;
+
+        if(Math.abs(wrap.scrollLeft-beforeX)<0.1) fx=0;
+        if(Math.abs(wrap.scrollTop-beforeY)<0.1) fy=0;
+
         inertia=requestAnimationFrame(frame);
       }
-      if(Math.abs(vx)>.18||Math.abs(vy)>.18) inertia=requestAnimationFrame(frame);
+
+      inertia=requestAnimationFrame(frame);
     }
 
     wrap.addEventListener("touchstart",e=>{
       cancelInertia();
+
       if(e.touches.length>=2){
         mode="pinch";
-        // Prevent Android/WebView native pan/zoom, but do NOT stop propagation:
-        // pdf-preview-v2 must still receive the same two-finger event.
         e.preventDefault();
         return;
       }
+
       if(e.touches.length===1){
         beginPan(e.touches[0]);
         e.preventDefault();
@@ -82,39 +93,48 @@
         return;
       }
 
-      if(e.touches.length===1){
-        const t=e.touches[0];
-        if(mode!=="pan") beginPan(t);
-        const now=performance.now();
-        const dt=Math.max(8,Math.min(40,now-lastT||16));
-        const dx=t.clientX-lastX;
-        const dy=t.clientY-lastY;
+      if(e.touches.length!==1) return;
 
-        wrap.scrollLeft-=dx;
-        wrap.scrollTop-=dy;
+      const t=e.touches[0];
+      if(mode!=="pan") beginPan(t);
 
-        const nvx=dx/dt;
-        const nvy=dy/dt;
-        vx=vx*.55+nvx*.45;
-        vy=vy*.55+nvy*.45;
-        lastX=t.clientX;
-        lastY=t.clientY;
-        lastT=now;
-        e.preventDefault();
-      }
+      const now=performance.now();
+      const dt=Math.max(6,Math.min(34,now-lastT||16));
+      const dx=(t.clientX-lastX)*DRAG_GAIN;
+      const dy=(t.clientY-lastY)*DRAG_GAIN;
+
+      wrap.scrollLeft-=dx;
+      wrap.scrollTop-=dy;
+
+      /* Convert current motion to approximately pixels-per-frame. Using
+         px/frame rather than px/ms gives a much more natural Android-style
+         fling after a short finger swipe. */
+      const frameScale=16.67/dt;
+      const instantX=dx*frameScale;
+      const instantY=dy*frameScale;
+      velocityX=velocityX*0.35+instantX*0.65;
+      velocityY=velocityY*0.35+instantY*0.65;
+
+      lastX=t.clientX;
+      lastY=t.clientY;
+      lastT=now;
+      e.preventDefault();
     },{capture:true,passive:false});
 
     wrap.addEventListener("touchend",e=>{
       if(mode==="pinch"){
-        // If one finger remains after a pinch, start a fresh pan baseline so
-        // there is no jump when the user continues dragging.
         if(e.touches.length===1) beginPan(e.touches[0]);
         else mode="none";
         return;
       }
+
       if(mode==="pan"){
-        if(e.touches.length===0){ mode="none"; runInertia(); }
-        else if(e.touches.length===1) beginPan(e.touches[0]);
+        if(e.touches.length===0){
+          mode="none";
+          startFling();
+        }else if(e.touches.length===1){
+          beginPan(e.touches[0]);
+        }
       }
     },{capture:true,passive:true});
 
