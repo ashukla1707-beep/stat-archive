@@ -142,11 +142,25 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
     const q = String(query || '').trim().toLowerCase();
     if (!q) return [];
     const found = new Map();
+
+    const matchRank = label => {
+      const text = String(label || '').trim().toLowerCase();
+      if (!text) return 99;
+      if (text.startsWith(q)) return 0;
+      const words = text.split(/[^a-z0-9]+/i).filter(Boolean);
+      if (words.some(word => word.startsWith(q))) return 1;
+      if (text.includes(q)) return 2;
+      return 99;
+    };
+
     const add = (value, kind, detail='') => {
       const label = String(value || '').trim();
-      if (!label || !label.toLowerCase().startsWith(q)) return;
+      const rank = matchRank(label);
+      if (!label || rank === 99) return;
       const key = `${kind}:${label.toLowerCase()}`;
-      if (!found.has(key)) found.set(key,{value:label,kind,detail});
+      const next = {value:label,kind,detail,rank};
+      const prev = found.get(key);
+      if (!prev || rank < prev.rank) found.set(key,next);
     };
 
     try {
@@ -156,10 +170,14 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
           try { subjectName = subjectMeta(entry.subject)?.name || entry.subject || ''; }
           catch (_) { subjectName = entry?.subject || ''; }
           add(subjectName,'Subject');
+
           const type = String(entry?.type || '').trim().toLowerCase();
+          const title = String(entry?.title || entry?.filename || '').trim();
+
           if (type === 'book' || type === 'books') {
-            const title = String(entry?.title || '').trim();
             if (title) add(title,'Book',subjectName);
+          } else if (title) {
+            add(title, entry?.type || 'Entry', subjectName);
           }
         });
       }
@@ -171,7 +189,8 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
     });
 
     return [...found.values()].sort((a,b) => {
-      if (a.kind !== b.kind) return a.kind === 'Subject' ? -1 : 1;
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      if (a.kind !== b.kind) return a.kind === 'Subject' ? -1 : b.kind === 'Subject' ? 1 : 0;
       return a.value.localeCompare(b.value,undefined,{sensitivity:'base'});
     }).slice(0,10);
   }
