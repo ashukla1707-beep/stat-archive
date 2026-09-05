@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-pdf-preview-v32";
+const CACHE = "stat-archive-shell-v20260905-pdf-anchor-v33";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -11,6 +11,7 @@ const APP_SHELL = [
   "./assets/js/archive-ui.js",
   "./assets/js/preview.js",
   "./assets/js/pdf-preview-v2.js",
+  "./assets/js/pdf-anchor-fix.js",
   "./assets/js/offline.js",
   "./assets/js/management.js",
   "./assets/js/speed-boost.js",
@@ -43,7 +44,7 @@ const MENU_FLASH_GUARD = `
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-7"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
-const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260905-6"></script>';
+const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260905-7"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-14"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
@@ -51,6 +52,7 @@ const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const PDF_TITLE_FIX_TAG = '<script src="./assets/js/pdf-title-fix.js?v=20260905-1"></script>';
 const PDF_PREVIEW_V2_TAG = '<script src="./assets/js/pdf-preview-v2.js?v=20260905-1"></script>';
+const PDF_ANCHOR_FIX_TAG = '<script src="./assets/js/pdf-anchor-fix.js?v=20260905-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -90,6 +92,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/pdf-title-fix.js')) out = out.replace('</body>', `${PDF_TITLE_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/pdf-preview-v2.js')) out = out.replace('</body>', `${PDF_PREVIEW_V2_TAG}\n</body>`);
+  if (!out.includes('assets/js/pdf-anchor-fix.js')) out = out.replace('</body>', `${PDF_ANCHOR_FIX_TAG}\n</body>`);
   return out;
 }
 
