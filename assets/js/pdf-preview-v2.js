@@ -100,6 +100,7 @@
       wrap.style.overflowAnchor="none";
       pagesHost.style.setProperty("--stat-pdf-zoom","1");
       pagesHost.style.overflowAnchor="none";
+      pagesHost.style.willChange="transform";
 
       const first = await pdf.getPage(1);
       const firstVp = first.getViewport({scale:1});
@@ -121,11 +122,11 @@
         metas.push({num:i,el,baseW:defaultW,baseH:defaultH,renderedZoom:0,canvas:null});
       }
 
-      function updateControls(){
+      function updateControls(displayZoom=zoom){
         pageInfo.textContent=`Page ${currentPage} / ${pdf.numPages}`;
         prevBtn.disabled=currentPage<=1;
         nextBtn.disabled=currentPage>=pdf.numPages;
-        zoomLabel.textContent=`${Math.round(zoom*100)}%`;
+        zoomLabel.textContent=`${Math.round(displayZoom*100)}%`;
         zoomOut.disabled=zoom<=MIN_ZOOM+.001;
         zoomIn.disabled=zoom>=MAX_ZOOM-.001;
       }
@@ -207,9 +208,6 @@
         const wrapRect=wrap.getBoundingClientRect();
         const y=Number.isFinite(clientY)?clientY:wrapRect.top+wrap.clientHeight/2;
         const viewportY=Math.max(0,Math.min(wrap.clientHeight,y-wrapRect.top));
-
-        // Anchor to the page the user is actually on, not a recalculated
-        // "nearest" page. This prevents page 15 -> 13 -> 15 flicker.
         const pageNum=Math.max(1,Math.min(pdf.numPages,currentPage));
         const el=metas[pageNum-1].el;
         const top=el.offsetTop;
@@ -242,28 +240,37 @@
           currentPage=nearestPage();
           updateControls();
           renderNeighborhood();
-        },140);
+        },180);
       }
 
-      function setZoom(next,clientY,keepLocked=false){
+      function commitZoom(next,anchor){
         next=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,next));
-        if(Math.abs(next-zoom)<.003) return;
+        if(Math.abs(next-zoom)<.003){
+          pagesHost.style.transform="";
+          pagesHost.style.transformOrigin="";
+          updateControls();
+          return;
+        }
 
-        const a=anchorState(clientY);
         lockZoomPage();
+        const a=anchor || anchorState();
         zoom=next;
-        pagesHost.style.setProperty("--stat-pdf-zoom",String(zoom));
-        metas.forEach(m=>{m.renderedZoom=0;});
 
-        // Reading offsetTop/offsetHeight after the CSS variable change forces
-        // layout now, so restore the anchor in the SAME frame. This removes
-        // the visible jump to earlier pages before requestAnimationFrame.
+        // Apply the final layout zoom and remove the temporary gesture
+        // transform in the SAME JS turn. The browser therefore never paints
+        // the intermediate scrolled layout that caused page 7 -> 5 -> 7.
+        pagesHost.style.setProperty("--stat-pdf-zoom",String(zoom));
+        pagesHost.style.transform="";
+        pagesHost.style.transformOrigin="";
+        metas.forEach(m=>{m.renderedZoom=0;});
         restoreAnchor(a);
         renderNeighborhood();
+        unlockZoomPageSoon();
+      }
 
-        requestAnimationFrame(()=>restoreAnchor(a));
-
-        if(!keepLocked) unlockZoomPageSoon();
+      function setZoom(next,clientY){
+        const a=anchorState(clientY);
+        commitZoom(next,a);
       }
 
       prevBtn.onclick=()=>{
@@ -288,31 +295,51 @@
       wrap.addEventListener("touchstart",e=>{
         if(e.touches.length!==2) return;
         const d=dist(e.touches); if(!d) return;
+        const wrapRect=wrap.getBoundingClientRect();
+        const centerX=(e.touches[0].clientX+e.touches[1].clientX)/2;
         const centerY=(e.touches[0].clientY+e.touches[1].clientY)/2;
-        pinch={startD:d,startZoom:zoom,lastZoom:zoom,centerY};
+        const viewportX=Math.max(0,Math.min(wrap.clientWidth,centerX-wrapRect.left));
+        const viewportY=Math.max(0,Math.min(wrap.clientHeight,centerY-wrapRect.top));
+        const anchor=anchorState(centerY);
+        pinch={
+          startD:d,
+          startZoom:zoom,
+          pendingZoom:zoom,
+          anchor,
+          originX:wrap.scrollLeft+viewportX,
+          originY:wrap.scrollTop+viewportY
+        };
         lockZoomPage();
+        pagesHost.style.transformOrigin=`${pinch.originX}px ${pinch.originY}px`;
         e.preventDefault();
       },{passive:false});
+
       wrap.addEventListener("touchmove",e=>{
         if(!pinch || e.touches.length!==2) return;
         e.preventDefault();
         const d=dist(e.touches); if(!d) return;
-        const centerY=(e.touches[0].clientY+e.touches[1].clientY)/2;
         const next=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,pinch.startZoom*(d/pinch.startD)));
-        if(Math.abs(next-pinch.lastZoom)<.015) return;
-        pinch.lastZoom=next;
-        setZoom(next,centerY,true);
+        pinch.pendingZoom=next;
+
+        // During the gesture use compositor-only scaling. No page heights,
+        // offsets or scrollTop values change, so the viewer cannot auto-scroll
+        // to previous pages and then jump back.
+        const ratio=next/pinch.startZoom;
+        pagesHost.style.transform=`scale(${ratio})`;
+        updateControls(next);
       },{passive:false});
-      wrap.addEventListener("touchend",e=>{
-        if(e.touches.length<2){
-          pinch=null;
-          unlockZoomPageSoon();
-        }
-      },{passive:true});
-      wrap.addEventListener("touchcancel",()=>{
+
+      function finishPinch(){
+        if(!pinch) return;
+        const done=pinch;
         pinch=null;
-        unlockZoomPageSoon();
+        commitZoom(done.pendingZoom,done.anchor);
+      }
+
+      wrap.addEventListener("touchend",e=>{
+        if(e.touches.length<2) finishPinch();
       },{passive:true});
+      wrap.addEventListener("touchcancel",finishPinch,{passive:true});
 
       const openBtn=body.querySelector(".pdf-open-new-tab-btn");
       if(openBtn) openBtn.onclick=()=>openPdfInNewTab(fileUrl,safePdfName(entry));
@@ -322,6 +349,8 @@
 
       body._statPdfV2Cleanup=()=>{
         if(zoomUnlockTimer) clearTimeout(zoomUnlockTimer);
+        pagesHost.style.transform="";
+        pagesHost.style.transformOrigin="";
         for(const task of renderTasks.values()){try{task.cancel();}catch(_){}}
         renderTasks.clear();
       };
