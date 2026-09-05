@@ -175,3 +175,28 @@
   script.async = false;
   document.body.appendChild(script);
 })();
+
+/*
+ * When a PDF is opened from Preview, use the archive entry title as the
+ * visible filename instead of the original uploaded filename.
+ */
+(() => {
+  const originalOpenPdfInNewTab = window.openPdfInNewTab;
+  if (typeof originalOpenPdfInNewTab !== "function") return;
+
+  window.openPdfInNewTab = function (pdfUrl, fallbackFilename) {
+    const rawTitle = (document.getElementById("previewTitle")?.textContent || "").trim();
+
+    const safeTitle = rawTitle
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, " ")
+      .replace(/[. ]+$/g, "")
+      .trim();
+
+    const entryFilename = safeTitle
+      ? `${safeTitle.replace(/\.pdf$/i, "")}.pdf`
+      : (fallbackFilename || "document.pdf");
+
+    return originalOpenPdfInNewTab(pdfUrl, entryFilename);
+  };
+})();
