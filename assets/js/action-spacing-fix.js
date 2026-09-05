@@ -21,39 +21,27 @@ html body .toolbar > .archive-action-row::after{
   border:0 !important;
 }
 
-/* Archive Entries: keep the rule where it is and lift only the label
-   so its visual center sits on the same horizontal line. */
+/* Archive Entries: show label only, no horizontal rule. */
 html body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
   padding-top:20px !important;
   margin-bottom:16px !important;
-  display:flex !important;
-  align-items:center !important;
-  gap:14px !important;
+  display:block !important;
 }
 
 html body .archive-entries-divider > span{
-  display:inline-flex !important;
-  align-items:center !important;
+  display:inline-block !important;
   padding:0 !important;
   margin:0 !important;
   line-height:1 !important;
   position:relative !important;
   top:0 !important;
-  transform:translateY(-11px) !important;
+  transform:none !important;
 }
 
 html body .archive-entries-divider > i{
-  display:block !important;
-  flex:1 1 auto !important;
-  height:1px !important;
-  margin:0 !important;
-  padding:0 !important;
-  align-self:center !important;
-  position:relative !important;
-  top:0 !important;
-  transform:none !important;
+  display:none !important;
 }
 
 @media(max-width:700px){
@@ -61,9 +49,6 @@ html body .archive-entries-divider > i{
     margin-top:0 !important;
     padding-top:18px !important;
     margin-bottom:12px !important;
-  }
-  html body .archive-entries-divider > span{
-    transform:translateY(-10px) !important;
   }
 }
 `;
