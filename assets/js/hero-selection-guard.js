@@ -70,11 +70,19 @@ html body .header .hero-line .sub *::-moz-selection{
     setTimeout(clearHeroSelection,120);
   }
 
-  function loadPdfAnchorFix(){
-    if(document.querySelector('script[data-stat-pdf-anchor-fix]')) return;
+  /*
+   * IMPORTANT: do not load pdf-anchor-fix.js here.
+   * It changes scrollTop while the main PDF viewer is zooming and was the
+   * source of the visible previous-page -> original-page bounce.
+   *
+   * Load the fixed viewer once with a new query string so Android WebView
+   * does not reuse the old cached zoom implementation.
+   */
+  function loadStablePdfViewer(){
+    if(document.querySelector('script[data-stat-pdf-stable-pinch]')) return;
     const script=document.createElement('script');
-    script.src='assets/js/pdf-anchor-fix.js?v=20260905-1';
-    script.dataset.statPdfAnchorFix='1';
+    script.src='assets/js/pdf-preview-v2.js?v=20260906-stable-pinch-1';
+    script.dataset.statPdfStablePinch='1';
     script.async=false;
     document.body.appendChild(script);
   }
@@ -82,16 +90,16 @@ html body .header .hero-line .sub *::-moz-selection{
   document.addEventListener('selectionchange',clearHeroSelection,true);
   window.addEventListener('pageshow',()=>{
     installGuard();
-    loadPdfAnchorFix();
+    loadStablePdfViewer();
   });
 
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',()=>{
       installGuard();
-      loadPdfAnchorFix();
+      loadStablePdfViewer();
     },{once:true});
   }else{
     installGuard();
-    loadPdfAnchorFix();
+    loadStablePdfViewer();
   }
 })();
