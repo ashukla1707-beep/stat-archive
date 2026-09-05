@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260906-pdf-touch-owned-v40";
+const CACHE = "stat-archive-shell-v20260906-pdf-native-scroll-v41";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -52,7 +52,7 @@ const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const PDF_TITLE_FIX_TAG = '<script src="./assets/js/pdf-title-fix.js?v=20260905-1"></script>';
 const PDF_PREVIEW_V2_TAG = '<script src="./assets/js/pdf-preview-v2.js?v=20260906-5"></script>';
-const PDF_TOUCH_LOCK_TAG = '<script data-stat-pdf-touch-lock="1" src="./assets/js/pdf-touch-lock.js?v=20260906-1"></script>';
+const PDF_TOUCH_LOCK_TAG = '<script data-stat-pdf-touch-lock="1" src="./assets/js/pdf-touch-lock.js?v=20260906-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
