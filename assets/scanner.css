@@ -406,3 +406,28 @@ html body #archiveEntriesDivider::after{
   border:0 !important;
   background:none !important;
 }
+
+/* =========================================================
+   DESKTOP MENU — TRUE VIEWPORT CENTER
+   Target the real menu element by id so no helper/overlay can be moved.
+   This final block intentionally overrides the older right-side rule above.
+   ========================================================= */
+@media (min-width:701px){
+  html body #mainSideMenu{
+    position:fixed !important;
+    top:50% !important;
+    left:50% !important;
+    right:auto !important;
+    bottom:auto !important;
+    width:360px !important;
+    max-width:calc(100vw - 52px) !important;
+    height:auto !important;
+    max-height:calc(100dvh - 52px) !important;
+    transform:translate(-50%,-50%) scale(.995) !important;
+    transform-origin:center center !important;
+  }
+
+  html body #mainSideMenu.is-open{
+    transform:translate(-50%,-50%) scale(1) !important;
+  }
+}
