@@ -72,12 +72,28 @@ html body .header .hero-line .sub *::-moz-selection{
     setTimeout(clearHeroSelection,120);
   }
 
+  function loadPdfZoomFix(){
+    if(document.querySelector('script[data-stat-pdf-zoom-fix]')) return;
+    const script=document.createElement('script');
+    script.src='assets/js/pdf-zoom-fix.js?v=20260905-1';
+    script.dataset.statPdfZoomFix='1';
+    script.async=false;
+    document.body.appendChild(script);
+  }
+
   document.addEventListener('selectionchange',clearHeroSelection,true);
-  window.addEventListener('pageshow',installGuard);
+  window.addEventListener('pageshow',()=>{
+    installGuard();
+    loadPdfZoomFix();
+  });
 
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',installGuard,{once:true});
+    document.addEventListener('DOMContentLoaded',()=>{
+      installGuard();
+      loadPdfZoomFix();
+    },{once:true});
   }else{
     installGuard();
+    loadPdfZoomFix();
   }
 })();
