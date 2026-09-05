@@ -4,7 +4,7 @@
   style.id = 'statArchiveActionSpacingFix';
   style.textContent = `
 /* Keep only the Types divider above signed-in actions. */
-body .toolbar > .archive-action-row{
+html body .toolbar > .archive-action-row{
   border:0 !important;
   border-top:0 !important;
   border-bottom:0 !important;
@@ -14,15 +14,15 @@ body .toolbar > .archive-action-row{
   margin-top:0 !important;
   position:relative !important;
 }
-body .toolbar > .archive-action-row::before,
-body .toolbar > .archive-action-row::after{
+html body .toolbar > .archive-action-row::before,
+html body .toolbar > .archive-action-row::after{
   content:none !important;
   display:none !important;
   border:0 !important;
 }
 
-/* Keep the Archive Entries wrapper compact. */
-body .archive-entries-divider{
+/* Archive Entries: label and rule must share one exact centerline. */
+html body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
   padding-top:20px !important;
@@ -32,35 +32,34 @@ body .archive-entries-divider{
   gap:14px !important;
 }
 
-body .archive-entries-divider > span{
+html body .archive-entries-divider > span{
   display:inline-flex !important;
   align-items:center !important;
-  padding-top:0 !important;
+  padding:0 !important;
   margin:0 !important;
   line-height:1 !important;
+  transform:none !important;
+  position:relative !important;
+  top:0 !important;
 }
 
-/* The rule itself needs a small optical drop to sit through the text center. */
-body .archive-entries-divider > i{
+html body .archive-entries-divider > i{
   display:block !important;
   flex:1 1 auto !important;
   height:1px !important;
   margin:0 !important;
+  padding:0 !important;
   align-self:center !important;
-  transform:translateY(7px) !important;
+  transform:none !important;
+  position:relative !important;
+  top:0 !important;
 }
 
 @media(max-width:700px){
-  body .archive-entries-divider{
+  html body .archive-entries-divider{
     margin-top:0 !important;
     padding-top:18px !important;
     margin-bottom:12px !important;
-  }
-  body .archive-entries-divider > span{
-    padding-top:0 !important;
-  }
-  body .archive-entries-divider > i{
-    transform:translateY(6px) !important;
   }
 }
 `;
