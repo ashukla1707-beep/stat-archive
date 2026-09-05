@@ -33,12 +33,11 @@
     document.querySelector("#previewOverlay .preview-card")?.classList.add("pdf-preview-active");
 
     let pdf = null;
-    let blob = null;
 
     try{
       const response = await fetch(fileUrl,{cache:"no-store"});
       if(!response.ok) throw new Error("Could not load the PDF.");
-      blob = await response.blob();
+      const blob = await response.blob();
       const pdfjsLib = await loadPdfJs();
       const data = await blob.arrayBuffer();
       pdf = await pdfjsLib.getDocument({
@@ -89,6 +88,8 @@
       let currentPage=1;
       let rafScroll=0;
       let pinch=null;
+      let zoomLock=false;
+      let zoomUnlockTimer=0;
       const metas=[];
       const renderTasks=new Map();
 
@@ -191,58 +192,89 @@
       }
 
       function syncCurrentFromScroll(){
+        if(zoomLock) return;
         currentPage=nearestPage();
         updateControls();
         renderNeighborhood();
       }
 
       wrap.addEventListener("scroll",()=>{
-        if(rafScroll) return;
+        if(zoomLock || rafScroll) return;
         rafScroll=requestAnimationFrame(()=>{rafScroll=0;syncCurrentFromScroll();});
       },{passive:true});
 
       function anchorState(clientY){
         const wrapRect=wrap.getBoundingClientRect();
         const y=Number.isFinite(clientY)?clientY:wrapRect.top+wrap.clientHeight/2;
-        const viewportY=y-wrapRect.top;
-        const pageNum=nearestPage();
+        const viewportY=Math.max(0,Math.min(wrap.clientHeight,y-wrapRect.top));
+
+        // Anchor to the page the user is actually on, not a recalculated
+        // "nearest" page. This prevents page 15 -> 13 -> 15 flicker.
+        const pageNum=Math.max(1,Math.min(pdf.numPages,currentPage));
         const el=metas[pageNum-1].el;
         const top=el.offsetTop;
         const h=Math.max(1,el.offsetHeight);
-        const frac=Math.max(0,Math.min(1,(wrap.scrollTop+viewportY-top)/h));
+        const absoluteY=wrap.scrollTop+viewportY;
+        const frac=Math.max(0,Math.min(1,(absoluteY-top)/h));
         return {pageNum,viewportY,frac};
       }
 
       function restoreAnchor(a){
         const el=metas[a.pageNum-1]?.el;
         if(!el) return;
-        wrap.scrollTop=Math.max(0,el.offsetTop + el.offsetHeight*a.frac - a.viewportY);
+        const target=Math.max(0,el.offsetTop + el.offsetHeight*a.frac - a.viewportY);
+        wrap.scrollTop=target;
         currentPage=a.pageNum;
         updateControls();
       }
 
-      function setZoom(next,clientY){
+      function lockZoomPage(){
+        zoomLock=true;
+        if(rafScroll){ cancelAnimationFrame(rafScroll); rafScroll=0; }
+        if(zoomUnlockTimer){ clearTimeout(zoomUnlockTimer); zoomUnlockTimer=0; }
+      }
+
+      function unlockZoomPageSoon(){
+        if(zoomUnlockTimer) clearTimeout(zoomUnlockTimer);
+        zoomUnlockTimer=setTimeout(()=>{
+          zoomUnlockTimer=0;
+          zoomLock=false;
+          currentPage=nearestPage();
+          updateControls();
+          renderNeighborhood();
+        },140);
+      }
+
+      function setZoom(next,clientY,keepLocked=false){
         next=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,next));
         if(Math.abs(next-zoom)<.003) return;
+
         const a=anchorState(clientY);
+        lockZoomPage();
         zoom=next;
         pagesHost.style.setProperty("--stat-pdf-zoom",String(zoom));
         metas.forEach(m=>{m.renderedZoom=0;});
-        updateControls();
-        requestAnimationFrame(()=>{
-          restoreAnchor(a);
-          renderNeighborhood();
-          requestAnimationFrame(()=>restoreAnchor(a));
-        });
+
+        // Reading offsetTop/offsetHeight after the CSS variable change forces
+        // layout now, so restore the anchor in the SAME frame. This removes
+        // the visible jump to earlier pages before requestAnimationFrame.
+        restoreAnchor(a);
+        renderNeighborhood();
+
+        requestAnimationFrame(()=>restoreAnchor(a));
+
+        if(!keepLocked) unlockZoomPageSoon();
       }
 
       prevBtn.onclick=()=>{
+        if(zoomLock) return;
         currentPage=Math.max(1,currentPage-1);
         const el=metas[currentPage-1].el;
         wrap.scrollTo({top:el.offsetTop,behavior:"smooth"});
         updateControls(); renderNeighborhood();
       };
       nextBtn.onclick=()=>{
+        if(zoomLock) return;
         currentPage=Math.min(pdf.numPages,currentPage+1);
         const el=metas[currentPage-1].el;
         wrap.scrollTo({top:el.offsetTop,behavior:"smooth"});
@@ -256,7 +288,9 @@
       wrap.addEventListener("touchstart",e=>{
         if(e.touches.length!==2) return;
         const d=dist(e.touches); if(!d) return;
-        pinch={startD:d,startZoom:zoom,lastZoom:zoom,centerY:(e.touches[0].clientY+e.touches[1].clientY)/2};
+        const centerY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        pinch={startD:d,startZoom:zoom,lastZoom:zoom,centerY};
+        lockZoomPage();
         e.preventDefault();
       },{passive:false});
       wrap.addEventListener("touchmove",e=>{
@@ -265,12 +299,20 @@
         const d=dist(e.touches); if(!d) return;
         const centerY=(e.touches[0].clientY+e.touches[1].clientY)/2;
         const next=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,pinch.startZoom*(d/pinch.startD)));
-        if(Math.abs(next-pinch.lastZoom)<.025) return;
+        if(Math.abs(next-pinch.lastZoom)<.015) return;
         pinch.lastZoom=next;
-        setZoom(next,centerY);
+        setZoom(next,centerY,true);
       },{passive:false});
-      wrap.addEventListener("touchend",e=>{if(e.touches.length<2) pinch=null;},{passive:true});
-      wrap.addEventListener("touchcancel",()=>{pinch=null;},{passive:true});
+      wrap.addEventListener("touchend",e=>{
+        if(e.touches.length<2){
+          pinch=null;
+          unlockZoomPageSoon();
+        }
+      },{passive:true});
+      wrap.addEventListener("touchcancel",()=>{
+        pinch=null;
+        unlockZoomPageSoon();
+      },{passive:true});
 
       const openBtn=body.querySelector(".pdf-open-new-tab-btn");
       if(openBtn) openBtn.onclick=()=>openPdfInNewTab(fileUrl,safePdfName(entry));
@@ -279,6 +321,7 @@
       renderNeighborhood();
 
       body._statPdfV2Cleanup=()=>{
+        if(zoomUnlockTimer) clearTimeout(zoomUnlockTimer);
         for(const task of renderTasks.values()){try{task.cancel();}catch(_){}}
         renderTasks.clear();
       };
