@@ -70,12 +70,26 @@ html body .header .hero-line .sub *::-moz-selection{
     setTimeout(clearHeroSelection,120);
   }
 
+  function loadPdfTouchController(){
+    if(document.querySelector('script[data-stat-pdf-touch-lock]')) return;
+    const script=document.createElement('script');
+    script.src='assets/js/pdf-touch-lock.js?v=20260906-1';
+    script.dataset.statPdfTouchLock='1';
+    script.async=false;
+    document.body.appendChild(script);
+  }
+
+  function boot(){
+    installGuard();
+    loadPdfTouchController();
+  }
+
   document.addEventListener('selectionchange',clearHeroSelection,true);
-  window.addEventListener('pageshow',installGuard);
+  window.addEventListener('pageshow',boot);
 
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',installGuard,{once:true});
+    document.addEventListener('DOMContentLoaded',boot,{once:true});
   }else{
-    installGuard();
+    boot();
   }
 })();
