@@ -21,7 +21,8 @@ html body .toolbar > .archive-action-row::after{
   border:0 !important;
 }
 
-/* Archive Entries: label and rule must share one exact centerline. */
+/* Archive Entries: keep the rule where it is and lift only the label
+   so its visual center sits on the same horizontal line. */
 html body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
@@ -38,9 +39,9 @@ html body .archive-entries-divider > span{
   padding:0 !important;
   margin:0 !important;
   line-height:1 !important;
-  transform:none !important;
   position:relative !important;
   top:0 !important;
+  transform:translateY(-11px) !important;
 }
 
 html body .archive-entries-divider > i{
@@ -50,9 +51,9 @@ html body .archive-entries-divider > i{
   margin:0 !important;
   padding:0 !important;
   align-self:center !important;
-  transform:none !important;
   position:relative !important;
   top:0 !important;
+  transform:none !important;
 }
 
 @media(max-width:700px){
@@ -60,6 +61,9 @@ html body .archive-entries-divider > i{
     margin-top:0 !important;
     padding-top:18px !important;
     margin-bottom:12px !important;
+  }
+  html body .archive-entries-divider > span{
+    transform:translateY(-10px) !important;
   }
 }
 `;
