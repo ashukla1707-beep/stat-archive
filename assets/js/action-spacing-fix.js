@@ -21,18 +21,33 @@ body .toolbar > .archive-action-row::after{
   border:0 !important;
 }
 
-/* Keep the Archive Entries wrapper compact and move the whole row down
-   together so the label and horizontal rule stay vertically aligned. */
+/* Keep the Archive Entries wrapper compact. */
 body .archive-entries-divider{
   border-top:0 !important;
   margin-top:0 !important;
   padding-top:20px !important;
   margin-bottom:16px !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:14px !important;
 }
 
 body .archive-entries-divider > span{
-  display:block !important;
+  display:inline-flex !important;
+  align-items:center !important;
   padding-top:0 !important;
+  margin:0 !important;
+  line-height:1 !important;
+}
+
+/* The rule itself needs a small optical drop to sit through the text center. */
+body .archive-entries-divider > i{
+  display:block !important;
+  flex:1 1 auto !important;
+  height:1px !important;
+  margin:0 !important;
+  align-self:center !important;
+  transform:translateY(7px) !important;
 }
 
 @media(max-width:700px){
@@ -43,6 +58,9 @@ body .archive-entries-divider > span{
   }
   body .archive-entries-divider > span{
     padding-top:0 !important;
+  }
+  body .archive-entries-divider > i{
+    transform:translateY(6px) !important;
   }
 }
 `;
