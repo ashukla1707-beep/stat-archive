@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260905-search-suggestions-v21";
+const CACHE = "stat-archive-shell-v20260905-search-suggestions-v22";
 const EXTERNAL_CACHE = "stat-archive-external-v1";
 
 const APP_SHELL = [
@@ -44,7 +44,7 @@ const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-12"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-1"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
-const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-1"></script>';
+const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
