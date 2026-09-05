@@ -42,8 +42,6 @@ html body .header .hero-line .sub *{
   -webkit-tap-highlight-color:transparent !important;
 }
 
-/* The base stylesheet uses .hero-line span for the small decorative line.
-   The hero subtitle is also split into spans, so reset those text spans. */
 html body .header .hero-line .hero-sub-lead,
 html body .header .hero-line .hero-sub-tail{
   width:auto !important;
@@ -75,7 +73,7 @@ html body .header .hero-line .sub *::-moz-selection{
   function loadPdfZoomFix(){
     if(document.querySelector('script[data-stat-pdf-zoom-fix]')) return;
     const script=document.createElement('script');
-    script.src='assets/js/pdf-zoom-fix.js?v=20260905-1';
+    script.src='assets/js/pdf-zoom-fix.js?v=20260905-2';
     script.dataset.statPdfZoomFix='1';
     script.async=false;
     document.body.appendChild(script);
