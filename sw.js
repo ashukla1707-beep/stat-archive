@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260906-preview-v50";
+const CACHE = "stat-archive-shell-v20260906-preview-v51";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -56,7 +56,6 @@ function decorateNavigationHtml(html) {
   );
 
   out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
-
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
 
   const pdfLibTag = '<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>';
