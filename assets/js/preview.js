@@ -333,17 +333,27 @@
       const vy=clamp(mid.y-rect.top,0,wrap.clientHeight);
       const startLeft=wrap.scrollLeft,startTop=wrap.scrollTop;
       const worldX=(startLeft+vx)/s.zoom,worldY=(startTop+vy)/s.zoom;
-      s.pinch={startD:d,startZoom:s.zoom,pending:s.zoom,startLeft,startTop,worldX,worldY,lastVX:vx,lastVY:vy,page:pageForWorldY(worldY)};
+      s.pinch={startD:d,startZoom:s.zoom,pending:s.zoom,startLeft,startTop,worldX,worldY,lastVX:vx,lastVY:vy,page:pageForWorldY(worldY),waitingRelease:false};
       wrap.style.webkitOverflowScrolling="auto";
       e.preventDefault();
       e.stopPropagation();
     },{capture:true,passive:false});
 
     wrap.addEventListener("touchmove",e=>{
-      if(!s.pinch||e.touches.length!==2)return;
+      if(!s.pinch)return;
+      const p=s.pinch;
+
+      if(e.touches.length===1 && p.waitingRelease){
+        e.preventDefault();
+        e.stopPropagation();
+        if(wrap.scrollLeft!==p.startLeft)wrap.scrollLeft=p.startLeft;
+        if(wrap.scrollTop!==p.startTop)wrap.scrollTop=p.startTop;
+        return;
+      }
+
+      if(e.touches.length!==2)return;
       e.preventDefault();
       e.stopPropagation();
-      const p=s.pinch;
       if(wrap.scrollLeft!==p.startLeft)wrap.scrollLeft=p.startLeft;
       if(wrap.scrollTop!==p.startTop)wrap.scrollTop=p.startTop;
       const d=distance(e.touches);if(!d)return;
@@ -363,18 +373,38 @@
       const p=s.pinch;if(!p)return;
       if(wrap.scrollLeft!==p.startLeft)wrap.scrollLeft=p.startLeft;
       if(wrap.scrollTop!==p.startTop)wrap.scrollTop=p.startTop;
-      s.ignoreScrollUntil=performance.now()+180;
+      s.ignoreScrollUntil=performance.now()+220;
       commitZoom(p.pending,p.lastVX,p.lastVY,p.worldX,p.worldY);
       s.pinch=null;
       wrap.style.webkitOverflowScrolling="touch";
-      updateCurrent();
+      updateCurrent(p.page);
       if(s.renderTimer)clearTimeout(s.renderTimer);
       s.renderTimer=setTimeout(renderVisible,70);
     }
 
     wrap.addEventListener("touchend",e=>{
-      if(s.pinch&&e.touches.length<2){finishPinch();e.preventDefault();}
+      if(!s.pinch)return;
+
+      // IMPORTANT: Android fires one touchend while the other finger is still
+      // down. Committing here lets that remaining finger become a native pan,
+      // which is what caused the sudden page jump. Keep the gesture frozen
+      // until BOTH fingers are fully off the screen.
+      if(e.touches.length===1){
+        s.pinch.waitingRelease=true;
+        if(wrap.scrollLeft!==s.pinch.startLeft)wrap.scrollLeft=s.pinch.startLeft;
+        if(wrap.scrollTop!==s.pinch.startTop)wrap.scrollTop=s.pinch.startTop;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if(e.touches.length===0){
+        finishPinch();
+        e.preventDefault();
+        e.stopPropagation();
+      }
     },{capture:true,passive:false});
+
     wrap.addEventListener("touchcancel",()=>{if(s.pinch)finishPinch();},{capture:true,passive:true});
 
     applyCommittedZoom(1);
