@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260907-preview-v56";
+const CACHE = "stat-archive-shell-v20260907-preview-v57";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
