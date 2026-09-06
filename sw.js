@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260907-preview-v55";
+const CACHE = "stat-archive-shell-v20260907-preview-v56";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -88,38 +88,12 @@ function decorateNavigationHtml(html) {
   return out;
 }
 
-function patchPreviewJs(js) {
-  const oldStart = `      const startLeft=wrap.scrollLeft,startTop=wrap.scrollTop;\n      const worldX=(startLeft+vx)/s.zoom,worldY=(startTop+vy)/s.zoom;\n      s.pinch={startD:d,startZoom:s.zoom,pending:s.zoom,startLeft,startTop,worldX,worldY,lastVX:vx,lastVY:vy,page:pageForWorldY(worldY)};\n      wrap.style.webkitOverflowScrolling="auto";`;
-
-  const newStart = `      // Stop WebView momentum before capturing the pinch anchor.\n      wrap.style.webkitOverflowScrolling="auto";\n      const startLeft=wrap.scrollLeft,startTop=wrap.scrollTop;\n\n      // Capture the actual visible PDF point under the fingers from the page\n      // rectangle, not from scrollTop. This survives compositor scroll lag and\n      // prevents the large vertical page jump seen when pinch starts during a fling.\n      let worldX=(startLeft+vx)/s.zoom,worldY=(startTop+vy)/s.zoom;\n      let anchorPage=pageForWorldY(worldY);\n      const hit=document.elementFromPoint(mid.x,mid.y)?.closest?.(".sp54-page");\n      if(hit){\n        const n=Number(hit.dataset.page||0);\n        const m=metas[n-1];\n        const r=hit.getBoundingClientRect();\n        if(m&&r.width>0&&r.height>0){\n          const fx=clamp((mid.x-r.left)/r.width,0,1);\n          const fy=clamp((mid.y-r.top)/r.height,0,1);\n          worldX=m.x+fx*m.baseW;\n          worldY=m.y+fy*m.baseH;\n          anchorPage=n;\n        }\n      }\n      s.pinch={startD:d,startZoom:s.zoom,pending:s.zoom,startLeft,startTop,worldX,worldY,lastVX:vx,lastVY:vy,page:anchorPage};`;
-
-  let out = js.replace(oldStart, newStart);
-
-  // Keep the page badge pinned to the page actually touched until the gesture
-  // is completely committed; do not recompute from a transient scroll event.
-  out = out.replace(
-    `      updateCurrent();\n      if(s.renderTimer)clearTimeout(s.renderTimer);`,
-    `      updateCurrent(p.page);\n      if(s.renderTimer)clearTimeout(s.renderTimer);`
-  );
-
-  return out;
-}
-
 async function normalizeSameOriginResponse(response, url, isNavigation) {
   if (!response || !response.ok) return response;
 
   if (isNavigation) {
     const html = await response.text();
     return new Response(decorateNavigationHtml(html), {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers
-    });
-  }
-
-  if (url.pathname.endsWith('/assets/js/preview.js')) {
-    const js = await response.text();
-    return new Response(patchPreviewJs(js), {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers
