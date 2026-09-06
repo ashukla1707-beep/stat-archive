@@ -109,9 +109,11 @@
   }
 
   function installCss(){
-    if(document.getElementById("statPreviewV52Css")) return;
+    if(document.getElementById("statPreviewV53Css")) return;
+    const old = document.getElementById("statPreviewV52Css");
+    if(old) old.remove();
     const style = document.createElement("style");
-    style.id = "statPreviewV52Css";
+    style.id = "statPreviewV53Css";
     style.textContent = `
 #previewOverlay .pdf-preview-shell{height:100%;min-height:0;display:flex;flex-direction:column;background:#0b0f16}
 #previewOverlay .pdf-canvas-wrap{position:relative;flex:1;min-height:0;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior:contain;background:#080c12;overflow-anchor:none}
@@ -122,7 +124,7 @@
 #previewOverlay .sp52-placeholder:after{content:'Loading page…';position:absolute;inset:0;display:grid;place-items:center;color:#8793a6;background:#eef1f4;font:600 10px 'JetBrains Mono',monospace}
 #previewOverlay .sp52-loading{padding:40px 18px;text-align:center;color:#aab5c5;font:600 11px 'JetBrains Mono',monospace}
 .sp52-gesture-overlay{position:fixed;overflow:hidden;pointer-events:none;z-index:2147483000;background:#080c12}
-.sp52-gesture-shot{position:absolute;left:0;top:0;will-change:transform}
+.sp52-gesture-shot{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 `;
     document.head.appendChild(style);
   }
@@ -180,7 +182,7 @@
     let y = PAD;
     const worldW = fitWidth + PAD*2;
 
-    const s = {pdf,abort:new AbortController(),tasks,metas,wrap,sizer,surface,zoom:1,current:1,pinch:null,scrollRaf:0,renderTimer:0,worldH:0,worldW,overlay:null};
+    const s = {pdf,abort:new AbortController(),tasks,metas,wrap,sizer,surface,zoom:1,current:1,pinch:null,scrollRaf:0,renderTimer:0,worldH:0,worldW,overlay:null,ignoreScrollUntil:0};
     state = s;
 
     const prep = document.createElement("div");
@@ -301,12 +303,13 @@
       const vy = wrap.clientHeight/2;
       const wx = (wrap.scrollLeft+vx)/s.zoom;
       const wy = (wrap.scrollTop+vy)/s.zoom;
+      s.ignoreScrollUntil = performance.now()+120;
       commitZoom(z,vx,vy,wx,wy);
       updateCurrent();
       renderVisible();
     }
 
-    function makeOverlay(vx,vy){
+    function makeOverlay(){
       const wr = wrap.getBoundingClientRect();
       const layer = document.createElement("div");
       layer.className = "sp52-gesture-overlay";
@@ -319,7 +322,7 @@
       shot.height = Math.max(1,Math.floor(wrap.clientHeight*dpr));
       shot.style.width = `${wrap.clientWidth}px`;
       shot.style.height = `${wrap.clientHeight}px`;
-      shot.style.transformOrigin = `${vx}px ${vy}px`;
+      shot.style.transformOrigin = "0 0";
 
       const ctx = shot.getContext("2d",{alpha:false});
       ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -345,7 +348,7 @@
     }
 
     wrap.addEventListener("scroll",()=>{
-      if(s.pinch || s.scrollRaf) return;
+      if(s.pinch || s.scrollRaf || performance.now()<s.ignoreScrollUntil) return;
       s.scrollRaf = requestAnimationFrame(()=>{
         s.scrollRaf=0;
         updateCurrent();
@@ -377,8 +380,15 @@
       const startTop = wrap.scrollTop;
       const worldX = (startLeft+vx)/s.zoom;
       const worldY = (startTop+vy)/s.zoom;
-      const shot = makeOverlay(vx,vy);
+      const shot = makeOverlay();
       s.pinch = {startD:d,startZoom:s.zoom,pending:s.zoom,startLeft,startTop,worldX,worldY,startVX:vx,startVY:vy,lastVX:vx,lastVY:vy,page:pageForWorldY(worldY),shot};
+
+      // Kill any WebView fling as soon as the second finger arrives. Native
+      // one-finger scrolling remains untouched before and after the pinch.
+      wrap.style.webkitOverflowScrolling = "auto";
+      wrap.scrollLeft = startLeft;
+      wrap.scrollTop = startTop;
+
       e.preventDefault();
       e.stopPropagation();
     },{capture:true,passive:false});
@@ -387,18 +397,30 @@
       if(!s.pinch || e.touches.length!==2) return;
       e.preventDefault();
       e.stopPropagation();
+      const p = s.pinch;
+
+      // Android WebView can keep a previously-latched pan alive even after
+      // preventDefault() on the two-finger move. Hold the real scroller at the
+      // exact starting position for the whole pinch so the document cannot
+      // drift to another page underneath the gesture overlay.
+      if(wrap.scrollLeft!==p.startLeft) wrap.scrollLeft = p.startLeft;
+      if(wrap.scrollTop!==p.startTop) wrap.scrollTop = p.startTop;
+
       const d = distance(e.touches);
       if(!d) return;
       const rect = wrap.getBoundingClientRect();
       const mid = midpoint(e.touches);
-      const p = s.pinch;
       p.lastVX = clamp(mid.x-rect.left,0,wrap.clientWidth);
       p.lastVY = clamp(mid.y-rect.top,0,wrap.clientHeight);
       p.pending = clamp(p.startZoom*(d/p.startD),MIN_ZOOM,MAX_ZOOM);
+
+      // Exact affine mapping: the content point initially under the midpoint
+      // stays under the current midpoint while both scale and two-finger pan
+      // happen. This avoids transform-origin/order ambiguity.
       const scale = p.pending/p.startZoom;
-      const dx = p.lastVX-p.startVX;
-      const dy = p.lastVY-p.startVY;
-      p.shot.style.transform = `translate3d(${dx}px,${dy}px,0) scale(${scale})`;
+      const tx = p.lastVX - scale*p.startVX;
+      const ty = p.lastVY - scale*p.startVY;
+      p.shot.style.transform = `matrix(${scale},0,0,${scale},${tx},${ty})`;
       zoomText.textContent = `${Math.round(p.pending*100)}%`;
       updateCurrent(p.page);
     },{capture:true,passive:false});
@@ -406,18 +428,25 @@
     function finishPinch(){
       const p = s.pinch;
       if(!p) return;
-      const finalZoom = p.pending;
-      const finalVX = p.lastVX;
-      const finalVY = p.lastVY;
-      commitZoom(finalZoom,finalVX,finalVY,p.worldX,p.worldY);
+
+      // Restore the real document to the pre-pinch position first, then make
+      // exactly one committed zoom/scroll calculation from the same anchor.
+      wrap.scrollLeft = p.startLeft;
+      wrap.scrollTop = p.startTop;
+      s.ignoreScrollUntil = performance.now()+180;
+      commitZoom(p.pending,p.lastVX,p.lastVY,p.worldX,p.worldY);
+
       s.pinch = null;
-      updateCurrent();
+      updateCurrent(p.page);
+
       requestAnimationFrame(()=>{
         if(s.overlay?.isConnected) s.overlay.remove();
         s.overlay = null;
+        wrap.style.webkitOverflowScrolling = "touch";
       });
+
       if(s.renderTimer) clearTimeout(s.renderTimer);
-      s.renderTimer = setTimeout(renderVisible,80);
+      s.renderTimer = setTimeout(renderVisible,90);
     }
 
     wrap.addEventListener("touchend",e=>{
