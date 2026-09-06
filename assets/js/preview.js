@@ -61,8 +61,8 @@
     if(!s)return;
     try{s.abort?.abort();}catch(_){}
     if(s.scrollRaf)cancelAnimationFrame(s.scrollRaf);
-    if(s.pinchRaf)cancelAnimationFrame(s.pinchRaf);
     if(s.renderTimer)clearTimeout(s.renderTimer);
+    if(s.overlay?.isConnected)s.overlay.remove();
     for(const t of s.tasks?.values?.()||[]){try{t.cancel();}catch(_){}}
     try{s.pdf?.destroy?.();}catch(_){}
   }
@@ -79,26 +79,28 @@
   }
 
   function installCss(){
-    if(document.getElementById("statPreviewV49Css"))return;
+    if(document.getElementById("statPreviewV50Css"))return;
     const style=document.createElement("style");
-    style.id="statPreviewV49Css";
+    style.id="statPreviewV50Css";
     style.textContent=`
-#previewOverlay .sp49-shell{height:100%;min-height:0;display:flex;flex-direction:column;background:#0b0f16}
-#previewOverlay .sp49-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px;border-bottom:1px solid rgba(148,163,184,.15);background:#0d131c;position:relative;z-index:5}
-#previewOverlay .sp49-group{display:flex;align-items:center;gap:6px}
-#previewOverlay .sp49-btn{border:1px solid rgba(148,163,184,.22);background:#141c27;color:#e7edf5;border-radius:8px;min-width:34px;height:32px;padding:0 9px;font:700 11px 'JetBrains Mono',monospace}
-#previewOverlay .sp49-btn:disabled{opacity:.35}
-#previewOverlay .sp49-info,#previewOverlay .sp49-zoom{font:700 10px 'JetBrains Mono',monospace;color:#cbd5e1;white-space:nowrap}
-#previewOverlay .sp49-wrap{position:relative;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain;background:#080c12;overflow-anchor:none}
-#previewOverlay .sp49-sizer{position:relative;min-width:100%;min-height:100%;overflow-anchor:none}
-#previewOverlay .sp49-surface{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;overflow-anchor:none}
-#previewOverlay .sp49-page{position:absolute;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.28);overflow:hidden;contain:layout paint;overflow-anchor:none}
-#previewOverlay .sp49-page canvas{display:block;width:100%;height:100%}
-#previewOverlay .sp49-placeholder:after{content:'Loading page…';position:absolute;inset:0;display:grid;place-items:center;color:#8793a6;background:#eef1f4;font:600 10px 'JetBrains Mono',monospace}
-#previewOverlay .sp49-bottom{padding:7px;border-top:1px solid rgba(148,163,184,.15);background:#0d131c;display:flex;justify-content:center}
-#previewOverlay .sp49-open{min-width:180px}
-#previewOverlay .sp49-loading{padding:40px 18px;text-align:center;color:#aab5c5;font:600 11px 'JetBrains Mono',monospace}
-@media(max-width:700px){#previewOverlay .sp49-toolbar{padding:6px;gap:5px;flex-wrap:wrap}#previewOverlay .sp49-btn{min-width:32px;height:31px;padding:0 8px}}
+#previewOverlay .sp50-shell{height:100%;min-height:0;display:flex;flex-direction:column;background:#0b0f16}
+#previewOverlay .sp50-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px;border-bottom:1px solid rgba(148,163,184,.15);background:#0d131c;position:relative;z-index:5}
+#previewOverlay .sp50-group{display:flex;align-items:center;gap:6px}
+#previewOverlay .sp50-btn{border:1px solid rgba(148,163,184,.22);background:#141c27;color:#e7edf5;border-radius:8px;min-width:34px;height:32px;padding:0 9px;font:700 11px 'JetBrains Mono',monospace}
+#previewOverlay .sp50-btn:disabled{opacity:.35}
+#previewOverlay .sp50-info,#previewOverlay .sp50-zoom{font:700 10px 'JetBrains Mono',monospace;color:#cbd5e1;white-space:nowrap}
+#previewOverlay .sp50-wrap{position:relative;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain;background:#080c12;overflow-anchor:none}
+#previewOverlay .sp50-sizer{position:relative;min-width:100%;min-height:100%;overflow-anchor:none}
+#previewOverlay .sp50-surface{position:absolute;left:0;top:0;transform-origin:0 0;overflow-anchor:none}
+#previewOverlay .sp50-page{position:absolute;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.28);overflow:hidden;contain:layout paint;overflow-anchor:none}
+#previewOverlay .sp50-page canvas{display:block;width:100%;height:100%}
+#previewOverlay .sp50-placeholder:after{content:'Loading page…';position:absolute;inset:0;display:grid;place-items:center;color:#8793a6;background:#eef1f4;font:600 10px 'JetBrains Mono',monospace}
+#previewOverlay .sp50-bottom{padding:7px;border-top:1px solid rgba(148,163,184,.15);background:#0d131c;display:flex;justify-content:center}
+#previewOverlay .sp50-open{min-width:180px}
+#previewOverlay .sp50-loading{padding:40px 18px;text-align:center;color:#aab5c5;font:600 11px 'JetBrains Mono',monospace}
+.sp50-gesture-overlay{position:fixed;overflow:hidden;pointer-events:none;z-index:2147483000;background:#080c12;touch-action:none}
+.sp50-gesture-shot{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+@media(max-width:700px){#previewOverlay .sp50-toolbar{padding:6px;gap:5px;flex-wrap:wrap}#previewOverlay .sp50-btn{min-width:32px;height:31px;padding:0 8px}}
 `;
     document.head.appendChild(style);
   }
@@ -114,40 +116,40 @@
     if(myToken!==previewToken){pdf.destroy();return;}
 
     body.innerHTML=`
-      <div class="sp49-shell">
-        <div class="sp49-toolbar">
-          <div class="sp49-group"><button class="sp49-btn" id="sp49Prev">‹</button><span class="sp49-info" id="sp49Info">Page 1 / ${pdf.numPages}</span><button class="sp49-btn" id="sp49Next">›</button></div>
-          <div class="sp49-group"><button class="sp49-btn" id="sp49Out">−</button><span class="sp49-zoom" id="sp49Zoom">100%</span><button class="sp49-btn" id="sp49In">+</button><button class="sp49-btn" id="sp49Reset">1:1</button></div>
+      <div class="sp50-shell">
+        <div class="sp50-toolbar">
+          <div class="sp50-group"><button class="sp50-btn" id="sp50Prev">‹</button><span class="sp50-info" id="sp50Info">Page 1 / ${pdf.numPages}</span><button class="sp50-btn" id="sp50Next">›</button></div>
+          <div class="sp50-group"><button class="sp50-btn" id="sp50Out">−</button><span class="sp50-zoom" id="sp50Zoom">100%</span><button class="sp50-btn" id="sp50In">+</button><button class="sp50-btn" id="sp50Reset">1:1</button></div>
         </div>
-        <div class="sp49-wrap" id="sp49Wrap"><div class="sp49-sizer" id="sp49Sizer"><div class="sp49-surface" id="sp49Surface"></div></div></div>
-        <div class="sp49-bottom"><button class="submit-btn sp49-open" id="sp49Open">↗ Open PDF</button></div>
+        <div class="sp50-wrap" id="sp50Wrap"><div class="sp50-sizer" id="sp50Sizer"><div class="sp50-surface" id="sp50Surface"></div></div></div>
+        <div class="sp50-bottom"><button class="submit-btn sp50-open" id="sp50Open">↗ Open PDF</button></div>
       </div>`;
 
-    const wrap=document.getElementById("sp49Wrap");
-    const sizer=document.getElementById("sp49Sizer");
-    const surface=document.getElementById("sp49Surface");
-    const info=document.getElementById("sp49Info");
-    const zoomText=document.getElementById("sp49Zoom");
-    const prev=document.getElementById("sp49Prev");
-    const next=document.getElementById("sp49Next");
-    const zin=document.getElementById("sp49In");
-    const zout=document.getElementById("sp49Out");
-    const reset=document.getElementById("sp49Reset");
-    const open=document.getElementById("sp49Open");
+    const wrap=document.getElementById("sp50Wrap");
+    const sizer=document.getElementById("sp50Sizer");
+    const surface=document.getElementById("sp50Surface");
+    const info=document.getElementById("sp50Info");
+    const zoomText=document.getElementById("sp50Zoom");
+    const prev=document.getElementById("sp50Prev");
+    const next=document.getElementById("sp50Next");
+    const zin=document.getElementById("sp50In");
+    const zout=document.getElementById("sp50Out");
+    const reset=document.getElementById("sp50Reset");
+    const open=document.getElementById("sp50Open");
 
     const fitWidth=Math.max(220,wrap.clientWidth-PAD*2);
     const metas=new Array(pdf.numPages);
     const tasks=new Map();
     let y=PAD;
-    let worldW=fitWidth+PAD*2;
+    const worldW=fitWidth+PAD*2;
 
-    const s={pdf,abort:new AbortController(),tasks,metas,wrap,sizer,surface,zoom:1,current:1,pinch:null,scrollRaf:0,pinchRaf:0,renderTimer:0,worldH:0,worldW};
+    const s={pdf,abort:new AbortController(),tasks,metas,wrap,sizer,surface,zoom:1,current:1,pinch:null,handoff:null,scrollRaf:0,renderTimer:0,worldH:0,worldW,overlay:null};
     state=s;
 
     const prep=document.createElement("div");
-    prep.className="sp49-loading";
+    prep.className="sp50-loading";
     prep.textContent="Preparing pages…";
-    body.querySelector(".sp49-shell").prepend(prep);
+    body.querySelector(".sp50-shell").prepend(prep);
     wrap.style.visibility="hidden";
 
     for(let start=1;start<=pdf.numPages;start+=20){
@@ -171,7 +173,7 @@
 
     for(const m of metas){
       const el=document.createElement("div");
-      el.className="sp49-page sp49-placeholder";
+      el.className="sp50-page sp50-placeholder";
       el.dataset.page=String(m.num);
       el.style.cssText=`left:${m.x}px;top:${m.y}px;width:${m.baseW}px;height:${m.baseH}px`;
       surface.appendChild(el);
@@ -184,7 +186,7 @@
 
     function applyCommittedZoom(z){
       s.zoom=clamp(z,MIN_ZOOM,MAX_ZOOM);
-      surface.style.transform=`translate3d(0px,0px,0) scale(${s.zoom})`;
+      surface.style.transform=`scale(${s.zoom})`;
       sizer.style.width=`${Math.max(wrap.clientWidth,s.worldW*s.zoom)}px`;
       sizer.style.height=`${Math.max(wrap.clientHeight,s.worldH*s.zoom)}px`;
       zoomText.textContent=`${Math.round(s.zoom*100)}%`;
@@ -228,7 +230,7 @@
         tasks.delete(m.num);
         if(myToken!==previewToken||s.pinch||Math.abs(target-s.zoom)>.12)return;
         m.el.replaceChildren(canvas);
-        m.el.classList.remove("sp49-placeholder");
+        m.el.classList.remove("sp50-placeholder");
         m.canvas=canvas;
         m.renderedZoom=target;
       }catch(err){if(err?.name!=="RenderingCancelledException")console.warn("PDF render failed",m?.num,err);}
@@ -240,7 +242,7 @@
       const bottom=(wrap.scrollTop+wrap.clientHeight*2.5)/s.zoom;
       for(const m of metas){
         if(m.y+m.baseH>=top&&m.y<=bottom)renderPage(m,s.zoom);
-        else if(m.canvas&&Math.abs(m.num-s.current)>14){m.canvas.width=0;m.canvas.height=0;m.el.replaceChildren();m.el.classList.add("sp49-placeholder");m.canvas=null;m.renderedZoom=0;}
+        else if(m.canvas&&Math.abs(m.num-s.current)>14){m.canvas.width=0;m.canvas.height=0;m.el.replaceChildren();m.el.classList.add("sp50-placeholder");m.canvas=null;m.renderedZoom=0;}
       }
     }
 
@@ -257,6 +259,45 @@
       commitZoomAround(z,vx,vy,wx,wy);
       updateCurrent();
       renderVisible();
+    }
+
+    function makeGestureOverlay(vx,vy){
+      const wr=wrap.getBoundingClientRect();
+      const layer=document.createElement("div");
+      layer.className="sp50-gesture-overlay";
+      layer.style.left=`${wr.left}px`;
+      layer.style.top=`${wr.top}px`;
+      layer.style.width=`${wrap.clientWidth}px`;
+      layer.style.height=`${wrap.clientHeight}px`;
+
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const shot=document.createElement("canvas");
+      shot.className="sp50-gesture-shot";
+      shot.width=Math.max(1,Math.floor(wrap.clientWidth*dpr));
+      shot.height=Math.max(1,Math.floor(wrap.clientHeight*dpr));
+      shot.style.width=`${wrap.clientWidth}px`;
+      shot.style.height=`${wrap.clientHeight}px`;
+      shot.style.transformOrigin=`${vx}px ${vy}px`;
+      const ctx=shot.getContext("2d",{alpha:false});
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.fillStyle="#080c12";
+      ctx.fillRect(0,0,wrap.clientWidth,wrap.clientHeight);
+
+      for(const m of metas){
+        const r=m.el.getBoundingClientRect();
+        if(r.bottom<=wr.top||r.top>=wr.bottom||r.right<=wr.left||r.left>=wr.right)continue;
+        const x=r.left-wr.left;
+        const yy=r.top-wr.top;
+        ctx.fillStyle="#fff";
+        ctx.fillRect(x,yy,r.width,r.height);
+        if(m.canvas&&m.canvas.width&&m.canvas.height){
+          try{ctx.drawImage(m.canvas,x,yy,r.width,r.height);}catch(_){}
+        }
+      }
+      layer.appendChild(shot);
+      document.body.appendChild(layer);
+      s.overlay=layer;
+      return {layer,shot};
     }
 
     wrap.addEventListener("scroll",()=>{
@@ -283,65 +324,81 @@
       const vy=clamp(mid.y-rect.top,0,wrap.clientHeight);
       const startLeft=wrap.scrollLeft;
       const startTop=wrap.scrollTop;
-      s.pinch={
-        startD:d,
-        startZoom:s.zoom,
-        pending:s.zoom,
-        wx:(startLeft+vx)/s.zoom,
-        wy:(startTop+vy)/s.zoom,
-        startLeft,
-        startTop,
-        vx,
-        vy,
-        page:pageForWorldY((startTop+vy)/s.zoom)
-      };
+      const wx=(startLeft+vx)/s.zoom;
+      const wy=(startTop+vy)/s.zoom;
+      const overlay=makeGestureOverlay(vx,vy);
+      s.pinch={startD:d,startZoom:s.zoom,pending:s.zoom,wx,wy,startVX:vx,startVY:vy,lastVX:vx,lastVY:vy,page:pageForWorldY(wy),shot:overlay.shot};
+      s.handoff=null;
       if(s.scrollRaf){cancelAnimationFrame(s.scrollRaf);s.scrollRaf=0;}
-      wrap.scrollLeft=startLeft;
-      wrap.scrollTop=startTop;
       e.preventDefault();
       e.stopPropagation();
     },{capture:true,passive:false});
 
     wrap.addEventListener("touchmove",e=>{
-      if(!s.pinch||e.touches.length!==2)return;
-      e.preventDefault();
-      e.stopPropagation();
-      const d=distance(e.touches);if(!d)return;
-      const rect=wrap.getBoundingClientRect();
-      const mid=midpoint(e.touches);
-      s.pinch.vx=clamp(mid.x-rect.left,0,wrap.clientWidth);
-      s.pinch.vy=clamp(mid.y-rect.top,0,wrap.clientHeight);
-      s.pinch.pending=clamp(s.pinch.startZoom*(d/s.pinch.startD),MIN_ZOOM,MAX_ZOOM);
-      if(!s.pinchRaf){
-        s.pinchRaf=requestAnimationFrame(()=>{
-          s.pinchRaf=0;
-          const p=s.pinch;if(!p)return;
-          const tx=p.startLeft+p.vx-p.wx*p.pending;
-          const ty=p.startTop+p.vy-p.wy*p.pending;
-          surface.style.transform=`translate3d(${tx}px,${ty}px,0) scale(${p.pending})`;
-          zoomText.textContent=`${Math.round(p.pending*100)}%`;
-          updateCurrent(p.page);
-        });
+      if(s.pinch&&e.touches.length===2){
+        e.preventDefault();
+        e.stopPropagation();
+        const d=distance(e.touches);if(!d)return;
+        const rect=wrap.getBoundingClientRect();
+        const mid=midpoint(e.touches);
+        const p=s.pinch;
+        p.lastVX=clamp(mid.x-rect.left,0,wrap.clientWidth);
+        p.lastVY=clamp(mid.y-rect.top,0,wrap.clientHeight);
+        p.pending=clamp(p.startZoom*(d/p.startD),MIN_ZOOM,MAX_ZOOM);
+        const scale=p.pending/p.startZoom;
+        const dx=p.lastVX-p.startVX;
+        const dy=p.lastVY-p.startVY;
+        p.shot.style.transform=`translate3d(${dx}px,${dy}px,0) scale(${scale})`;
+        zoomText.textContent=`${Math.round(p.pending*100)}%`;
+        updateCurrent(p.page);
+        return;
+      }
+
+      if(s.handoff&&e.touches.length===1){
+        e.preventDefault();
+        const t=e.touches[0];
+        const h=s.handoff;
+        wrap.scrollLeft=h.startLeft-(t.clientX-h.startX);
+        wrap.scrollTop=h.startTop-(t.clientY-h.startY);
+        return;
       }
     },{capture:true,passive:false});
 
-    function finishPinch(){
+    function finishPinch(remainingTouch){
       const p=s.pinch;if(!p)return;
-      if(s.pinchRaf){cancelAnimationFrame(s.pinchRaf);s.pinchRaf=0;}
       const finalZoom=p.pending;
-      const finalLeft=Math.max(0,p.wx*finalZoom-p.vx);
-      const finalTop=Math.max(0,p.wy*finalZoom-p.vy);
-      applyCommittedZoom(finalZoom);
-      wrap.scrollLeft=finalLeft;
-      wrap.scrollTop=finalTop;
+      const finalVX=p.lastVX;
+      const finalVY=p.lastVY;
+      commitZoomAround(finalZoom,finalVX,finalVY,p.wx,p.wy);
       s.pinch=null;
+      if(s.overlay?.isConnected)s.overlay.remove();
+      s.overlay=null;
       updateCurrent();
+      if(remainingTouch){
+        s.handoff={startX:remainingTouch.clientX,startY:remainingTouch.clientY,startLeft:wrap.scrollLeft,startTop:wrap.scrollTop};
+      }else{
+        s.handoff=null;
+      }
       if(s.renderTimer)clearTimeout(s.renderTimer);
-      s.renderTimer=setTimeout(renderVisible,80);
+      s.renderTimer=setTimeout(renderVisible,60);
     }
 
-    wrap.addEventListener("touchend",e=>{if(s.pinch&&e.touches.length<2)finishPinch();},{capture:true,passive:true});
-    wrap.addEventListener("touchcancel",finishPinch,{capture:true,passive:true});
+    wrap.addEventListener("touchend",e=>{
+      if(s.pinch&&e.touches.length<2){
+        finishPinch(e.touches.length===1?e.touches[0]:null);
+        return;
+      }
+      if(s.handoff&&e.touches.length===0){
+        s.handoff=null;
+        updateCurrent();
+        renderVisible();
+      }
+    },{capture:true,passive:false});
+
+    wrap.addEventListener("touchcancel",()=>{
+      if(s.pinch)finishPinch(null);
+      s.handoff=null;
+    },{capture:true,passive:true});
 
     applyCommittedZoom(1);
     updateCurrent(1);
@@ -361,7 +418,7 @@
     document.body.classList.add("no-scroll");
     document.querySelector("#previewOverlay .preview-card")?.classList.add("pdf-preview-active");
     title.textContent=entry?.title||entry?.filename||"Preview";
-    body.innerHTML='<div class="sp49-loading">Loading preview…</div>';
+    body.innerHTML='<div class="sp50-loading">Loading preview…</div>';
     try{if(typeof incrementActivity==="function")incrementActivity("preview");}catch(_){}
 
     const fileUrl=`${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
@@ -379,11 +436,11 @@
         body.innerHTML=`<div style="display:grid;place-items:center;min-height:55vh;background:#080c12"><img src="${u}" alt="${escapeHtml(entry?.title||"Preview")}" style="max-width:100%;max-height:75vh;object-fit:contain"></div>`;
         return;
       }
-      body.innerHTML='<div class="sp49-loading">Preview is unavailable for this file type.</div>';
+      body.innerHTML='<div class="sp50-loading">Preview is unavailable for this file type.</div>';
     }catch(err){
       if(err?.name==="AbortError")return;
       console.error("Preview failed",err);
-      body.innerHTML='<div class="sp49-loading">Couldn\'t open this preview.</div>';
+      body.innerHTML='<div class="sp50-loading">Couldn\'t open this preview.</div>';
     }
   }
 
