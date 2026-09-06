@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260906-pdf-geometry-v47";
+const CACHE = "stat-archive-shell-v20260906-preview-rebuild-v48";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -10,14 +10,12 @@ const APP_SHELL = [
   "./assets/js/core.js",
   "./assets/js/archive-ui.js",
   "./assets/js/preview.js",
-  "./assets/js/pdf-preview-v4.js",
   "./assets/js/offline.js",
   "./assets/js/management.js",
   "./assets/js/speed-boost.js",
   "./assets/js/download-fix.js",
   "./assets/js/search-suggestions.js",
   "./assets/js/search-filter-fix.js",
-  "./assets/js/pdf-title-fix.js",
   "./assets/js/runtime.js",
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
@@ -36,21 +34,18 @@ const APP_SHELL = [
 ];
 
 const MENU_FLASH_GUARD = `
-/* startup menu hard guard */
 .main-side-menu:not(.is-open),
 .main-menu-backdrop:not(.is-open){display:none !important;}
 `;
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-7"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260901-4"></script>';
-const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-2"></script>';
+const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-14"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
-const PDF_TITLE_FIX_TAG = '<script src="./assets/js/pdf-title-fix.js?v=20260905-1"></script>';
-const PDF_PREVIEW_V4_TAG = '<script src="./assets/js/pdf-preview-v4.js?v=20260906-3"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -59,6 +54,9 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for every batch.',
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
+
+  // Remove every historical preview patch if an old HTML copy contains one.
+  out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
 
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
 
@@ -88,20 +86,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/download-fix.js')) out = out.replace('</body>', `${DOWNLOAD_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/search-suggestions.js')) out = out.replace('</body>', `${SEARCH_SUGGESTIONS_TAG}\n</body>`);
   if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
-  if (!out.includes('assets/js/pdf-title-fix.js')) out = out.replace('</body>', `${PDF_TITLE_FIX_TAG}\n</body>`);
-  out = out.replace(/<script[^>]+pdf-preview-v[23]\.js[^>]*><\/script>/g, '');
-  if (!out.includes('assets/js/pdf-preview-v4.js')) out = out.replace('</body>', `${PDF_PREVIEW_V4_TAG}\n</body>`);
   return out;
-}
-
-function cloneWithHeaders(response, extraHeaders = {}) {
-  const headers = new Headers(response.headers);
-  Object.entries(extraHeaders).forEach(([key, value]) => headers.set(key, value));
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
 }
 
 async function normalizeSameOriginResponse(response, url, isNavigation) {
