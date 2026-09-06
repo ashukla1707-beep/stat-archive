@@ -33,7 +33,11 @@
       const res=await fetch(fileUrl,{cache:"no-store"});
       if(!res.ok) throw new Error("Could not load PDF");
       const pdfjsLib=await loadPdfJs();
-      pdf=await pdfjsLib.getDocument({data:await (await res.blob()).arrayBuffer(),cMapUrl:"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",cMapPacked:true}).promise;
+      pdf=await pdfjsLib.getDocument({
+        data:await (await res.blob()).arrayBuffer(),
+        cMapUrl:"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapPacked:true
+      }).promise;
       activePdfDoc=pdf;
 
       body.innerHTML=`
@@ -107,15 +111,18 @@
         host.appendChild(el);
         metas.push({num:i,el,canvas:null,renderedZoom:0});
       }
+
       const baseStageW=Math.max(wrap.clientWidth,host.scrollWidth);
       const baseStageH=Math.max(1,host.scrollHeight);
 
       function clamp(v){return Math.max(MIN,Math.min(MAX,v));}
       function updateControls(display=zoom){
         info.textContent=`Page ${current} / ${pdf.numPages}`;
-        prev.disabled=current<=1; next.disabled=current>=pdf.numPages;
+        prev.disabled=current<=1;
+        next.disabled=current>=pdf.numPages;
         label.textContent=`${Math.round(display*100)}%`;
-        out.disabled=zoom<=MIN+.001; inc.disabled=zoom>=MAX-.001;
+        out.disabled=zoom<=MIN+.001;
+        inc.disabled=zoom>=MAX-.001;
       }
       function applyView(z){
         zoom=clamp(z);
@@ -135,9 +142,53 @@
         return Math.max(1,Math.min(pdf.numPages,best+1));
       }
 
+      function pageAt(clientX,clientY){
+        let el=document.elementFromPoint(clientX,clientY)?.closest?.(".pdf-page");
+        if(el&&host.contains(el)) return el;
+        const wr=wrap.getBoundingClientRect();
+        const baseY=(wrap.scrollTop+(clientY-wr.top))/zoom;
+        let best=metas[0]?.el||null,bestD=Infinity;
+        for(const m of metas){
+          const top=m.el.offsetTop,bottom=top+m.el.offsetHeight;
+          if(baseY>=top&&baseY<=bottom) return m.el;
+          const d=Math.min(Math.abs(baseY-top),Math.abs(baseY-bottom));
+          if(d<bestD){bestD=d;best=m.el;}
+        }
+        return best;
+      }
+
+      function capturePageAnchor(clientX,clientY){
+        const wr=wrap.getBoundingClientRect();
+        const vx=Math.max(0,Math.min(wrap.clientWidth,clientX-wr.left));
+        const vy=Math.max(0,Math.min(wrap.clientHeight,clientY-wr.top));
+        const el=pageAt(clientX,clientY);
+        const pageNum=Math.max(1,Math.min(pdf.numPages,Number(el?.dataset?.page)||current));
+        const m=metas[pageNum-1];
+        const pageLeft=m.el.offsetLeft;
+        const pageTop=m.el.offsetTop;
+        const baseX=(wrap.scrollLeft+vx)/zoom;
+        const baseY=(wrap.scrollTop+vy)/zoom;
+        return {
+          pageNum,
+          fracX:Math.max(0,Math.min(1,(baseX-pageLeft)/Math.max(1,m.el.offsetWidth))),
+          fracY:Math.max(0,Math.min(1,(baseY-pageTop)/Math.max(1,m.el.offsetHeight)))
+        };
+      }
+
+      function keepPageAnchor(a,vx,vy){
+        const m=metas[a.pageNum-1];
+        if(!m) return;
+        const baseX=m.el.offsetLeft+a.fracX*m.el.offsetWidth;
+        const baseY=m.el.offsetTop+a.fracY*m.el.offsetHeight;
+        wrap.scrollLeft=Math.max(0,baseX*zoom-vx);
+        wrap.scrollTop=Math.max(0,baseY*zoom-vy);
+        current=a.pageNum;
+      }
+
       async function renderPage(meta,target=zoom){
         if(!meta||Math.abs(meta.renderedZoom-target)<.08) return;
-        const old=tasks.get(meta.num); if(old){try{old.cancel();}catch(_){} tasks.delete(meta.num);}
+        const old=tasks.get(meta.num);
+        if(old){try{old.cancel();}catch(_){} tasks.delete(meta.num);}
         try{
           const page=await pdf.getPage(meta.num);
           const vp=page.getViewport({scale:fit*target});
@@ -151,43 +202,69 @@
           canvas.style.display="block";
           const ctx=canvas.getContext("2d",{alpha:false});
           const task=page.render({canvasContext:ctx,viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null});
-          tasks.set(meta.num,task); await task.promise; tasks.delete(meta.num);
+          tasks.set(meta.num,task);
+          await task.promise;
+          tasks.delete(meta.num);
           if(Math.abs(target-zoom)>.12) return;
-          meta.el.replaceChildren(canvas); meta.el.classList.remove("pdf-page-placeholder");
-          meta.canvas=canvas; meta.renderedZoom=target;
-        }catch(e){if(e?.name!=="RenderingCancelledException") console.warn("PDF render failed",meta?.num,e);}
+          meta.el.replaceChildren(canvas);
+          meta.el.classList.remove("pdf-page-placeholder");
+          meta.canvas=canvas;
+          meta.renderedZoom=target;
+        }catch(e){
+          if(e?.name!=="RenderingCancelledException") console.warn("PDF render failed",meta?.num,e);
+        }
       }
+
       function renderNear(){
-        const a=Math.max(1,current-2),b=Math.min(pdf.numPages,current+3);
+        const a=Math.max(1,current-3),b=Math.min(pdf.numPages,current+4);
         for(let p=a;p<=b;p++) renderPage(metas[p-1],zoom);
+        if(pinch) return;
         for(const m of metas){
-          if(Math.abs(m.num-current)>10&&m.canvas){m.canvas.width=0;m.canvas.height=0;m.el.replaceChildren();m.el.classList.add("pdf-page-placeholder");m.canvas=null;m.renderedZoom=0;}
+          if(Math.abs(m.num-current)>14&&m.canvas){
+            m.canvas.width=0;
+            m.canvas.height=0;
+            m.el.replaceChildren();
+            m.el.classList.add("pdf-page-placeholder");
+            m.canvas=null;
+            m.renderedZoom=0;
+          }
         }
       }
 
       wrap.addEventListener("scroll",()=>{
         if(pinch||scrollRaf) return;
-        scrollRaf=requestAnimationFrame(()=>{scrollRaf=0;current=pageFromScroll();updateControls();renderNear();});
+        scrollRaf=requestAnimationFrame(()=>{
+          scrollRaf=0;
+          current=pageFromScroll();
+          updateControls();
+          renderNear();
+        });
       },{passive:true});
 
-      function anchoredZoom(nextZoom,vx,vy,anchorX,anchorY,renderAfter=false){
-        applyView(nextZoom);
-        wrap.scrollLeft=Math.max(0,anchorX*zoom-vx);
-        wrap.scrollTop=Math.max(0,anchorY*zoom-vy);
-        current=pageFromScroll();
-        updateControls();
-        if(renderAfter) renderNear();
-      }
       function centerZoom(z){
         if(pinch) return;
+        const wr=wrap.getBoundingClientRect();
         const vx=wrap.clientWidth/2,vy=wrap.clientHeight/2;
-        const ax=(wrap.scrollLeft+vx)/zoom,ay=(wrap.scrollTop+vy)/zoom;
-        anchoredZoom(z,vx,vy,ax,ay,true);
+        const a=capturePageAnchor(wr.left+vx,wr.top+vy);
+        applyView(z);
+        keepPageAnchor(a,vx,vy);
+        updateControls();
+        renderNear();
       }
 
-      prev.onclick=()=>{current=Math.max(1,current-1);wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});updateControls();renderNear();};
-      next.onclick=()=>{current=Math.min(pdf.numPages,current+1);wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});updateControls();renderNear();};
-      out.onclick=()=>centerZoom(zoom-STEP); inc.onclick=()=>centerZoom(zoom+STEP); reset.onclick=()=>centerZoom(1);
+      prev.onclick=()=>{
+        current=Math.max(1,current-1);
+        wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});
+        updateControls();renderNear();
+      };
+      next.onclick=()=>{
+        current=Math.min(pdf.numPages,current+1);
+        wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});
+        updateControls();renderNear();
+      };
+      out.onclick=()=>centerZoom(zoom-STEP);
+      inc.onclick=()=>centerZoom(zoom+STEP);
+      reset.onclick=()=>centerZoom(1);
 
       const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
       const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
@@ -195,15 +272,30 @@
       wrap.addEventListener("touchstart",e=>{
         if(e.touches.length!==2) return;
         const d=dist(e.touches); if(!d) return;
-        const wr=wrap.getBoundingClientRect(),m=mid(e.touches);
-        const vx=m.x-wr.left,vy=m.y-wr.top;
-        pinch={startD:d,startZoom:zoom,anchorX:(wrap.scrollLeft+vx)/zoom,anchorY:(wrap.scrollTop+vy)/zoom,lastVX:vx,lastVY:vy,pendingZoom:zoom};
+        const wr=wrap.getBoundingClientRect();
+        const m=mid(e.touches);
+        const vx=Math.max(0,Math.min(wrap.clientWidth,m.x-wr.left));
+        const vy=Math.max(0,Math.min(wrap.clientHeight,m.y-wr.top));
+        const anchor=capturePageAnchor(m.x,m.y);
+        pinch={
+          startD:d,
+          startZoom:zoom,
+          pendingZoom:zoom,
+          anchor,
+          lastVX:vx,
+          lastVY:vy
+        };
+        current=anchor.pageNum;
         if(scrollRaf){cancelAnimationFrame(scrollRaf);scrollRaf=0;}
-        /* Stop any native fling the instant the second finger joins. Geometry is
-           never rebuilt, so freezing overflow cannot cause a page reflow. */
+        /* Cancel WebView's own pinch/pan, but keep the scroll container alive so
+           programmatic anchor compensation never clips the document. */
+        const sx=wrap.scrollLeft,sy=wrap.scrollTop;
         wrap.style.webkitOverflowScrolling="auto";
-        wrap.style.overflow="hidden";
         wrap.style.touchAction="none";
+        wrap.scrollLeft=sx;
+        wrap.scrollTop=sy;
+        renderNear();
+        updateControls();
         e.preventDefault();
       },{capture:true,passive:false});
 
@@ -211,14 +303,18 @@
         if(!pinch||e.touches.length!==2) return;
         e.preventDefault();
         const d=dist(e.touches); if(!d) return;
-        const wr=wrap.getBoundingClientRect(),m=mid(e.touches);
+        const wr=wrap.getBoundingClientRect();
+        const m=mid(e.touches);
         pinch.lastVX=Math.max(0,Math.min(wrap.clientWidth,m.x-wr.left));
         pinch.lastVY=Math.max(0,Math.min(wrap.clientHeight,m.y-wr.top));
         pinch.pendingZoom=clamp(pinch.startZoom*(d/pinch.startD));
         if(!gestureRaf){
           gestureRaf=requestAnimationFrame(()=>{
-            gestureRaf=0;if(!pinch)return;
-            anchoredZoom(pinch.pendingZoom,pinch.lastVX,pinch.lastVY,pinch.anchorX,pinch.anchorY,false);
+            gestureRaf=0;
+            if(!pinch) return;
+            applyView(pinch.pendingZoom);
+            keepPageAnchor(pinch.anchor,pinch.lastVX,pinch.lastVY);
+            updateControls(pinch.pendingZoom);
           });
         }
       },{capture:true,passive:false});
@@ -226,23 +322,30 @@
       function finishPinch(){
         if(!pinch) return;
         if(gestureRaf){cancelAnimationFrame(gestureRaf);gestureRaf=0;}
-        const p=pinch; pinch=null;
-        anchoredZoom(p.pendingZoom,p.lastVX,p.lastVY,p.anchorX,p.anchorY,false);
-        wrap.style.overflow="auto";
+        const p=pinch;
+        applyView(p.pendingZoom);
+        keepPageAnchor(p.anchor,p.lastVX,p.lastVY);
+        pinch=null;
         wrap.style.webkitOverflowScrolling="touch";
         wrap.style.touchAction="pan-x pan-y";
-        current=pageFromScroll(); updateControls(); renderNear();
+        current=p.anchor.pageNum;
+        updateControls();
+        renderNear();
       }
+
       wrap.addEventListener("touchend",e=>{if(pinch&&e.touches.length<2)finishPinch();},{capture:true,passive:true});
       wrap.addEventListener("touchcancel",finishPinch,{capture:true,passive:true});
 
       const openBtn=body.querySelector(".pdf-open-new-tab-btn");
       if(openBtn) openBtn.onclick=()=>openPdfInNewTab(fileUrl,safeName(entry));
 
-      updateControls(); renderNear();
+      updateControls();
+      renderNear();
       body._statPdfV4Cleanup=()=>{
-        if(gestureRaf) cancelAnimationFrame(gestureRaf); if(scrollRaf) cancelAnimationFrame(scrollRaf);
-        for(const t of tasks.values()){try{t.cancel();}catch(_){}} tasks.clear();
+        if(gestureRaf) cancelAnimationFrame(gestureRaf);
+        if(scrollRaf) cancelAnimationFrame(scrollRaf);
+        for(const t of tasks.values()){try{t.cancel();}catch(_){}}
+        tasks.clear();
       };
     }catch(err){
       console.error("PDF preview v4 failed",err);
