@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260906-pdf-viewport-v45";
+const CACHE = "stat-archive-shell-v20260906-pdf-page-anchor-v46";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -50,7 +50,7 @@ const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const PDF_TITLE_FIX_TAG = '<script src="./assets/js/pdf-title-fix.js?v=20260905-1"></script>';
-const PDF_PREVIEW_V4_TAG = '<script src="./assets/js/pdf-preview-v4.js?v=20260906-1"></script>';
+const PDF_PREVIEW_V4_TAG = '<script src="./assets/js/pdf-preview-v4.js?v=20260906-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
