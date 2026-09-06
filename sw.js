@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260906-preview-rebuild-v48";
+const CACHE = "stat-archive-shell-v20260906-preview-v50";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -55,7 +55,6 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
 
-  // Remove every historical preview patch if an old HTML copy contains one.
   out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
 
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
