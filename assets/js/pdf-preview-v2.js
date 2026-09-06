@@ -77,7 +77,7 @@
       const zoomLabel=document.getElementById("pdfZoomLevel");
 
       const MIN_ZOOM=.5,MAX_ZOOM=3,STEP=.25,GAP=12;
-      let zoom=1,currentPage=1,rafScroll=0,pinch=null,gestureRaf=0,gestureScale=1,commitBusy=false;
+      let zoom=1,currentPage=1,pinch=null,gestureRaf=0,scrollRaf=0,commitBusy=false;
       const metas=[],renderTasks=new Map();
 
       wrap.style.overflow="auto";
@@ -87,30 +87,30 @@
       wrap.style.overflowAnchor="none";
       pagesHost.style.position="relative";
       pagesHost.style.minWidth="100%";
+      pagesHost.style.transformOrigin="0 0";
       pagesHost.style.overflowAnchor="none";
 
       const first=await pdf.getPage(1);
       const firstVp=first.getViewport({scale:1});
       const fitW=Math.max(220,wrap.clientWidth-24);
       const fitScale=fitW/firstVp.width;
+      const defaultW=firstVp.width*fitScale;
+      const defaultH=firstVp.height*fitScale;
 
+      // Build all placeholders immediately. Do NOT await getPage() hundreds of
+      // times before showing page 1; real pages are fetched lazily as needed.
       for(let i=1;i<=pdf.numPages;i++){
-        const page=await pdf.getPage(i);
-        const vp=page.getViewport({scale:1});
-        const localFit=fitW/vp.width;
-        const baseW=vp.width*localFit;
-        const baseH=vp.height*localFit;
         const el=document.createElement("div");
         el.className="pdf-page pdf-page-placeholder stat-pdf-v2-page";
         el.dataset.page=String(i);
-        el.style.width=`${baseW}px`;
-        el.style.height=`${baseH}px`;
+        el.style.width=`${defaultW}px`;
+        el.style.height=`${defaultH}px`;
         el.style.margin=`0 auto ${GAP}px`;
         el.style.position="relative";
         el.style.overflow="hidden";
         el.style.overflowAnchor="none";
         pagesHost.appendChild(el);
-        metas.push({num:i,el,baseW,baseH,fit:localFit,renderedZoom:0,canvas:null});
+        metas.push({num:i,el,baseW:defaultW,baseH:defaultH,renderedZoom:0,canvas:null});
       }
 
       function clampZoom(v){return Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,v));}
@@ -124,17 +124,18 @@
         zoomIn.disabled=zoom>=MAX_ZOOM-.001;
       }
 
-      function pageAtPoint(clientX,clientY){
-        let el=document.elementFromPoint(clientX,clientY)?.closest?.(".pdf-page");
-        if(el&&pagesHost.contains(el)) return el;
-        const wr=wrap.getBoundingClientRect();
-        const y=Number.isFinite(clientY)?clientY:wr.top+wrap.clientHeight*.45;
-        let best=metas[0]?.el||null,bestDist=Infinity;
+      function pageAtClientY(clientY){
+        const direct=document.elementFromPoint(
+          wrap.getBoundingClientRect().left+Math.min(wrap.clientWidth*.5,fitW*.5),
+          clientY
+        )?.closest?.(".pdf-page");
+        if(direct&&pagesHost.contains(direct)) return direct;
+        let best=metas[0]?.el||null,bestD=Infinity;
         for(const meta of metas){
           const r=meta.el.getBoundingClientRect();
-          if(y>=r.top&&y<=r.bottom) return meta.el;
-          const d=Math.min(Math.abs(y-r.top),Math.abs(y-r.bottom));
-          if(d<bestDist){bestDist=d;best=meta.el;}
+          if(clientY>=r.top&&clientY<=r.bottom) return meta.el;
+          const d=Math.min(Math.abs(clientY-r.top),Math.abs(clientY-r.bottom));
+          if(d<bestD){bestD=d;best=meta.el;}
         }
         return best;
       }
@@ -143,17 +144,15 @@
         const wr=wrap.getBoundingClientRect();
         const x=Number.isFinite(clientX)?clientX:wr.left+wrap.clientWidth/2;
         const y=Number.isFinite(clientY)?clientY:wr.top+wrap.clientHeight/2;
-        const vx=Math.max(0,Math.min(wrap.clientWidth,x-wr.left));
-        const vy=Math.max(0,Math.min(wrap.clientHeight,y-wr.top));
-        const el=pageAtPoint(x,y);
+        const el=document.elementFromPoint(x,y)?.closest?.(".pdf-page")||pageAtClientY(y);
         const num=Math.max(1,Math.min(pdf.numPages,Number(el?.dataset?.page)||currentPage));
-        const r=el.getBoundingClientRect();
+        const r=metas[num-1].el.getBoundingClientRect();
         return {
           pageNum:num,
           fracX:Math.max(0,Math.min(1,(x-r.left)/Math.max(1,r.width))),
           fracY:Math.max(0,Math.min(1,(y-r.top)/Math.max(1,r.height))),
-          viewportX:vx,
-          viewportY:vy
+          viewportX:Math.max(0,Math.min(wrap.clientWidth,x-wr.left)),
+          viewportY:Math.max(0,Math.min(wrap.clientHeight,y-wr.top))
         };
       }
 
@@ -162,17 +161,16 @@
         if(!el) return;
         const wr=wrap.getBoundingClientRect();
         const r=el.getBoundingClientRect();
-        const pageLeftInContent=wrap.scrollLeft+(r.left-wr.left);
-        const pageTopInContent=wrap.scrollTop+(r.top-wr.top);
-        wrap.scrollLeft=Math.max(0,pageLeftInContent+r.width*a.fracX-a.viewportX);
-        wrap.scrollTop=Math.max(0,pageTopInContent+r.height*a.fracY-a.viewportY);
+        const left=wrap.scrollLeft+(r.left-wr.left);
+        const top=wrap.scrollTop+(r.top-wr.top);
+        wrap.scrollLeft=Math.max(0,left+r.width*a.fracX-a.viewportX);
+        wrap.scrollTop=Math.max(0,top+r.height*a.fracY-a.viewportY);
         currentPage=a.pageNum;
-        updateControls();
       }
 
       function nearestPage(){
         const wr=wrap.getBoundingClientRect();
-        const el=pageAtPoint(wr.left+Math.min(wrap.clientWidth/2,fitW/2),wr.top+wrap.clientHeight*.45);
+        const el=pageAtClientY(wr.top+wrap.clientHeight*.45);
         return Math.max(1,Math.min(pdf.numPages,Number(el?.dataset?.page)||1));
       }
 
@@ -182,7 +180,16 @@
         if(old){try{old.cancel();}catch(_){} renderTasks.delete(meta.num);}
         try{
           const page=await pdf.getPage(meta.num);
-          const viewport=page.getViewport({scale:meta.fit*targetZoom});
+          const vp1=page.getViewport({scale:1});
+          const localFit=fitW/vp1.width;
+          const actualBaseH=vp1.height*localFit;
+          if(Math.abs(actualBaseH-meta.baseH)>1){
+            meta.baseH=actualBaseH;
+            meta.baseW=fitW;
+            meta.el.style.width=`${meta.baseW*zoom}px`;
+            meta.el.style.height=`${meta.baseH*zoom}px`;
+          }
+          const viewport=page.getViewport({scale:localFit*targetZoom});
           const dpr=Math.min(window.devicePixelRatio||1,1.75);
           const canvas=document.createElement("canvas");
           canvas.className="pdf-page-canvas";
@@ -196,7 +203,7 @@
           renderTasks.set(meta.num,task);
           await task.promise;
           renderTasks.delete(meta.num);
-          if(Math.abs(targetZoom-zoom)>.01) return;
+          if(Math.abs(targetZoom-zoom)>.02) return;
           meta.el.replaceChildren(canvas);
           meta.el.classList.remove("pdf-page-placeholder");
           meta.canvas=canvas;
@@ -210,7 +217,7 @@
         const start=Math.max(1,currentPage-2),end=Math.min(pdf.numPages,currentPage+3);
         for(let p=start;p<=end;p++) renderPage(metas[p-1],zoom);
         for(const meta of metas){
-          if(Math.abs(meta.num-currentPage)>8&&meta.canvas){
+          if(Math.abs(meta.num-currentPage)>10&&meta.canvas){
             meta.canvas.width=0;meta.canvas.height=0;
             meta.el.replaceChildren();
             meta.el.classList.add("pdf-page-placeholder");
@@ -229,43 +236,50 @@
       function commitZoom(next,a){
         if(commitBusy) return;
         next=clampZoom(next);
-        if(Math.abs(next-zoom)<.003){
-          pagesHost.style.transform="";
-          pagesHost.style.transformOrigin="";
-          gestureScale=1;
-          updateControls();
-          return;
-        }
         commitBusy=true;
-        pagesHost.style.visibility="hidden";
-        pagesHost.style.transform="";
-        pagesHost.style.transformOrigin="";
-        gestureScale=1;
+
+        // Keep native scrolling frozen for the entire layout commit. Android's
+        // compositor cannot run the old one-finger fling while page sizes move.
+        wrap.style.overflow="hidden";
+        wrap.style.webkitOverflowScrolling="auto";
+        wrap.style.touchAction="none";
+
+        pagesHost.style.transform="none";
+        pagesHost.style.transformOrigin="0 0";
         zoom=next;
         applyLayout(zoom);
         void pagesHost.offsetHeight;
         restoreAnchor(a);
-        metas.forEach(m=>m.renderedZoom=0);
-        currentPage=a.pageNum;
         updateControls();
+
         requestAnimationFrame(()=>{
           restoreAnchor(a);
-          pagesHost.style.visibility="visible";
-          renderNeighborhood();
-          commitBusy=false;
+          pagesHost.style.transform="none";
+          wrap.style.overflow="auto";
+          wrap.style.webkitOverflowScrolling="touch";
+          wrap.style.touchAction="pan-x pan-y";
+          requestAnimationFrame(()=>{
+            restoreAnchor(a);
+            currentPage=a.pageNum;
+            updateControls();
+            metas.forEach(m=>m.renderedZoom=0);
+            renderNeighborhood();
+            commitBusy=false;
+          });
         });
       }
 
       function zoomAtCenter(next){
+        if(pinch||commitBusy) return;
         const wr=wrap.getBoundingClientRect();
         const a=captureAnchor(wr.left+wrap.clientWidth/2,wr.top+wrap.clientHeight/2);
         commitZoom(next,a);
       }
 
       wrap.addEventListener("scroll",()=>{
-        if(pinch||commitBusy||rafScroll) return;
-        rafScroll=requestAnimationFrame(()=>{
-          rafScroll=0;
+        if(pinch||commitBusy||scrollRaf) return;
+        scrollRaf=requestAnimationFrame(()=>{
+          scrollRaf=0;
           currentPage=nearestPage();
           updateControls();
           renderNeighborhood();
@@ -275,15 +289,13 @@
       prevBtn.onclick=()=>{
         if(pinch||commitBusy) return;
         currentPage=Math.max(1,currentPage-1);
-        const el=metas[currentPage-1].el;
-        wrap.scrollTo({top:el.offsetTop,behavior:"smooth"});
+        wrap.scrollTo({top:metas[currentPage-1].el.offsetTop,behavior:"smooth"});
         updateControls();renderNeighborhood();
       };
       nextBtn.onclick=()=>{
         if(pinch||commitBusy) return;
         currentPage=Math.min(pdf.numPages,currentPage+1);
-        const el=metas[currentPage-1].el;
-        wrap.scrollTo({top:el.offsetTop,behavior:"smooth"});
+        wrap.scrollTo({top:metas[currentPage-1].el.offsetTop,behavior:"smooth"});
         updateControls();renderNeighborhood();
       };
       zoomOut.onclick=()=>zoomAtCenter(zoom-STEP);
@@ -297,33 +309,47 @@
         if(e.touches.length!==2||commitBusy) return;
         const d=distance(e.touches);if(!d)return;
         const mid=midpoint(e.touches);
+        const wr=wrap.getBoundingClientRect();
+        const anchor=captureAnchor(mid.x,mid.y);
         pinch={
           startD:d,
           startZoom:zoom,
           pendingZoom:zoom,
-          anchor:captureAnchor(mid.x,mid.y),
+          anchor,
+          startMidX:mid.x,
+          startMidY:mid.y,
+          lastMidX:mid.x,
+          lastMidY:mid.y,
           startScrollTop:wrap.scrollTop,
-          startScrollLeft:wrap.scrollLeft
+          startScrollLeft:wrap.scrollLeft,
+          originX:wrap.scrollLeft+anchor.viewportX,
+          originY:wrap.scrollTop+anchor.viewportY
         };
-        if(rafScroll){cancelAnimationFrame(rafScroll);rafScroll=0;}
-        pagesHost.style.transformOrigin=`${pinch.anchor.viewportX+wrap.scrollLeft}px ${pinch.anchor.viewportY+wrap.scrollTop}px`;
+        if(scrollRaf){cancelAnimationFrame(scrollRaf);scrollRaf=0;}
+
+        // Freeze the native scroll layer before visual pinch scaling starts.
+        wrap.style.overflow="hidden";
+        wrap.style.webkitOverflowScrolling="auto";
+        wrap.style.touchAction="none";
+        pagesHost.style.transformOrigin=`${pinch.originX}px ${pinch.originY}px`;
         e.preventDefault();
       },{capture:true,passive:false});
 
       wrap.addEventListener("touchmove",e=>{
         if(!pinch||e.touches.length!==2) return;
         e.preventDefault();
-        if(Math.abs(wrap.scrollTop-pinch.startScrollTop)>.5) wrap.scrollTop=pinch.startScrollTop;
-        if(Math.abs(wrap.scrollLeft-pinch.startScrollLeft)>.5) wrap.scrollLeft=pinch.startScrollLeft;
         const d=distance(e.touches);if(!d)return;
-        const next=clampZoom(pinch.startZoom*(d/pinch.startD));
-        pinch.pendingZoom=next;
-        gestureScale=next/pinch.startZoom;
+        const mid=midpoint(e.touches);
+        pinch.lastMidX=mid.x;pinch.lastMidY=mid.y;
+        pinch.pendingZoom=clampZoom(pinch.startZoom*(d/pinch.startD));
+        const visualScale=pinch.pendingZoom/pinch.startZoom;
+        const dx=mid.x-pinch.startMidX;
+        const dy=mid.y-pinch.startMidY;
         if(!gestureRaf){
           gestureRaf=requestAnimationFrame(()=>{
             gestureRaf=0;
             if(!pinch) return;
-            pagesHost.style.transform=`scale(${gestureScale})`;
+            pagesHost.style.transform=`translate(${dx}px,${dy}px) scale(${visualScale})`;
             updateControls(pinch.pendingZoom);
           });
         }
@@ -333,6 +359,9 @@
         if(!pinch) return;
         if(gestureRaf){cancelAnimationFrame(gestureRaf);gestureRaf=0;}
         const done=pinch;pinch=null;
+        const wr=wrap.getBoundingClientRect();
+        done.anchor.viewportX=Math.max(0,Math.min(wrap.clientWidth,done.lastMidX-wr.left));
+        done.anchor.viewportY=Math.max(0,Math.min(wrap.clientHeight,done.lastMidY-wr.top));
         wrap.scrollTop=done.startScrollTop;
         wrap.scrollLeft=done.startScrollLeft;
         commitZoom(done.pendingZoom,done.anchor);
@@ -349,7 +378,7 @@
 
       body._statPdfV2Cleanup=()=>{
         if(gestureRaf) cancelAnimationFrame(gestureRaf);
-        if(rafScroll) cancelAnimationFrame(rafScroll);
+        if(scrollRaf) cancelAnimationFrame(scrollRaf);
         for(const task of renderTasks.values()){try{task.cancel();}catch(_){}}
         renderTasks.clear();
       };
