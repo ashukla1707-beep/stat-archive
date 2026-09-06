@@ -75,8 +75,8 @@
       const label=document.getElementById("pdfZoomLevel");
 
       const MIN=.5,MAX=3,STEP=.25,GAP=12;
-      let zoom=1,current=1,pinch=null,gestureRaf=0,scrollRaf=0;
-      const metas=[],tasks=new Map();
+      let zoom=1,current=1,pinch=null,gestureRaf=0,scrollRaf=0,geometryQueueRaf=0;
+      const metas=[],tasks=new Map(),geometryPromises=new Map();
 
       wrap.style.overflow="auto";
       wrap.style.webkitOverflowScrolling="touch";
@@ -93,29 +93,43 @@
       const p1=await pdf.getPage(1);
       const vp1=p1.getViewport({scale:1});
       const fitW=Math.max(220,wrap.clientWidth-24);
-      const fit=fitW/vp1.width;
-      const baseW=vp1.width*fit;
-      const baseH=vp1.height*fit;
+      const firstFit=fitW/vp1.width;
+      const fallbackW=vp1.width*firstFit;
+      const fallbackH=vp1.height*firstFit;
 
-      host.style.width=`${Math.max(wrap.clientWidth,baseW)}px`;
+      host.style.width=`${Math.max(wrap.clientWidth,fallbackW)}px`;
       for(let i=1;i<=pdf.numPages;i++){
         const el=document.createElement("div");
         el.className="pdf-page pdf-page-placeholder stat-pdf-v4-page";
         el.dataset.page=String(i);
-        el.style.width=`${baseW}px`;
-        el.style.height=`${baseH}px`;
+        el.style.width=`${fallbackW}px`;
+        el.style.height=`${fallbackH}px`;
         el.style.margin=`0 auto ${GAP}px`;
         el.style.position="relative";
         el.style.overflow="hidden";
         el.style.overflowAnchor="none";
         host.appendChild(el);
-        metas.push({num:i,el,canvas:null,renderedZoom:0});
+        metas.push({
+          num:i,
+          el,
+          canvas:null,
+          renderedZoom:0,
+          geometryReady:false,
+          baseW:fallbackW,
+          baseH:fallbackH,
+          fit:firstFit
+        });
       }
 
-      const baseStageW=Math.max(wrap.clientWidth,host.scrollWidth);
-      const baseStageH=Math.max(1,host.scrollHeight);
-
       function clamp(v){return Math.max(MIN,Math.min(MAX,v));}
+
+      function refreshStageSize(){
+        const baseW=Math.max(wrap.clientWidth,host.scrollWidth);
+        const baseH=Math.max(1,host.scrollHeight);
+        sizer.style.width=`${Math.max(wrap.clientWidth,baseW*zoom)}px`;
+        sizer.style.height=`${Math.max(1,baseH*zoom)}px`;
+      }
+
       function updateControls(display=zoom){
         info.textContent=`Page ${current} / ${pdf.numPages}`;
         prev.disabled=current<=1;
@@ -124,11 +138,11 @@
         out.disabled=zoom<=MIN+.001;
         inc.disabled=zoom>=MAX-.001;
       }
+
       function applyView(z){
         zoom=clamp(z);
         host.style.transform=`scale(${zoom})`;
-        sizer.style.width=`${Math.max(wrap.clientWidth,baseStageW*zoom)}px`;
-        sizer.style.height=`${Math.max(1,baseStageH*zoom)}px`;
+        refreshStageSize();
       }
       applyView(1);
 
@@ -164,14 +178,12 @@
         const el=pageAt(clientX,clientY);
         const pageNum=Math.max(1,Math.min(pdf.numPages,Number(el?.dataset?.page)||current));
         const m=metas[pageNum-1];
-        const pageLeft=m.el.offsetLeft;
-        const pageTop=m.el.offsetTop;
         const baseX=(wrap.scrollLeft+vx)/zoom;
         const baseY=(wrap.scrollTop+vy)/zoom;
         return {
           pageNum,
-          fracX:Math.max(0,Math.min(1,(baseX-pageLeft)/Math.max(1,m.el.offsetWidth))),
-          fracY:Math.max(0,Math.min(1,(baseY-pageTop)/Math.max(1,m.el.offsetHeight)))
+          fracX:Math.max(0,Math.min(1,(baseX-m.el.offsetLeft)/Math.max(1,m.el.offsetWidth))),
+          fracY:Math.max(0,Math.min(1,(baseY-m.el.offsetTop)/Math.max(1,m.el.offsetHeight)))
         };
       }
 
@@ -185,23 +197,71 @@
         current=a.pageNum;
       }
 
+      async function ensureGeometry(meta,preserveViewport=true){
+        if(!meta||meta.geometryReady) return meta;
+        if(geometryPromises.has(meta.num)) return geometryPromises.get(meta.num);
+
+        const promise=(async()=>{
+          try{
+            let anchor=null,vx=0,vy=0;
+            if(preserveViewport&&!pinch){
+              const wr=wrap.getBoundingClientRect();
+              vx=wrap.clientWidth/2;
+              vy=wrap.clientHeight*.45;
+              anchor=capturePageAnchor(wr.left+vx,wr.top+vy);
+            }
+
+            const page=await pdf.getPage(meta.num);
+            const vp=page.getViewport({scale:1});
+            const localFit=fitW/vp.width;
+            const newW=vp.width*localFit;
+            const newH=vp.height*localFit;
+
+            meta.baseW=newW;
+            meta.baseH=newH;
+            meta.fit=localFit;
+            meta.geometryReady=true;
+
+            meta.el.style.width=`${newW}px`;
+            meta.el.style.height=`${newH}px`;
+            refreshStageSize();
+
+            if(anchor&&!pinch){
+              keepPageAnchor(anchor,vx,vy);
+              updateControls();
+            }
+            return meta;
+          }finally{
+            geometryPromises.delete(meta.num);
+          }
+        })();
+
+        geometryPromises.set(meta.num,promise);
+        return promise;
+      }
+
       async function renderPage(meta,target=zoom){
         if(!meta||Math.abs(meta.renderedZoom-target)<.08) return;
         const old=tasks.get(meta.num);
         if(old){try{old.cancel();}catch(_){} tasks.delete(meta.num);}
         try{
+          await ensureGeometry(meta,true);
           const page=await pdf.getPage(meta.num);
-          const vp=page.getViewport({scale:fit*target});
+          const vp=page.getViewport({scale:meta.fit*target});
           const dpr=Math.min(window.devicePixelRatio||1,1.8);
           const canvas=document.createElement("canvas");
           canvas.className="pdf-page-canvas";
           canvas.width=Math.max(1,Math.floor(vp.width*dpr));
           canvas.height=Math.max(1,Math.floor(vp.height*dpr));
-          canvas.style.width=`${baseW}px`;
-          canvas.style.height=`${baseH}px`;
+          canvas.style.width=`${meta.baseW}px`;
+          canvas.style.height=`${meta.baseH}px`;
           canvas.style.display="block";
           const ctx=canvas.getContext("2d",{alpha:false});
-          const task=page.render({canvasContext:ctx,viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null});
+          const task=page.render({
+            canvasContext:ctx,
+            viewport:vp,
+            transform:dpr!==1?[dpr,0,0,dpr,0,0]:null
+          });
           tasks.set(meta.num,task);
           await task.promise;
           tasks.delete(meta.num);
@@ -215,7 +275,28 @@
         }
       }
 
+      function queueGeometryAround(pageNum){
+        if(geometryQueueRaf) return;
+        geometryQueueRaf=requestAnimationFrame(()=>{
+          geometryQueueRaf=0;
+          const order=[];
+          for(let d=0;d<=8;d++){
+            const a=pageNum-d,b=pageNum+d;
+            if(a>=1) order.push(a);
+            if(d&&b<=pdf.numPages) order.push(b);
+          }
+          let i=0;
+          const pump=()=>{
+            if(i>=order.length) return;
+            const p=order[i++];
+            ensureGeometry(metas[p-1],true).finally(()=>setTimeout(pump,0));
+          };
+          pump();
+        });
+      }
+
       function renderNear(){
+        queueGeometryAround(current);
         const a=Math.max(1,current-3),b=Math.min(pdf.numPages,current+4);
         for(let p=a;p<=b;p++) renderPage(metas[p-1],zoom);
         if(pinch) return;
@@ -254,13 +335,17 @@
 
       prev.onclick=()=>{
         current=Math.max(1,current-1);
-        wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});
-        updateControls();renderNear();
+        ensureGeometry(metas[current-1],false).finally(()=>{
+          wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});
+          updateControls();renderNear();
+        });
       };
       next.onclick=()=>{
         current=Math.min(pdf.numPages,current+1);
-        wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});
-        updateControls();renderNear();
+        ensureGeometry(metas[current-1],false).finally(()=>{
+          wrap.scrollTo({top:metas[current-1].el.offsetTop*zoom,behavior:"smooth"});
+          updateControls();renderNear();
+        });
       };
       out.onclick=()=>centerZoom(zoom-STEP);
       inc.onclick=()=>centerZoom(zoom+STEP);
@@ -277,18 +362,9 @@
         const vx=Math.max(0,Math.min(wrap.clientWidth,m.x-wr.left));
         const vy=Math.max(0,Math.min(wrap.clientHeight,m.y-wr.top));
         const anchor=capturePageAnchor(m.x,m.y);
-        pinch={
-          startD:d,
-          startZoom:zoom,
-          pendingZoom:zoom,
-          anchor,
-          lastVX:vx,
-          lastVY:vy
-        };
+        pinch={startD:d,startZoom:zoom,pendingZoom:zoom,anchor,lastVX:vx,lastVY:vy};
         current=anchor.pageNum;
         if(scrollRaf){cancelAnimationFrame(scrollRaf);scrollRaf=0;}
-        /* Cancel WebView's own pinch/pan, but keep the scroll container alive so
-           programmatic anchor compensation never clips the document. */
         const sx=wrap.scrollLeft,sy=wrap.scrollTop;
         wrap.style.webkitOverflowScrolling="auto";
         wrap.style.touchAction="none";
@@ -339,13 +415,17 @@
       const openBtn=body.querySelector(".pdf-open-new-tab-btn");
       if(openBtn) openBtn.onclick=()=>openPdfInNewTab(fileUrl,safeName(entry));
 
+      await ensureGeometry(metas[0],false);
       updateControls();
       renderNear();
+
       body._statPdfV4Cleanup=()=>{
         if(gestureRaf) cancelAnimationFrame(gestureRaf);
         if(scrollRaf) cancelAnimationFrame(scrollRaf);
+        if(geometryQueueRaf) cancelAnimationFrame(geometryQueueRaf);
         for(const t of tasks.values()){try{t.cancel();}catch(_){}}
         tasks.clear();
+        geometryPromises.clear();
       };
     }catch(err){
       console.error("PDF preview v4 failed",err);
