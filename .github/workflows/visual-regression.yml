@@ -1,0 +1,219 @@
+name: Visual Regression Check
+
+on:
+  push:
+    branches:
+      - cleanup/refactor-2026-09-10
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout optimized branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create main baseline worktree
+        run: git worktree add /tmp/stat-archive-main origin/main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright pixelmatch pngjs
+          npx playwright install --with-deps chromium
+
+      - name: Start local sites
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$GITHUB_WORKSPACE" >/tmp/candidate-server.log 2>&1 &
+          python3 -m http.server 4174 --bind 127.0.0.1 --directory /tmp/stat-archive-main >/tmp/baseline-server.log 2>&1 &
+          sleep 1
+
+      - name: Compare home, menu, and Offline Library rendering
+        run: |
+          cat > visual-check.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const pixelmatchModule = require('pixelmatch');
+          const pixelmatch = pixelmatchModule.default || pixelmatchModule;
+          const { PNG } = require('pngjs');
+          const fs = require('fs');
+
+          const cases = [
+            { name: 'desktop', width: 1440, height: 900 },
+            { name: 'mobile', width: 390, height: 844 },
+            { name: 'narrow-desktop', width: 980, height: 720 }
+          ];
+
+          const stableCss = `
+            *,*::before,*::after{
+              animation-duration:0s!important;
+              animation-delay:0s!important;
+              transition-duration:0s!important;
+              caret-color:transparent!important;
+            }
+          `;
+
+          async function prepare(browser, port, viewport) {
+            const context = await browser.newContext({ viewport });
+            const page = await context.newPage();
+            const pageErrors = [];
+            page.on('pageerror', error => pageErrors.push(String(error)));
+
+            await page.goto(`http://127.0.0.1:${port}/index.html`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 30000
+            });
+            await page.waitForFunction(
+              () => !!window.__statArchiveNavigation,
+              null,
+              { timeout: 15000 }
+            );
+
+            // Let the intentional hero SVG/JS animation reach its final state
+            // before freezing CSS. Comparing mid-animation produced flaky pixel
+            // deltas even when candidate and main were behaviorally identical.
+            await page.waitForFunction(() => {
+              const curve = document.querySelector('.gaussian-curve');
+              if (!curve) return true;
+              return curve.style.getPropertyValue('stroke-dasharray') === 'none'
+                && curve.style.getPropertyValue('stroke-dashoffset') === '0';
+            }, null, { timeout: 7000 }).catch(() => {});
+            await page.waitForTimeout(250);
+            await page.addStyleTag({ content: stableCss });
+            await page.waitForTimeout(250);
+            await assertNoOverflow(page, `${port}-home`);
+            return { context, page, pageErrors };
+          }
+
+          async function assertNoOverflow(page, label) {
+            const overflow = await page.evaluate(
+              () => document.documentElement.scrollWidth - window.innerWidth
+            );
+            if (overflow > 2) {
+              throw new Error(`${label}: horizontal overflow ${overflow}px`);
+            }
+          }
+
+          async function screenshot(page, path) {
+            await page.screenshot({ path, fullPage: false, animations: 'disabled' });
+          }
+
+          function compare(aPath, bPath, label) {
+            const a = PNG.sync.read(fs.readFileSync(aPath));
+            const b = PNG.sync.read(fs.readFileSync(bPath));
+            if (a.width !== b.width || a.height !== b.height) {
+              throw new Error(`${label}: screenshot dimensions differ`);
+            }
+            const diff = new PNG({ width: a.width, height: a.height });
+            const mismatched = pixelmatch(
+              a.data,
+              b.data,
+              diff.data,
+              a.width,
+              a.height,
+              { threshold: 0.12, includeAA: false }
+            );
+            const ratio = mismatched / (a.width * a.height);
+            fs.writeFileSync(`/tmp/${label}-diff.png`, PNG.sync.write(diff));
+            console.log(`${label}: ${(ratio * 100).toFixed(4)}% pixels differ`);
+            if (ratio > 0.005) {
+              throw new Error(`${label}: visual difference ${(ratio * 100).toFixed(4)}% exceeds 0.5%`);
+            }
+          }
+
+          async function compareState(basePage, candidatePage, testName, stateName) {
+            const basePath = `/tmp/${testName}-main-${stateName}.png`;
+            const candidatePath = `/tmp/${testName}-candidate-${stateName}.png`;
+            await screenshot(basePage, basePath);
+            await screenshot(candidatePage, candidatePath);
+            compare(basePath, candidatePath, `${testName}-${stateName}`);
+            await assertNoOverflow(candidatePage, `${testName}-${stateName}`);
+          }
+
+          async function openMenu(page) {
+            await page.click('#mainMenuBtn');
+            await page.waitForSelector('#mainSideMenu.is-open');
+          }
+
+          async function openOfflineLibrary(page) {
+            await page.click('#menuOfflineLibraryBtn');
+            await page.waitForFunction(() => {
+              const el = document.getElementById('offlineLibraryOverlay');
+              if (!el) return false;
+              const style = getComputedStyle(el);
+              return style.display !== 'none' && style.visibility !== 'hidden';
+            });
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            try {
+              for (const test of cases) {
+                const viewport = { width: test.width, height: test.height };
+                const base = await prepare(browser, 4174, viewport);
+                const candidate = await prepare(browser, 4173, viewport);
+
+                await compareState(base.page, candidate.page, test.name, 'home');
+
+                await openMenu(base.page);
+                await openMenu(candidate.page);
+                const menuState = await candidate.page.evaluate(() => ({
+                  nav: history.state?.statArchiveNav,
+                  open: document.getElementById('mainSideMenu')?.classList.contains('is-open')
+                }));
+                if (menuState.nav !== 'menu' || !menuState.open) {
+                  throw new Error(`${test.name}: invalid candidate Menu state ${JSON.stringify(menuState)}`);
+                }
+                await compareState(base.page, candidate.page, test.name, 'menu');
+
+                await openOfflineLibrary(base.page);
+                await openOfflineLibrary(candidate.page);
+                const offlineState = await candidate.page.evaluate(() => ({
+                  nav: history.state?.statArchiveNav,
+                  child: history.state?.statArchiveChild,
+                  menuOpen: document.getElementById('mainSideMenu')?.classList.contains('is-open')
+                }));
+                if (offlineState.nav !== 'child' || offlineState.child !== 'offline-library') {
+                  throw new Error(`${test.name}: invalid Offline Library state ${JSON.stringify(offlineState)}`);
+                }
+                await compareState(base.page, candidate.page, test.name, 'offline-library');
+
+                await base.page.goBack();
+                await candidate.page.goBack();
+                await base.page.waitForFunction(() => history.state?.statArchiveNav === 'menu');
+                await candidate.page.waitForFunction(() => history.state?.statArchiveNav === 'menu');
+                await candidate.page.waitForSelector('#mainSideMenu.is-open');
+                await compareState(base.page, candidate.page, test.name, 'menu-after-offline-back');
+
+                await candidate.page.goBack();
+                await candidate.page.waitForFunction(
+                  () => history.state?.statArchiveNav === 'home'
+                    && !document.getElementById('mainSideMenu')?.classList.contains('is-open')
+                );
+
+                if (candidate.pageErrors.length) {
+                  console.log(`${test.name}: non-fatal page errors`, candidate.pageErrors);
+                }
+
+                await base.context.close();
+                await candidate.context.close();
+              }
+            } finally {
+              await browser.close();
+            }
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+          node visual-check.cjs
+          rm -f visual-check.cjs

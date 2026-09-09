@@ -154,10 +154,18 @@
 (() => {
   "use strict";
 
+  const SHIM_PATH = "assets/js/offline-library-heading-search-fix.js";
+
+  function shimAlreadyLoaded() {
+    return Array.from(document.scripts).some(script =>
+      (script.src || "").includes(SHIM_PATH)
+    );
+  }
+
   function loadOfflineHeadingSearchFix() {
-    if (document.querySelector('script[data-sa-offline-heading-search-fix="1"]')) return;
+    if (shimAlreadyLoaded()) return;
     const script = document.createElement("script");
-    script.src = "./assets/js/offline-library-heading-search-fix.js?v=20260909-1";
+    script.src = `./${SHIM_PATH}?v=20260909-1`;
     script.async = false;
     script.dataset.saOfflineHeadingSearchFix = "1";
     document.body.appendChild(script);

@@ -6,16 +6,13 @@
 
   function install() {
     document.documentElement.classList.add("stat-archive-pwa");
+    if (document.getElementById(STYLE_ID)) return;
 
-    let style = document.getElementById(STYLE_ID);
-    if (!style) {
-      style = document.createElement("style");
-      style.id = STYLE_ID;
-      style.textContent = `
-/* Offline Library is enabled in both normal HTTPS web mode and installed PWA. */
-html body .card .card-actions .offline-btn,
-html:not(.stat-archive-pwa) body .card .card-actions .offline-btn,
-html.stat-archive-pwa body .card .card-actions .offline-btn{
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+/* Offline Library is enabled in normal HTTPS web mode and installed PWA. */
+html body .card .card-actions .offline-btn{
   display:flex !important;
   visibility:visible !important;
   opacity:1 !important;
@@ -34,10 +31,7 @@ html body .card .card-actions .action-btn{
 }
 
 @media(max-width:700px){
-  html body .card .card-actions{
-    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-    gap:6px !important;
-  }
+  html body .card .card-actions{gap:6px !important;}
   html body .card .card-actions .action-btn{
     padding-left:5px !important;
     padding-right:5px !important;
@@ -45,12 +39,11 @@ html body .card .card-actions .action-btn{
   }
 }
 `;
-      document.head.appendChild(style);
-    }
+    document.head.appendChild(style);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", install, { once:true });
+    document.addEventListener("DOMContentLoaded", install, { once: true });
   } else {
     install();
   }
