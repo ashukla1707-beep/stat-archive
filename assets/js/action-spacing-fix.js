@@ -76,18 +76,21 @@ html body .card .card-actions .action-btn,
 html body .card .card-actions > button,
 html body .card .card-actions > a{
   display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
   align-items:center !important;
   justify-content:center !important;
+  gap:4px !important;
   text-align:center !important;
   white-space:nowrap !important;
   word-break:keep-all !important;
   overflow-wrap:normal !important;
   line-height:1 !important;
-  font-size:12.5px !important;
-  min-height:34px !important;
-  height:34px !important;
-  padding:0 6px !important;
-  border-radius:10px !important;
+  font-size:12px !important;
+  min-height:31px !important;
+  height:31px !important;
+  padding:0 5px !important;
+  border-radius:9px !important;
   margin:0 !important;
   box-sizing:border-box !important;
   vertical-align:middle !important;
@@ -95,10 +98,25 @@ html body .card .card-actions > a{
 html body .card .card-actions .action-btn > *,
 html body .card .card-actions > button > *,
 html body .card .card-actions > a > *{
-  margin-top:0 !important;
-  margin-bottom:0 !important;
+  display:inline-flex !important;
+  width:auto !important;
+  height:auto !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:0 !important;
   line-height:1 !important;
   align-self:center !important;
+  white-space:nowrap !important;
+}
+html body .card .card-actions .dl-btn,
+html body .card .card-actions .download-btn{
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+}
+html body .card .card-actions .dl-btn br,
+html body .card .card-actions .download-btn br{
+  display:none !important;
 }
 
 @media(max-width:700px){
@@ -110,11 +128,12 @@ html body .card .card-actions > a > *{
   html body .card .card-actions .action-btn,
   html body .card .card-actions > button,
   html body .card .card-actions > a{
-    font-size:12px !important;
-    min-height:32px !important;
-    height:32px !important;
-    padding:0 5px !important;
-    border-radius:9px !important;
+    font-size:11.5px !important;
+    min-height:30px !important;
+    height:30px !important;
+    padding:0 4px !important;
+    border-radius:8px !important;
+    gap:3px !important;
   }
 }
 `;
