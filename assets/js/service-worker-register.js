@@ -6,17 +6,49 @@ if ('serviceWorker' in navigator) {
 
 /* =========================================================
    MANUAL CHOOSER
-   Reader + Contributor only. Admin manual is intentionally
-   not exposed on the public website/PWA/APK.
+   Reader manual is always available. Contributor manual is
+   shown only while signed in with the Contributor role.
    ========================================================= */
 (() => {
   let manualScrollY = 0;
   let manualHistoryActive = false;
   let closingFromPopState = false;
 
+  function contributorManualAllowed() {
+    try {
+      return !!session && archiveRole === 'contributor';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function syncManualVisibility(overlay) {
+    if (!overlay) return;
+
+    const showContributor = contributorManualAllowed();
+    const contributorChoice = overlay.querySelector('[data-manual-role="contributor"]');
+    const title = overlay.querySelector('#manualChooserTitle');
+    const intro = overlay.querySelector('[data-manual-intro]');
+
+    if (contributorChoice) {
+      contributorChoice.style.display = showContributor ? '' : 'none';
+      contributorChoice.setAttribute('aria-hidden', showContributor ? 'false' : 'true');
+    }
+
+    if (title) title.textContent = showContributor ? 'Manuals' : 'Manual';
+    if (intro) {
+      intro.textContent = showContributor
+        ? 'Choose the guide you want to open.'
+        : 'Open the reader guide.';
+    }
+  }
+
   function ensureManualChooser() {
     let overlay = document.getElementById('manualChooserOverlay');
-    if (overlay) return overlay;
+    if (overlay) {
+      syncManualVisibility(overlay);
+      return overlay;
+    }
 
     overlay = document.createElement('div');
     overlay.id = 'manualChooserOverlay';
@@ -27,8 +59,8 @@ if ('serviceWorker' in navigator) {
         <div class="manual-chooser-head">
           <div>
             <div class="manual-chooser-kicker">SUPPORT</div>
-            <h2 id="manualChooserTitle">Manuals</h2>
-            <p>Choose the guide you want to open.</p>
+            <h2 id="manualChooserTitle">Manual</h2>
+            <p data-manual-intro>Open the reader guide.</p>
           </div>
           <button type="button" class="manual-chooser-close" id="manualChooserCloseBtn" aria-label="Close manuals">×</button>
         </div>
@@ -43,7 +75,7 @@ if ('serviceWorker' in navigator) {
             <span class="manual-choice-arrow" aria-hidden="true">›</span>
           </button>
 
-          <button type="button" class="manual-choice" data-manual-href="./manuals/contributor.html">
+          <button type="button" class="manual-choice" data-manual-role="contributor" data-manual-href="./manuals/contributor.html">
             <span class="manual-choice-icon" aria-hidden="true">＋</span>
             <span class="manual-choice-copy">
               <strong>Contributor Manual</strong>
@@ -52,11 +84,10 @@ if ('serviceWorker' in navigator) {
             <span class="manual-choice-arrow" aria-hidden="true">›</span>
           </button>
         </div>
-
-        <div class="manual-chooser-note">Admin maintenance manual is not published here.</div>
       </section>`;
 
     document.body.appendChild(overlay);
+    syncManualVisibility(overlay);
 
     overlay.addEventListener('click', (event) => {
       if (event.target === overlay) closeManualChooser();
@@ -102,6 +133,7 @@ if ('serviceWorker' in navigator) {
 
   function openManualChooser() {
     const overlay = ensureManualChooser();
+    syncManualVisibility(overlay);
     if (overlay.classList.contains('is-open')) return;
 
     overlay.classList.add('is-open');
@@ -201,7 +233,6 @@ if ('serviceWorker' in navigator) {
 .manual-choice-copy strong{font:700 14px/1.3 Inter,sans-serif;}
 .manual-choice-copy small{color:#8491a2;font:500 11px/1.45 Inter,sans-serif;}
 .manual-choice-arrow{color:#8491a2;font-size:25px;}
-.manual-chooser-note{margin-top:14px;padding-top:13px;border-top:1px solid rgba(148,163,184,.13);color:#687487;font:500 10.5px/1.45 Inter,sans-serif;text-align:center;}
 body[data-theme="light"] .manual-chooser-overlay{background:rgba(52,48,42,.30);}
 body[data-theme="light"] .manual-chooser-card{background:#fbfaf7;color:#27302d;border-color:rgba(75,54,95,.15);box-shadow:0 24px 70px rgba(58,53,42,.18);}
 body[data-theme="light"] .manual-chooser-kicker{color:#4b365f;}
@@ -212,7 +243,6 @@ body[data-theme="light"] .manual-chooser-close,
 body[data-theme="light"] .manual-choice{background:rgba(255,255,255,.78);color:#27302d;border-color:rgba(75,54,95,.14);}
 body[data-theme="light"] .manual-choice:hover{border-color:rgba(75,54,95,.28);background:rgba(75,54,95,.055);}
 body[data-theme="light"] .manual-choice-icon{background:rgba(75,54,95,.085);color:#4b365f;}
-body[data-theme="light"] .manual-chooser-note{border-color:rgba(75,54,95,.12);color:#817d77;}
 @media(max-width:700px){
   .manual-chooser-overlay{align-items:center;padding:12px;}
   .manual-chooser-card{width:100%;max-height:calc(100dvh - 24px);border-radius:20px;padding:19px 16px;}
