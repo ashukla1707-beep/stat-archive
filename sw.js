@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-preview-native-v2";
+const CACHE = "stat-archive-shell-v20260909-entry-method-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -26,6 +26,7 @@ const APP_SHELL = [
   "./assets/js/feature-polish.js",
   "./assets/js/hero-layout-fix.js",
   "./assets/js/action-spacing-fix.js",
+  "./assets/js/entry-method-fix.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
@@ -46,6 +47,7 @@ const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2">
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
+const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -85,6 +87,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/download-fix.js')) out = out.replace('</body>', `${DOWNLOAD_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/search-suggestions.js')) out = out.replace('</body>', `${SEARCH_SUGGESTIONS_TAG}\n</body>`);
   if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
+  if (!out.includes('assets/js/entry-method-fix.js')) out = out.replace('</body>', `${ENTRY_METHOD_FIX_TAG}\n</body>`);
   return out;
 }
 
