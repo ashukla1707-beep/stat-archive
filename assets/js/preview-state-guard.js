@@ -147,3 +147,25 @@
     install();
   }
 })();
+
+/* Load the selected Offline Library heading/search visual treatment.
+   This loader lives in a network-first runtime so PWA/APK installs receive
+   the visual update without waiting on an old app-shell cache. */
+(() => {
+  "use strict";
+
+  function loadOfflineHeadingSearchFix() {
+    if (document.querySelector('script[data-sa-offline-heading-search-fix="1"]')) return;
+    const script = document.createElement("script");
+    script.src = "./assets/js/offline-library-heading-search-fix.js?v=20260909-1";
+    script.async = false;
+    script.dataset.saOfflineHeadingSearchFix = "1";
+    document.body.appendChild(script);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadOfflineHeadingSearchFix, { once:true });
+  } else {
+    loadOfflineHeadingSearchFix();
+  }
+})();
