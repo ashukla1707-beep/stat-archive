@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library stable loader v7
+/* Stat Archive — Offline Library stable loader v8
    No MutationObserver. Keeps stable CSS, search copy and formatter loader. */
 (() => {
   "use strict";
@@ -52,17 +52,22 @@
   -webkit-appearance:none !important;
 }
 
+/* Remove the helper copy beside Your subjects. */
+#offlineLibraryOverlay .sa-offline-section:nth-of-type(2) .sa-offline-section-head > span{
+  display:none !important;
+}
+
 @media(max-width:700px){
   #offlineLibraryOverlay .sa-offline-head{
     padding-left:12px !important;
     padding-right:12px !important;
   }
 
-  /* Real three-column header. The title and controls cannot occupy each other's space. */
+  /* Reliable mobile header: title gets one column, actions get their own fixed column. */
   #offlineLibraryOverlay .sa-offline-title-row{
     display:grid !important;
-    grid-template-columns:minmax(0,1fr) 30px 30px !important;
-    column-gap:4px !important;
+    grid-template-columns:minmax(0,1fr) 68px !important;
+    column-gap:6px !important;
     align-items:center !important;
     position:relative !important;
     width:100% !important;
@@ -70,7 +75,6 @@
   }
   #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
     display:block !important;
-    grid-column:1 !important;
     min-width:0 !important;
     width:100% !important;
     padding:0 !important;
@@ -78,27 +82,37 @@
     overflow:hidden !important;
   }
   #offlineLibraryOverlay .sa-offline-title{
+    display:inline-block !important;
+    width:max-content !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
     font-size:34px !important;
     line-height:1.04 !important;
     letter-spacing:-.4px !important;
     white-space:nowrap !important;
-    width:121.95% !important;
-    max-width:none !important;
-    transform:scaleX(.82) !important;
+    transform:scaleX(.88) !important;
     transform-origin:left center !important;
     overflow:visible !important;
   }
   #offlineLibraryOverlay .sa-offline-head-actions{
-    display:contents !important;
     position:static !important;
     inset:auto !important;
-    width:auto !important;
+    width:68px !important;
     height:auto !important;
+    display:grid !important;
+    grid-template-columns:30px 30px !important;
+    gap:4px !important;
+    align-items:center !important;
+    justify-content:end !important;
     padding:0 !important;
     margin:0 !important;
     pointer-events:auto !important;
+    z-index:5 !important;
   }
-  #offlineLibraryOverlay .sa-offline-icon-btn{
+  #offlineLibraryOverlay .sa-offline-icon-btn,
+  #offlineLibraryOverlay #saOfflineMenuBtn,
+  #offlineLibraryOverlay #closeOfflineLibraryBtn{
     position:static !important;
     top:auto !important;
     left:auto !important;
@@ -110,16 +124,19 @@
     margin:0 !important;
     padding:0 !important;
     font-size:22px !important;
+    line-height:1 !important;
     display:grid !important;
     place-items:center !important;
+    opacity:1 !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+    z-index:6 !important;
   }
   #offlineLibraryOverlay #saOfflineMenuBtn{
-    grid-column:2 !important;
-    justify-self:center !important;
+    grid-column:1 !important;
   }
   #offlineLibraryOverlay #closeOfflineLibraryBtn{
-    grid-column:3 !important;
-    justify-self:center !important;
+    grid-column:2 !important;
   }
 
   #offlineLibraryOverlay .sa-offline-search{
@@ -150,7 +167,6 @@
   function loadStableFormatter() {
     const existing = document.querySelector('script[data-sa-offline-entry-format="1"]');
     if (existing) {
-      /* Formatter CSS may have been appended later. Re-append our overrides last. */
       requestAnimationFrame(() => requestAnimationFrame(installStableOverrides));
       return;
     }
