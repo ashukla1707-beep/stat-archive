@@ -52,7 +52,6 @@
   -webkit-appearance:none !important;
 }
 
-/* Remove the helper copy beside Your subjects. */
 #offlineLibraryOverlay .sa-offline-section:nth-of-type(2) .sa-offline-section-head > span{
   display:none !important;
 }
@@ -63,7 +62,6 @@
     padding-right:12px !important;
   }
 
-  /* Mobile header: large title + compact action group beside X. */
   #offlineLibraryOverlay .sa-offline-title-row{
     display:grid !important;
     grid-template-columns:minmax(0,1fr) 56px !important;
@@ -160,6 +158,22 @@
     return true;
   }
 
+  function finalFormattingReady() {
+    const list = document.getElementById("offlineLibraryList");
+    if (!list || !list.children.length) return false;
+
+    const shelfCards = [...document.querySelectorAll("#offlineLibraryOverlay .sa-offline-shelf-card[data-sa-open-id]")];
+    const shelfReady = shelfCards.length === 0 || shelfCards.every(card => !!card.querySelector(".sa-recent-subject"));
+
+    const fileCards = [...document.querySelectorAll("#offlineLibraryOverlay .sa-offline-file[data-offline-id]")];
+    const filesReady = fileCards.length === 0 || fileCards.every(card => {
+      const size = card.querySelector(".sa-offline-file-size");
+      return !size || size.style.display === "none";
+    });
+
+    return shelfReady && filesReady;
+  }
+
   function installOpenGate() {
     const current = window.openOfflineLibrary;
     if (typeof current !== "function") return false;
@@ -177,13 +191,8 @@
 
       void (async () => {
         const start = performance.now();
-        while (performance.now() - start < 1200) {
-          const liveOverlay = document.getElementById("offlineLibraryOverlay");
-          const list = document.getElementById("offlineLibraryList");
-          const card = liveOverlay?.querySelector(".offline-library-card.sa-offline-hybrid");
-          const populated = !!list && list.children.length > 0;
-          const formatterDone = !card || (card.style.visibility !== "hidden" && card.style.opacity !== "0");
-          if (populated && formatterDone) break;
+        while (performance.now() - start < 1400) {
+          if (finalFormattingReady()) break;
           await new Promise(resolve => setTimeout(resolve, 16));
         }
 
