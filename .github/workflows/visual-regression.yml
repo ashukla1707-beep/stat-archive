@@ -40,7 +40,7 @@ jobs:
 
       - name: Compare home and menu rendering
         run: |
-          cat > /tmp/visual-check.cjs <<'NODE'
+          cat > visual-check.cjs <<'NODE'
           const { chromium } = require('playwright');
           const pixelmatch = require('pixelmatch');
           const { PNG } = require('pngjs');
@@ -173,4 +173,5 @@ jobs:
             process.exit(1);
           });
           NODE
-          node /tmp/visual-check.cjs
+          node visual-check.cjs
+          rm -f visual-check.cjs
