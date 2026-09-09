@@ -48,139 +48,76 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
 })();
 
 /* =========================================================
-   Navigation owner for Menu -> Manual -> Back.
+   MENU CHILD CLOSE SYNCHRONIZER
 
-   Desired stack after opening a Manual:
-   Home -> Menu -> Manual page
+   Navigation history is owned by service-worker-register.js. This file no
+   longer pushes/replaces history itself.
 
-   The Manual chooser is a temporary child history entry. When a manual is
-   selected we REPLACE that chooser entry with the Manual document instead
-   of adding another entry. Therefore the very next Back lands on Menu.
+   Android's current native Back handler can directly hide some overlays
+   (notably Offline Library) before WebView.goBack(). Watch those child UIs;
+   if one disappears while the navigation state is still "child", pop that
+   single child entry so Menu is restored immediately.
    ========================================================= */
 (() => {
-  const NAV_KEY = 'statArchiveNav';
-  const MENU_PARAM = 'menu';
-  const menu = document.getElementById('mainSideMenu');
-  const menuBtn = document.getElementById('mainMenuBtn');
-  const backdrop = document.getElementById('mainMenuBackdrop');
-  if (!menu || !menuBtn) return;
+  let scheduled = false;
+  let suppressUntil = 0;
 
-  const readState = () => history.state?.[NAV_KEY] || 'home';
-  const withState = value => ({ ...(history.state || {}), [NAV_KEY]: value });
-
-  function menuUrl() {
-    const url = new URL(location.href);
-    url.searchParams.set(MENU_PARAM, '1');
-    return url.href;
-  }
-
-  function homeUrl() {
-    const url = new URL(location.href);
-    url.searchParams.delete(MENU_PARAM);
-    return url.href;
-  }
-
-  function openMenu() {
-    try { window.statArchiveOpenMenu?.(); } catch (_) {}
-    menu.classList.add('is-open');
-    backdrop?.classList.add('is-open');
-    menu.setAttribute('aria-hidden', 'false');
-    backdrop?.setAttribute('aria-hidden', 'false');
-    menuBtn.setAttribute('aria-expanded', 'true');
-  }
-
-  function closeMenu() {
-    try { window.statArchiveCloseMenu?.(); } catch (_) {}
-    menu.classList.remove('is-open');
-    backdrop?.classList.remove('is-open');
-    menu.setAttribute('aria-hidden', 'true');
-    backdrop?.setAttribute('aria-hidden', 'true');
-    menuBtn.setAttribute('aria-expanded', 'false');
-  }
-
-  const initial = new URL(location.href);
-  if (initial.searchParams.get(MENU_PARAM) === '1') {
-    history.replaceState(withState('menu'), '', location.href);
-    requestAnimationFrame(openMenu);
-  } else if (!history.state?.[NAV_KEY]) {
-    history.replaceState(withState('home'), '', homeUrl());
-  }
-
-  /* Capture early so older cached click handlers cannot add an extra
-     Manual-page history entry after the chooser. */
-  document.addEventListener('click', event => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-
-    const manualChoice = target.closest('[data-manual-href]');
-    if (manualChoice) {
-      const href = manualChoice.getAttribute('data-manual-href');
-      if (!href) return;
-
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      const overlay = document.getElementById('manualChooserOverlay');
-      overlay?.classList.remove('is-open');
-      overlay?.setAttribute('aria-hidden', 'true');
-      if (document.body?.dataset.manualScrollLock === '1') {
-        delete document.body.dataset.manualScrollLock;
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.width = '';
-        document.body.style.overflow = '';
-      }
-
-      /* Critical fix: replace chooser, don't push another page. */
-      window.location.replace(href);
-      return;
+  function isVisible(el) {
+    if (!el) return false;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.classList.contains('stat-feedback-overlay') || el.classList.contains('manual-chooser-overlay')) {
+      return el.classList.contains('is-open');
     }
+    return el.getClientRects().length > 0;
+  }
 
-    if (target.closest('#mainMenuBtn')) {
-      if (menu.classList.contains('is-open') && readState() === 'menu') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        history.back();
-        return;
-      }
-      if (!menu.classList.contains('is-open') && readState() === 'home') {
-        history.pushState(withState('menu'), '', menuUrl());
-      }
-      return;
+  function childStillOpen(child) {
+    if (child === 'manual-chooser') {
+      return isVisible(document.getElementById('manualChooserOverlay'));
     }
-
-    if ((target.closest('#mainMenuCloseBtn') || target.closest('#mainMenuBackdrop')) &&
-        menu.classList.contains('is-open') && readState() === 'menu') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      history.back();
-      return;
+    if (child === 'about') {
+      return isVisible(document.getElementById('aboutArchiveOverlay'));
     }
-
-    const manualButton = target.closest('#menuManualsBtn');
-    if (manualButton && menu.classList.contains('is-open')) {
-      /* Guarantee a real Menu entry even if an older cached navigation helper
-         did not create one when the hamburger was opened. */
-      if (readState() !== 'menu') history.pushState(withState('menu'), '', menuUrl());
-      else history.replaceState(withState('menu'), '', menuUrl());
+    if (child === 'offline-library') {
+      return isVisible(document.getElementById('offlineLibraryOverlay'));
     }
-  }, true);
+    if (child === 'feedback') {
+      return isVisible(document.getElementById('statLocalFeedbackOverlay'));
+    }
+    return true;
+  }
 
-  window.addEventListener('popstate', () => {
-    const url = new URL(location.href);
-    const state = history.state?.[NAV_KEY] || (url.searchParams.get(MENU_PARAM) === '1' ? 'menu' : 'home');
-    if (state === 'menu') openMenu();
-    else closeMenu();
+  function checkClosedChild() {
+    scheduled = false;
+    if (performance.now() < suppressUntil) return;
+
+    const nav = window.__statArchiveNavigation;
+    if (!nav || nav.state?.() !== 'child') return;
+
+    const child = nav.child?.() || '';
+    if (!child || childStillOpen(child)) return;
+
+    suppressUntil = performance.now() + 250;
+    history.back();
+  }
+
+  function scheduleCheck() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(checkClosedChild);
+  }
+
+  const observer = new MutationObserver(scheduleCheck);
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['style', 'class', 'aria-hidden', 'hidden']
   });
 
-  function restore() {
-    const url = new URL(location.href);
-    if (history.state?.[NAV_KEY] === 'menu' || url.searchParams.get(MENU_PARAM) === '1') openMenu();
-    else closeMenu();
-  }
-
-  window.addEventListener('pageshow', restore);
-  restore();
+  window.addEventListener('popstate', () => {
+    suppressUntil = performance.now() + 150;
+  });
 })();
