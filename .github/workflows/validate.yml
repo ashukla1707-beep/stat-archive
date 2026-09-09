@@ -44,12 +44,36 @@ jobs:
           import re
 
           root = Path('.')
-          index = Path('index.html').read_text(encoding='utf-8')
-          sw = Path('sw.js').read_text(encoding='utf-8')
+          source_files = [Path('index.html'), Path('sw.js')]
+          source_files += sorted(Path('assets/js').glob('*.js'))
+          source_files += sorted(Path('assets').glob('*.css'))
 
           refs = set()
-          refs.update(re.findall(r'''(?:src|href)=["'](?:\./)?([^"'#?]+)["']''', index))
-          refs.update(re.findall(r'''["']\./([^"']+)["']''', sw))
+          asset_ext = r'(?:js|css|json|png|jpe?g|webp|svg|gif|ico|pdf|apk|woff2?|ttf)'
+
+          for source in source_files:
+              text = source.read_text(encoding='utf-8')
+
+              # HTML/script-style src/href references.
+              refs.update(re.findall(
+                  rf'''(?:src|href)\s*=\s*["'](?:\./)?([^"'#?]+\.{asset_ext})(?:[?#][^"']*)?["']''',
+                  text,
+                  flags=re.I,
+              ))
+
+              # Dynamic JS strings such as script.src = 'assets/js/foo.js?v=1'.
+              refs.update(re.findall(
+                  rf'''["']((?:\./)?(?:assets|icons|downloads|manuals)/[^"'?#]+\.{asset_ext})(?:[?#][^"']*)?["']''',
+                  text,
+                  flags=re.I,
+              ))
+
+              # Relative CSS imports such as @import "./scanner-base.css".
+              if source.suffix == '.css':
+                  for ref in re.findall(r'''@import\s+(?:url\()?\s*["']?([^"')\s;]+)''', text, flags=re.I):
+                      if ref.startswith(('http://', 'https://', 'data:')):
+                          continue
+                      refs.add(str((source.parent / ref.split('?', 1)[0].split('#', 1)[0]).as_posix()))
 
           missing = []
           checked = set()
@@ -67,5 +91,5 @@ jobs:
           if missing:
               raise SystemExit('Missing local runtime references:\n' + '\n'.join(missing))
 
-          print(f'Validated {len(checked)} local/runtime references.')
+          print(f'Validated {len(checked)} local/runtime references across HTML, SW, JS, and CSS.')
           PY
