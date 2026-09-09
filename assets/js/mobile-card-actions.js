@@ -70,7 +70,16 @@
     display:none !important;
   }
 
-  body:not([data-theme="light"]) .card .card-actions .pv-btn,
+  /* Preview is neutral by default. It turns teal only after being used in the
+     current open page/app session. Closing the preview does not remove it. */
+  body:not([data-theme="light"]) .card .card-actions .pv-btn{
+    color:#f1f4f8 !important;
+    background:#111722 !important;
+    border:1px solid rgba(255,255,255,.035) !important;
+    box-shadow:none !important;
+  }
+
+  body:not([data-theme="light"]) .card .card-actions .pv-btn.sa-preview-used,
   body:not([data-theme="light"]) .card .card-actions .offline-btn{
     color:#63efff !important;
     background:rgba(18,52,64,.76) !important;
@@ -86,7 +95,14 @@
     box-shadow:none !important;
   }
 
-  body[data-theme="light"] .card .card-actions .pv-btn,
+  body[data-theme="light"] .card .card-actions .pv-btn{
+    color:#27302d !important;
+    background:#eee9f4 !important;
+    border:1px solid #ddd4e4 !important;
+    box-shadow:none !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .pv-btn.sa-preview-used,
   body[data-theme="light"] .card .card-actions .offline-btn{
     color:#4b365f !important;
     background:#f1ebf6 !important;
@@ -149,4 +165,18 @@
 `;
 
   document.head.appendChild(style);
+
+  /* Session-only preview highlight.
+     This is intentionally DOM-only: no localStorage, sessionStorage or IndexedDB.
+     A hard refresh / full app restart recreates the page and clears the state. */
+  document.querySelectorAll('.card .card-actions .pv-btn').forEach(btn => {
+    btn.classList.remove('sa-preview-used');
+  });
+
+  document.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    const previewBtn = target?.closest('.card .card-actions .pv-btn');
+    if (!previewBtn) return;
+    previewBtn.classList.add('sa-preview-used');
+  }, true);
 })();
