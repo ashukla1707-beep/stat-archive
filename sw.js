@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-mobile-actions-reference-v1";
+const CACHE = "stat-archive-shell-v20260910-scroll-lock-coordinator-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -11,7 +11,8 @@ const APP_SHELL = [
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
   "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",
   "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/menu-alignment-fix.js",
-  "./assets/js/offline-library-hybrid.js","./manuals/reader.html","./manuals/contributor.html",
+  "./assets/js/offline-library-hybrid.js","./assets/js/scroll-lock-coordinator.js",
+  "./manuals/reader.html","./manuals/contributor.html",
   "./manifest.json","./icons/icon-192.png","./icons/icon-512.png"
 ];
 
@@ -32,7 +33,8 @@ const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=202
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
-const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-1"></script>';
+const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-14"></script>';
+const SCROLL_LOCK_COORDINATOR_TAG = '<script src="./assets/js/scroll-lock-coordinator.js?v=20260910-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -43,7 +45,10 @@ function decorateNavigationHtml(html) {
 
   out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
 
+  /* Offline Library has one renderer and one scroll-lock coordinator. Remove
+     stale tags from network/cached HTML before injecting the current pair. */
   out = out.replace(/<script[^>]+assets\/js\/offline-library-(?:hybrid|heading-search-fix|entry-format)\.js[^>]*><\/script>/gi, '');
+  out = out.replace(/<script[^>]+assets\/js\/scroll-lock-coordinator\.js[^>]*><\/script>/gi, '');
 
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
 
@@ -68,7 +73,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
 
-  out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n</body>`);
+  out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n${SCROLL_LOCK_COORDINATOR_TAG}\n</body>`);
 
   if (!out.includes('assets/js/preview-state-guard.js')) out = out.replace('</body>', `${PREVIEW_STATE_GUARD_TAG}\n</body>`);
   return out;
@@ -267,7 +272,8 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/service-worker-register.js') ||
     url.pathname.endsWith('/assets/js/menu-polish.js') ||
     url.pathname.endsWith('/assets/js/menu-alignment-fix.js') ||
-    url.pathname.endsWith('/assets/js/offline-library-hybrid.js');
+    url.pathname.endsWith('/assets/js/offline-library-hybrid.js') ||
+    url.pathname.endsWith('/assets/js/scroll-lock-coordinator.js');
 
   if (isLiveRuntime) {
     event.respondWith(serveRuntimeNetworkFirst(request));
