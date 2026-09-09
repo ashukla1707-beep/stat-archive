@@ -254,3 +254,14 @@ html body .header .hero-line .sub *::-moz-selection{
 
   window.addEventListener("pageshow", applyHeroFix);
 })();
+
+/* Dedicated mobile action layout. Loaded directly from a script that index.html
+   already includes, so this no longer depends on service-worker HTML injection. */
+(() => {
+  if (document.querySelector('script[data-stat-mobile-card-actions]')) return;
+  const script = document.createElement('script');
+  script.src = 'assets/js/mobile-card-actions.js?v=20260910-1';
+  script.dataset.statMobileCardActions = '1';
+  script.async = false;
+  document.body.appendChild(script);
+})();
