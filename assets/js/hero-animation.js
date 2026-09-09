@@ -260,7 +260,7 @@ html body .header .hero-line .sub *::-moz-selection{
 (() => {
   if (document.querySelector('script[data-stat-mobile-card-actions]')) return;
   const script = document.createElement('script');
-  script.src = 'assets/js/mobile-card-actions.js?v=20260910-1';
+  script.src = 'assets/js/mobile-card-actions.js?v=20260910-2';
   script.dataset.statMobileCardActions = '1';
   script.async = false;
   document.body.appendChild(script);
