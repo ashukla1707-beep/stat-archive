@@ -6,105 +6,50 @@ if ('serviceWorker' in navigator) {
 
 /* =========================================================
    MANUAL CHOOSER
-   Reader manual is always available. Contributor manual is
-   shown only while signed in with the Contributor role.
+   History model:
+   Home -> Menu -> Chooser
+   Selecting a manual REPLACES Chooser with the Manual page, yielding:
+   Home -> Menu -> Manual
+   Therefore Back from Manual -> Menu -> Home.
    ========================================================= */
 (() => {
+  const NAV_KEY = 'statArchiveNav';
+  const MENU_PARAM = 'menu';
   let manualScrollY = 0;
   let manualHistoryActive = false;
   let closingFromPopState = false;
 
   function contributorManualAllowed() {
-    try {
-      return !!session && archiveRole === 'contributor';
-    } catch (_) {
-      return false;
+    try { return !!session && archiveRole === 'contributor'; }
+    catch (_) { return false; }
+  }
+
+  function menuUrl() {
+    const url = new URL(location.href);
+    url.searchParams.set(MENU_PARAM, '1');
+    return url.href;
+  }
+
+  function ensureMenuHistoryState() {
+    if (history.state?.[NAV_KEY] === 'menu') {
+      history.replaceState({ ...(history.state || {}), [NAV_KEY]: 'menu' }, '', menuUrl());
+      return;
     }
+    history.pushState({ ...(history.state || {}), [NAV_KEY]: 'menu' }, '', menuUrl());
   }
 
   function syncManualVisibility(overlay) {
     if (!overlay) return;
-
     const showContributor = contributorManualAllowed();
     const contributorChoice = overlay.querySelector('[data-manual-role="contributor"]');
     const title = overlay.querySelector('#manualChooserTitle');
     const intro = overlay.querySelector('[data-manual-intro]');
-
     if (contributorChoice) {
       contributorChoice.style.display = showContributor ? '' : 'none';
       contributorChoice.setAttribute('aria-hidden', showContributor ? 'false' : 'true');
     }
-
     if (title) title.textContent = showContributor ? 'Manuals' : 'Manual';
-    if (intro) {
-      intro.textContent = showContributor
-        ? 'Choose the guide you want to open.'
-        : 'Open the reader guide.';
-    }
-  }
-
-  function ensureManualChooser() {
-    let overlay = document.getElementById('manualChooserOverlay');
-    if (overlay) {
-      syncManualVisibility(overlay);
-      return overlay;
-    }
-
-    overlay = document.createElement('div');
-    overlay.id = 'manualChooserOverlay';
-    overlay.className = 'manual-chooser-overlay';
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.innerHTML = `
-      <section class="manual-chooser-card" role="dialog" aria-modal="true" aria-labelledby="manualChooserTitle">
-        <div class="manual-chooser-head">
-          <div>
-            <div class="manual-chooser-kicker">SUPPORT</div>
-            <h2 id="manualChooserTitle">Manual</h2>
-            <p data-manual-intro>Open the reader guide.</p>
-          </div>
-          <button type="button" class="manual-chooser-close" id="manualChooserCloseBtn" aria-label="Close manuals">×</button>
-        </div>
-
-        <div class="manual-chooser-options">
-          <button type="button" class="manual-choice" data-manual-href="./manuals/reader.html">
-            <span class="manual-choice-icon" aria-hidden="true">◫</span>
-            <span class="manual-choice-copy">
-              <strong>Reader Manual</strong>
-              <small>Browsing, search, preview, download and Offline Library</small>
-            </span>
-            <span class="manual-choice-arrow" aria-hidden="true">›</span>
-          </button>
-
-          <button type="button" class="manual-choice" data-manual-role="contributor" data-manual-href="./manuals/contributor.html">
-            <span class="manual-choice-icon" aria-hidden="true">＋</span>
-            <span class="manual-choice-copy">
-              <strong>Contributor Manual</strong>
-              <small>Filing, editing, subjects, limits and contributor permissions</small>
-            </span>
-            <span class="manual-choice-arrow" aria-hidden="true">›</span>
-          </button>
-        </div>
-      </section>`;
-
-    document.body.appendChild(overlay);
-    syncManualVisibility(overlay);
-
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay) closeManualChooser();
-    });
-
-    overlay.querySelector('#manualChooserCloseBtn')?.addEventListener('click', closeManualChooser);
-
-    overlay.querySelectorAll('[data-manual-href]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const href = button.getAttribute('data-manual-href');
-        if (!href) return;
-        closeManualChooser(false);
-        window.location.href = href;
-      });
-    });
-
-    return overlay;
+    if (intro) intro.textContent = showContributor ? 'Choose the guide you want to open.' : 'Open the reader guide.';
   }
 
   function lockManualBackground() {
@@ -131,31 +76,18 @@ if ('serviceWorker' in navigator) {
     requestAnimationFrame(() => window.scrollTo(0, y));
   }
 
-  function openManualChooser() {
-    const overlay = ensureManualChooser();
-    syncManualVisibility(overlay);
-    if (overlay.classList.contains('is-open')) return;
-
-    overlay.classList.add('is-open');
-    overlay.setAttribute('aria-hidden', 'false');
-    lockManualBackground();
-
-    if (!manualHistoryActive && !closingFromPopState) {
-      history.pushState({ ...(history.state || {}), statArchiveManualChooser: true }, '', location.href);
-      manualHistoryActive = true;
-    }
-
-    requestAnimationFrame(() => overlay.querySelector('#manualChooserCloseBtn')?.focus());
+  function closeManualChooserUI() {
+    const overlay = document.getElementById('manualChooserOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    unlockManualBackground();
   }
 
   function closeManualChooser(useHistory = true) {
     const overlay = document.getElementById('manualChooserOverlay');
     if (!overlay?.classList.contains('is-open')) return;
-
-    overlay.classList.remove('is-open');
-    overlay.setAttribute('aria-hidden', 'true');
-    unlockManualBackground();
-
+    closeManualChooserUI();
     if (useHistory && manualHistoryActive && !closingFromPopState && history.state?.statArchiveManualChooser) {
       manualHistoryActive = false;
       history.back();
@@ -164,15 +96,92 @@ if ('serviceWorker' in navigator) {
     }
   }
 
+  function ensureManualChooser() {
+    let overlay = document.getElementById('manualChooserOverlay');
+    if (overlay) {
+      syncManualVisibility(overlay);
+      return overlay;
+    }
+
+    overlay = document.createElement('div');
+    overlay.id = 'manualChooserOverlay';
+    overlay.className = 'manual-chooser-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = `
+      <section class="manual-chooser-card" role="dialog" aria-modal="true" aria-labelledby="manualChooserTitle">
+        <div class="manual-chooser-head">
+          <div>
+            <div class="manual-chooser-kicker">SUPPORT</div>
+            <h2 id="manualChooserTitle">Manual</h2>
+            <p data-manual-intro>Open the reader guide.</p>
+          </div>
+          <button type="button" class="manual-chooser-close" id="manualChooserCloseBtn" aria-label="Close manuals">×</button>
+        </div>
+        <div class="manual-chooser-options">
+          <button type="button" class="manual-choice" data-manual-href="./manuals/reader.html">
+            <span class="manual-choice-icon" aria-hidden="true">◫</span>
+            <span class="manual-choice-copy"><strong>Reader Manual</strong><small>Browsing, search, preview, download and Offline Library</small></span>
+            <span class="manual-choice-arrow" aria-hidden="true">›</span>
+          </button>
+          <button type="button" class="manual-choice" data-manual-role="contributor" data-manual-href="./manuals/contributor.html">
+            <span class="manual-choice-icon" aria-hidden="true">＋</span>
+            <span class="manual-choice-copy"><strong>Contributor Manual</strong><small>Filing, editing, subjects, limits and contributor permissions</small></span>
+            <span class="manual-choice-arrow" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </section>`;
+
+    document.body.appendChild(overlay);
+    syncManualVisibility(overlay);
+
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) closeManualChooser();
+    });
+    overlay.querySelector('#manualChooserCloseBtn')?.addEventListener('click', () => closeManualChooser());
+
+    overlay.querySelectorAll('[data-manual-href]').forEach(button => {
+      button.addEventListener('click', event => {
+        const href = button.getAttribute('data-manual-href');
+        if (!href) return;
+        event.preventDefault();
+        closeManualChooserUI();
+        manualHistoryActive = false;
+
+        /* Critical: replace the chooser history entry instead of pushing a
+           fourth entry. Stack becomes Home -> Menu -> Manual. */
+        window.location.replace(href);
+      });
+    });
+
+    return overlay;
+  }
+
+  function openManualChooser() {
+    const overlay = ensureManualChooser();
+    syncManualVisibility(overlay);
+    if (overlay.classList.contains('is-open')) return;
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    lockManualBackground();
+
+    if (!manualHistoryActive && !closingFromPopState) {
+      history.pushState({ ...(history.state || {}), statArchiveManualChooser: true }, '', location.href);
+      manualHistoryActive = true;
+    }
+    requestAnimationFrame(() => overlay.querySelector('#manualChooserCloseBtn')?.focus());
+  }
+
   function bindManualButton() {
     const button = document.getElementById('menuManualsBtn');
     if (!button || button.dataset.manualChooserBound === '1') return;
-
     button.dataset.manualChooserBound = '1';
-    button.addEventListener('click', (event) => {
+
+    button.addEventListener('click', event => {
       event.preventDefault();
 
-      /* Let the existing menu close cleanly first. */
+      /* Guarantee Menu exists immediately below the chooser in history. */
+      ensureMenuHistoryState();
+
       try { window.statArchiveCloseMenu?.(); } catch (_) {}
       document.getElementById('mainSideMenu')?.classList.remove('is-open');
       document.getElementById('mainMenuBackdrop')?.classList.remove('is-open');
@@ -188,37 +197,22 @@ if ('serviceWorker' in navigator) {
       manualHistoryActive = false;
       return;
     }
-
     closingFromPopState = true;
     manualHistoryActive = false;
     closeManualChooser(false);
     requestAnimationFrame(() => { closingFromPopState = false; });
   });
 
-  document.addEventListener('keydown', (event) => {
+  document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closeManualChooser();
   });
 
   const style = document.createElement('style');
   style.id = 'statArchiveManualChooserStyle';
   style.textContent = `
-.manual-chooser-overlay{
-  position:fixed;inset:0;z-index:10050;
-  display:flex;align-items:center;justify-content:center;
-  padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));
-  background:rgba(2,6,12,.68);
-  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
-  opacity:0;visibility:hidden;pointer-events:none;
-  transition:opacity .16s ease,visibility .16s ease;
-}
+.manual-chooser-overlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));background:rgba(2,6,12,.68);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,visibility .16s ease;}
 .manual-chooser-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto;}
-.manual-chooser-card{
-  width:min(520px,100%);max-height:calc(100dvh - 28px);overflow:auto;
-  border:1px solid rgba(148,163,184,.20);border-radius:22px;
-  padding:22px;background:#0d141e;color:#eef3f8;
-  box-shadow:0 28px 80px rgba(0,0,0,.48);
-  transform:translateY(8px) scale(.992);transition:transform .16s ease;
-}
+.manual-chooser-card{width:min(520px,100%);max-height:calc(100dvh - 28px);overflow:auto;border:1px solid rgba(148,163,184,.20);border-radius:22px;padding:22px;background:#0d141e;color:#eef3f8;box-shadow:0 28px 80px rgba(0,0,0,.48);transform:translateY(8px) scale(.992);transition:transform .16s ease;}
 .manual-chooser-overlay.is-open .manual-chooser-card{transform:none;}
 .manual-chooser-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px;}
 .manual-chooser-kicker{color:#5ee7f7;font:700 10px/1.2 'JetBrains Mono',monospace;letter-spacing:.14em;}
@@ -236,28 +230,16 @@ if ('serviceWorker' in navigator) {
 body[data-theme="light"] .manual-chooser-overlay{background:rgba(52,48,42,.30);}
 body[data-theme="light"] .manual-chooser-card{background:#fbfaf7;color:#27302d;border-color:rgba(75,54,95,.15);box-shadow:0 24px 70px rgba(58,53,42,.18);}
 body[data-theme="light"] .manual-chooser-kicker{color:#4b365f;}
-body[data-theme="light"] .manual-chooser-head p,
-body[data-theme="light"] .manual-choice-copy small,
-body[data-theme="light"] .manual-choice-arrow{color:#817d77;}
-body[data-theme="light"] .manual-chooser-close,
-body[data-theme="light"] .manual-choice{background:rgba(255,255,255,.78);color:#27302d;border-color:rgba(75,54,95,.14);}
+body[data-theme="light"] .manual-chooser-head p,body[data-theme="light"] .manual-choice-copy small,body[data-theme="light"] .manual-choice-arrow{color:#817d77;}
+body[data-theme="light"] .manual-chooser-close,body[data-theme="light"] .manual-choice{background:rgba(255,255,255,.78);color:#27302d;border-color:rgba(75,54,95,.14);}
 body[data-theme="light"] .manual-choice:hover{border-color:rgba(75,54,95,.28);background:rgba(75,54,95,.055);}
 body[data-theme="light"] .manual-choice-icon{background:rgba(75,54,95,.085);color:#4b365f;}
-@media(max-width:700px){
-  .manual-chooser-overlay{align-items:center;padding:12px;}
-  .manual-chooser-card{width:100%;max-height:calc(100dvh - 24px);border-radius:20px;padding:19px 16px;}
-  .manual-chooser-head h2{font-size:24px;}
-  .manual-choice{min-height:72px;padding:12px;grid-template-columns:36px 1fr 18px;gap:10px;}
-  .manual-choice-copy strong{font-size:13px;}.manual-choice-copy small{font-size:10.5px;}
-}
+@media(max-width:700px){.manual-chooser-overlay{align-items:center;padding:12px}.manual-chooser-card{width:100%;max-height:calc(100dvh - 24px);border-radius:20px;padding:19px 16px}.manual-chooser-head h2{font-size:24px}.manual-choice{min-height:72px;padding:12px;grid-template-columns:36px 1fr 18px;gap:10px}.manual-choice-copy strong{font-size:13px}.manual-choice-copy small{font-size:10.5px}}
 `;
   document.head.appendChild(style);
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindManualButton, { once: true });
-  } else {
-    bindManualButton();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindManualButton, { once:true });
+  else bindManualButton();
 })();
 
 /* =========================================================
@@ -272,10 +254,6 @@ body[data-theme="light"] .manual-choice-icon{background:rgba(75,54,95,.085);colo
     script.dataset.saOfflineHybrid = '1';
     document.body.appendChild(script);
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadOfflineHybrid, { once: true });
-  } else {
-    loadOfflineHybrid();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadOfflineHybrid, { once:true });
+  else loadOfflineHybrid();
 })();
