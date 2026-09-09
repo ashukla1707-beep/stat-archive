@@ -86,7 +86,7 @@
   margin:0 !important;
   padding:0 !important;
   color:#6fa9b8 !important;
-  font:700 8.5px/1.15 'JetBrains Mono',Inter,sans-serif !important;
+  font:700 11px/1.15 'JetBrains Mono',Inter,sans-serif !important;
   letter-spacing:.12em !important;
   text-transform:uppercase !important;
 }
@@ -100,7 +100,7 @@
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
   color:#f4f7fb !important;
-  font:750 23px/1.08 'Plus Jakarta Sans',Inter,sans-serif !important;
+  font:750 20px/1.08 'Plus Jakarta Sans',Inter,sans-serif !important;
   letter-spacing:-.035em !important;
   text-transform:none !important;
 }
@@ -174,10 +174,10 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     width:2px !important;
   }
   #mainSideMenu .stat-menu-reference-kicker{
-    font-size:8px !important;
+    font-size:10px !important;
   }
   #mainSideMenu .stat-menu-reference-title{
-    font-size:22px !important;
+    font-size:19px !important;
   }
   #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn{
     width:32px !important;
