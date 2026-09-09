@@ -12,6 +12,10 @@
     return String(record?.subjectName || record?.subject || "Other").trim() || "Other";
   }
 
+  function titleOf(record) {
+    return String(record?.title || record?.filename || record?.name || "Untitled").trim() || "Untitled";
+  }
+
   function typeOf(record) {
     return String(record?.type || "File").trim() || "File";
   }
@@ -34,15 +38,29 @@
   }
 
   function installStyle() {
-    if (document.getElementById("saOfflineEntryFormatStyle")) return;
+    const old = document.getElementById("saOfflineEntryFormatStyle");
+    if (old) old.remove();
 
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
+/* Keep the study-vault sentence compact under the Offline Library title. */
+#offlineLibraryOverlay .sa-offline-subtitle{
+  max-width:none !important;
+  margin-top:12px !important;
+  font:500 12px/1.45 Inter,sans-serif !important;
+  letter-spacing:0 !important;
+}
+
+/* Continue studying: compact horizontal cards. */
+#offlineLibraryOverlay .sa-offline-shelf{
+  gap:8px !important;
+}
 #offlineLibraryOverlay .sa-offline-shelf-card{
-  flex:0 0 148px !important;
-  min-height:138px !important;
-  padding:12px !important;
+  flex:0 0 132px !important;
+  min-height:106px !important;
+  padding:10px !important;
+  border-radius:14px !important;
   justify-content:flex-start !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-badge{
@@ -50,25 +68,26 @@
 }
 #offlineLibraryOverlay .sa-offline-shelf-title{
   margin:0 !important;
-  font:800 11.8px/1.35 Inter,sans-serif !important;
+  font:800 10.8px/1.3 Inter,sans-serif !important;
   -webkit-line-clamp:3 !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-meta{
-  margin-top:10px !important;
+  margin-top:7px !important;
   color:#8290a3 !important;
-  font:500 10.3px/1.4 Inter,sans-serif !important;
+  font:500 9.8px/1.35 Inter,sans-serif !important;
 }
 
+/* Expanded subject entries: actual file title, then Type · Year. */
 #offlineLibraryOverlay .sa-offline-file-main{
   grid-template-columns:28px minmax(0,1fr) !important;
   gap:9px !important;
 }
 #offlineLibraryOverlay .sa-offline-file-title{
-  font:800 11.8px/1.35 Inter,sans-serif !important;
+  font:800 11.5px/1.34 Inter,sans-serif !important;
 }
 #offlineLibraryOverlay .sa-offline-file-meta{
   margin-top:4px !important;
-  font:500 10.3px/1.35 Inter,sans-serif !important;
+  font:500 10px/1.32 Inter,sans-serif !important;
 }
 #offlineLibraryOverlay .sa-offline-file-size{
   display:none !important;
@@ -78,15 +97,31 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-shelf-title,
 body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
   color:#27302d !important;
 }
+body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
+  color:#817d77 !important;
+}
 
 @media(max-width:700px){
-  #offlineLibraryOverlay .sa-offline-shelf-card{
-    flex-basis:140px !important;
-    min-height:132px !important;
+  #offlineLibraryOverlay .sa-offline-subtitle{
+    margin-top:11px !important;
+    font-size:11.5px !important;
+    line-height:1.42 !important;
   }
-  #offlineLibraryOverlay .sa-offline-shelf-title,
+  #offlineLibraryOverlay .sa-offline-shelf-card{
+    flex-basis:122px !important;
+    min-height:98px !important;
+    padding:9px !important;
+  }
+  #offlineLibraryOverlay .sa-offline-shelf-title{
+    font-size:10.3px !important;
+    line-height:1.28 !important;
+  }
+  #offlineLibraryOverlay .sa-offline-shelf-meta{
+    margin-top:6px !important;
+    font-size:9.4px !important;
+  }
   #offlineLibraryOverlay .sa-offline-file-title{
-    font-size:11.3px !important;
+    font-size:11px !important;
   }
 }
 `;
@@ -104,6 +139,7 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
       const records = await getOfflineFiles();
       const map = new Map((records || []).map(record => [String(record.id), record]));
 
+      /* Continue studying keeps Subject -> Type · Year. */
       overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]").forEach(card => {
         const record = map.get(String(card.dataset.saOpenId || ""));
         if (!record) return;
@@ -117,6 +153,7 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
         if (meta) meta.textContent = metaOf(record);
       });
 
+      /* Subject already appears in the accordion heading, so each file shows its own title. */
       overlay.querySelectorAll(".sa-offline-file[data-offline-id]").forEach(card => {
         const record = map.get(String(card.dataset.offlineId || ""));
         if (!record) return;
@@ -125,7 +162,7 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
         const meta = card.querySelector(".sa-offline-file-meta");
         const size = card.querySelector(".sa-offline-file-size");
 
-        if (title) title.textContent = subjectOf(record);
+        if (title) title.textContent = titleOf(record);
         if (meta) meta.textContent = metaOf(record);
         if (size) size.style.display = "none";
       });
