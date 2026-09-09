@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-optimized-v1";
+const CACHE = "stat-archive-shell-v20260910-optimized-v2";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -22,6 +22,7 @@ const APP_SHELL = [
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
   "./assets/js/hero-animation.js",
+  "./assets/js/mobile-card-actions.js",
   "./assets/js/hero-selection-guard.js",
   "./assets/js/subject-panel.js",
   "./assets/js/accessibility.js",
