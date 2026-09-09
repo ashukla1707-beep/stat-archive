@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library stable loader v5
+/* Stat Archive — Offline Library stable loader v6
    No MutationObserver. Keeps only stable CSS, search copy and formatter loader. */
 (() => {
   "use strict";
@@ -53,10 +53,39 @@
 }
 
 @media(max-width:700px){
+  /* Keep the large heading, but reserve a fixed control zone so it can never overlap ⋮ / ×. */
+  #offlineLibraryOverlay .sa-offline-head{
+    padding-left:12px !important;
+    padding-right:12px !important;
+  }
+  #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
+    padding-right:62px !important;
+  }
   #offlineLibraryOverlay .sa-offline-title{
     font-size:34px !important;
     line-height:1.04 !important;
+    letter-spacing:0 !important;
+    transform:scaleX(.93) !important;
+    transform-origin:left center !important;
   }
+  #offlineLibraryOverlay .sa-offline-icon-btn{
+    width:28px !important;
+    min-width:28px !important;
+    height:34px !important;
+    font-size:22px !important;
+    padding:0 !important;
+  }
+  #offlineLibraryOverlay #saOfflineMenuBtn{
+    left:auto !important;
+    right:30px !important;
+    transform:translateY(-50%) !important;
+  }
+  #offlineLibraryOverlay #closeOfflineLibraryBtn{
+    left:auto !important;
+    right:0 !important;
+    transform:translateY(-50%) !important;
+  }
+
   #offlineLibraryOverlay .sa-offline-search{
     grid-template-columns:21px minmax(0,1fr) !important;
     column-gap:6px !important;
