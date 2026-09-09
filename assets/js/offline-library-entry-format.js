@@ -44,21 +44,33 @@
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
-/* Keep the study-vault sentence compact under the Offline Library title. */
+/* Let the subtitle use the whole row. Only the title itself reserves room
+   for the menu and close controls. */
+#offlineLibraryOverlay .sa-offline-title-row > div:first-child{
+  padding-right:0 !important;
+  width:100% !important;
+}
+#offlineLibraryOverlay .sa-offline-title{
+  box-sizing:border-box !important;
+  padding-right:88px !important;
+}
 #offlineLibraryOverlay .sa-offline-subtitle{
+  width:100% !important;
   max-width:none !important;
+  padding-right:0 !important;
   margin-top:12px !important;
   font:500 12px/1.45 Inter,sans-serif !important;
   letter-spacing:0 !important;
 }
 
-/* Continue studying: compact horizontal cards. */
+/* Continue studying: compact horizontal cards with subject, real file title,
+   then Type · Year. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-card{
-  flex:0 0 132px !important;
-  min-height:106px !important;
+  flex:0 0 142px !important;
+  min-height:118px !important;
   padding:10px !important;
   border-radius:14px !important;
   justify-content:flex-start !important;
@@ -69,12 +81,26 @@
 #offlineLibraryOverlay .sa-offline-shelf-title{
   margin:0 !important;
   font:800 10.8px/1.3 Inter,sans-serif !important;
-  -webkit-line-clamp:3 !important;
+  -webkit-line-clamp:2 !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-meta{
   margin-top:7px !important;
   color:#8290a3 !important;
-  font:500 9.8px/1.35 Inter,sans-serif !important;
+  font:500 9.5px/1.32 Inter,sans-serif !important;
+}
+#offlineLibraryOverlay .sa-offline-shelf-file-title{
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical !important;
+  -webkit-line-clamp:2 !important;
+  overflow:hidden !important;
+  color:#d8e0e9 !important;
+  font-weight:650 !important;
+  line-height:1.3 !important;
+}
+#offlineLibraryOverlay .sa-offline-shelf-type-year{
+  display:block !important;
+  margin-top:5px !important;
+  color:#8290a3 !important;
 }
 
 /* Expanded subject entries: actual file title, then Type · Year. */
@@ -97,19 +123,45 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-shelf-title,
 body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
   color:#27302d !important;
 }
+body[data-theme="light"] #offlineLibraryOverlay .sa-offline-shelf-file-title{
+  color:#454d49 !important;
+}
 body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
   color:#817d77 !important;
 }
 
 @media(max-width:700px){
+  /* Match the menu-panel feel: inset from the screen with rounded corners,
+     instead of making Offline Library edge-to-edge. */
+  #offlineLibraryOverlay{
+    padding:12px !important;
+    align-items:center !important;
+    justify-content:center !important;
+    background:rgba(2,6,12,.52) !important;
+    -webkit-backdrop-filter:blur(4px) !important;
+    backdrop-filter:blur(4px) !important;
+  }
+  #offlineLibraryOverlay .offline-library-card.sa-offline-hybrid{
+    width:100% !important;
+    height:calc(100dvh - 24px) !important;
+    max-height:calc(100dvh - 24px) !important;
+    border-radius:28px !important;
+    border:1px solid rgba(148,163,184,.22) !important;
+    box-shadow:0 26px 72px rgba(0,0,0,.42) !important;
+    overflow:hidden !important;
+  }
+
+  #offlineLibraryOverlay .sa-offline-title{
+    padding-right:78px !important;
+  }
   #offlineLibraryOverlay .sa-offline-subtitle{
     margin-top:11px !important;
     font-size:11.5px !important;
     line-height:1.42 !important;
   }
   #offlineLibraryOverlay .sa-offline-shelf-card{
-    flex-basis:122px !important;
-    min-height:98px !important;
+    flex-basis:132px !important;
+    min-height:112px !important;
     padding:9px !important;
   }
   #offlineLibraryOverlay .sa-offline-shelf-title{
@@ -118,7 +170,7 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
   }
   #offlineLibraryOverlay .sa-offline-shelf-meta{
     margin-top:6px !important;
-    font-size:9.4px !important;
+    font-size:9.2px !important;
   }
   #offlineLibraryOverlay .sa-offline-file-title{
     font-size:11px !important;
@@ -126,6 +178,21 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
 }
 `;
     document.head.appendChild(style);
+  }
+
+  function fillShelfMeta(meta, record) {
+    if (!meta) return;
+    meta.textContent = "";
+
+    const fileTitle = document.createElement("span");
+    fileTitle.className = "sa-offline-shelf-file-title";
+    fileTitle.textContent = titleOf(record);
+
+    const typeYear = document.createElement("span");
+    typeYear.className = "sa-offline-shelf-type-year";
+    typeYear.textContent = metaOf(record);
+
+    meta.append(fileTitle, typeYear);
   }
 
   async function refreshEntryCards() {
@@ -139,7 +206,7 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
       const records = await getOfflineFiles();
       const map = new Map((records || []).map(record => [String(record.id), record]));
 
-      /* Continue studying keeps Subject -> Type · Year. */
+      /* Continue studying: Subject -> actual title -> Type · Year. */
       overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]").forEach(card => {
         const record = map.get(String(card.dataset.saOpenId || ""));
         if (!record) return;
@@ -150,7 +217,7 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
 
         if (badge) badge.style.display = "none";
         if (title) title.textContent = subjectOf(record);
-        if (meta) meta.textContent = metaOf(record);
+        fillShelfMeta(meta, record);
       });
 
       /* Subject already appears in the accordion heading, so each file shows its own title. */
