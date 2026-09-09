@@ -42,7 +42,8 @@ jobs:
         run: |
           cat > visual-check.cjs <<'NODE'
           const { chromium } = require('playwright');
-          const pixelmatch = require('pixelmatch');
+          const pixelmatchModule = require('pixelmatch');
+          const pixelmatch = pixelmatchModule.default || pixelmatchModule;
           const { PNG } = require('pngjs');
           const fs = require('fs');
 
