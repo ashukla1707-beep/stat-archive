@@ -1,10 +1,12 @@
-/* Stat Archive — Hybrid Offline Library
-   Combines clean top filters, Continue studying shelf and collapsible subjects.
-   Uses the existing IndexedDB/offline actions from offline.js. */
+/* Stat Archive — Hybrid Offline Library v2
+   Clean filters + recently opened shelf + collapsible subjects.
+   Uses the existing IndexedDB and file actions from offline.js. */
 (() => {
   "use strict";
 
   const RECENT_KEY = "statArchiveOfflineRecentlyOpened";
+  const STUDY_VAULT_TEXT = "Your study vault. Saved files stay on this device and can be opened without internet.";
+
   const state = {
     type: "All",
     subject: "All",
@@ -28,39 +30,38 @@
 
   function readRecent() {
     try {
-      const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || "{}");
-      return raw && typeof raw === "object" ? raw : {};
+      const value = JSON.parse(localStorage.getItem(RECENT_KEY) || "{}");
+      return value && typeof value === "object" ? value : {};
     } catch (_) {
       return {};
     }
   }
 
+  function writeRecent(map) {
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(map || {})); } catch (_) {}
+  }
+
   function markRecent(id) {
-    try {
-      const map = readRecent();
-      map[String(id)] = Date.now();
-      const trimmed = Object.fromEntries(
-        Object.entries(map)
-          .sort((a, b) => Number(b[1]) - Number(a[1]))
-          .slice(0, 24)
-      );
-      localStorage.setItem(RECENT_KEY, JSON.stringify(trimmed));
-    } catch (_) {}
+    const map = readRecent();
+    map[String(id)] = Date.now();
+    writeRecent(Object.fromEntries(
+      Object.entries(map)
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
+        .slice(0, 30)
+    ));
   }
 
   function cleanRecent(records) {
-    try {
-      const ids = new Set((records || []).map(r => String(r.id)));
-      const map = readRecent();
-      let changed = false;
-      Object.keys(map).forEach(id => {
-        if (!ids.has(id)) {
-          delete map[id];
-          changed = true;
-        }
-      });
-      if (changed) localStorage.setItem(RECENT_KEY, JSON.stringify(map));
-    } catch (_) {}
+    const ids = new Set((records || []).map(r => String(r.id)));
+    const map = readRecent();
+    let changed = false;
+    Object.keys(map).forEach(id => {
+      if (!ids.has(id)) {
+        delete map[id];
+        changed = true;
+      }
+    });
+    if (changed) writeRecent(map);
   }
 
   function ensureStyle() {
@@ -79,7 +80,7 @@
 .sa-offline-head{padding:25px 26px 12px;flex:0 0 auto;}
 .sa-offline-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
 .sa-offline-title{margin:0;font:700 clamp(31px,5vw,46px)/1.05 'JetBrains Mono',monospace;letter-spacing:.01em;color:#f4f7fb;}
-.sa-offline-subtitle{margin:10px 0 0;color:#8f9aae;font:500 13px/1.55 Inter,sans-serif;}
+.sa-offline-subtitle{max-width:610px;margin:10px 0 0;color:#8f9aae;font:500 13px/1.55 Inter,sans-serif;}
 .sa-offline-head-actions{display:flex;align-items:center;gap:5px;}
 .sa-offline-icon-btn{width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#8f9aae;font-size:24px;line-height:1;display:grid;place-items:center;cursor:pointer;}
 .sa-offline-icon-btn:hover{background:rgba(255,255,255,.045);color:#eef4fa;}
@@ -87,11 +88,14 @@
 .sa-offline-tabs::-webkit-scrollbar{display:none;}
 .sa-offline-tab{flex:0 0 auto;border:1px solid rgba(148,163,184,.18);background:transparent;color:#8f9aae;border-radius:999px;padding:8px 13px;font:700 11.5px Inter,sans-serif;cursor:pointer;}
 .sa-offline-tab.active{background:#5ee7f7;color:#061116;border-color:transparent;box-shadow:0 5px 17px rgba(94,231,247,.15);}
-.sa-offline-filterbar{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;margin-top:14px;padding:9px;border:1px solid rgba(148,163,184,.16);border-radius:15px;background:rgba(255,255,255,.015);}
-.sa-offline-search{display:flex;align-items:center;gap:9px;min-width:0;padding:0 8px;color:#7f8da2;}
-.sa-offline-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#f4f7fb;padding:9px 0;font:500 13px Inter,sans-serif;}
+
+/* Search and Subject are two aligned controls, not one large vague box. */
+.sa-offline-filterbar{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:10px;margin-top:15px;padding:0;border:0;background:transparent;align-items:stretch;}
+.sa-offline-search{height:46px;display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:9px;min-width:0;padding:0 13px;border:1px solid rgba(148,163,184,.20);border-radius:13px;background:rgba(255,255,255,.018);color:#7f8da2;}
+.sa-offline-search span{display:grid;place-items:center;font-size:17px;line-height:1;}
+.sa-offline-search input{width:100%;min-width:0;height:100%;border:0;outline:0;background:transparent;color:#f4f7fb;padding:0;font:500 13px Inter,sans-serif;}
 .sa-offline-search input::placeholder{color:#677589;}
-#offlineSubjectSelect{border:1px solid rgba(148,163,184,.20);outline:0;background:#0e1620;color:#edf3f8;border-radius:11px;padding:9px 11px;font:600 12px Inter,sans-serif;min-width:0;}
+#offlineSubjectSelect{width:100%;height:46px;border:1px solid rgba(148,163,184,.20);outline:0;background:#0e1620;color:#edf3f8;border-radius:13px;padding:0 38px 0 13px;font:600 12px Inter,sans-serif;min-width:0;}
 .sa-offline-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:0 26px 28px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .sa-offline-section{margin-top:21px;}
 .sa-offline-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
@@ -136,7 +140,7 @@
 body[data-theme="light"] #offlineLibraryOverlay .offline-library-card.sa-offline-hybrid{background:linear-gradient(180deg,#fbfaf7,#f5f1e9)!important;color:#27302d!important;border-color:rgba(75,54,95,.15)!important;box-shadow:0 28px 70px rgba(58,53,42,.22)!important;}
 body[data-theme="light"] .sa-offline-title,body[data-theme="light"] .sa-offline-section-head strong,body[data-theme="light"] .sa-offline-group-head,body[data-theme="light"] .sa-offline-file-title{color:#27302d!important;}
 body[data-theme="light"] .sa-offline-subtitle,body[data-theme="light"] .sa-offline-section-head span,body[data-theme="light"] .sa-offline-file-meta,body[data-theme="light"] .sa-offline-file-size{color:#817d77!important;}
-body[data-theme="light"] .sa-offline-filterbar,body[data-theme="light"] .sa-offline-group,body[data-theme="light"] .sa-offline-file{background:rgba(255,255,255,.58)!important;border-color:rgba(75,54,95,.13)!important;}
+body[data-theme="light"] .sa-offline-search,body[data-theme="light"] .sa-offline-group,body[data-theme="light"] .sa-offline-file{background:rgba(255,255,255,.58)!important;border-color:rgba(75,54,95,.13)!important;}
 body[data-theme="light"] #offlineSubjectSelect{background:#fff;color:#27302d;border-color:rgba(75,54,95,.16);}
 body[data-theme="light"] .sa-offline-search input{color:#27302d;}
 body[data-theme="light"] .sa-offline-shelf-card{background:radial-gradient(circle at 86% 8%,rgba(75,54,95,.09),transparent 38%),linear-gradient(145deg,#fff,#f2eee6);color:#27302d;border-color:rgba(75,54,95,.14);}
@@ -151,7 +155,8 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
   #offlineLibraryOverlay .offline-library-card.sa-offline-hybrid{width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;border-left:0!important;border-right:0!important;}
   .sa-offline-head{padding:22px 18px 10px;}
   .sa-offline-scroll{padding:0 18px max(30px,env(safe-area-inset-bottom));}
-  .sa-offline-filterbar{grid-template-columns:1fr;}
+  .sa-offline-filterbar{grid-template-columns:1fr;gap:9px;}
+  .sa-offline-search,#offlineSubjectSelect{height:52px;}
   #offlineSubjectSelect{width:100%;}
   .sa-offline-shelf-card{flex-basis:150px;min-height:178px;}
   .sa-offline-file-main{grid-template-columns:28px minmax(0,1fr);}
@@ -175,7 +180,7 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
           <div class="sa-offline-title-row">
             <div>
               <h2 class="sa-offline-title" id="offlineLibraryTitle">Offline Library</h2>
-              <p class="sa-offline-subtitle" id="saOfflineSummary">Saved files stay on this device.</p>
+              <p class="sa-offline-subtitle" id="saOfflineSummary">${STUDY_VAULT_TEXT}</p>
             </div>
             <div class="sa-offline-head-actions">
               <button type="button" class="sa-offline-icon-btn" id="saOfflineMenuBtn" aria-label="Offline Library options">⋮</button>
@@ -285,36 +290,30 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     const subjects = [...new Set((records || []).map(recordSubject))]
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
     if (state.subject !== "All" && !subjects.includes(state.subject)) state.subject = "All";
-    select.innerHTML = `<option value="All">All subjects</option>` + subjects.map(subject => `<option value="${esc(subject)}">${esc(subject)}</option>`).join("");
+    select.innerHTML = `<option value="All">All subjects</option>` + subjects
+      .map(subject => `<option value="${esc(subject)}">${esc(subject)}</option>`).join("");
     select.value = state.subject;
   }
 
+  /* Continue studying is strictly the five most recently OPENED files.
+     There is intentionally no savedAt/recently-saved fallback. */
   function buildShelf(records) {
     const shelf = document.getElementById("saOfflineShelf");
     const section = document.getElementById("saOfflineContinueSection");
     const label = document.getElementById("saOfflineContinueLabel");
     if (!shelf || !section) return;
 
-    const visible = filterRecords(records);
     const recentMap = readRecent();
-    let shelfRecords = visible
-      .filter(record => recentMap[String(record.id)])
+    const shelfRecords = filterRecords(records)
+      .filter(record => Number(recentMap[String(record.id)] || 0) > 0)
       .sort((a, b) => Number(recentMap[String(b.id)] || 0) - Number(recentMap[String(a.id)] || 0))
-      .slice(0, 6);
+      .slice(0, 5);
 
-    if (shelfRecords.length) {
-      if (label) label.textContent = "Recently opened";
-    } else {
-      shelfRecords = [...visible]
-        .sort((a, b) => Number(b?.savedAt || 0) - Number(a?.savedAt || 0))
-        .slice(0, 4);
-      if (label) label.textContent = shelfRecords.length ? "Recently saved" : "";
-    }
-
+    if (label) label.textContent = "Recently opened";
     section.style.display = shelfRecords.length ? "block" : "none";
+
     shelf.innerHTML = shelfRecords.map(record => {
-      const type = recordType(record);
-      const badge = /book/i.test(type) ? "BOOK" : "PDF";
+      const badge = /book/i.test(recordType(record)) ? "BOOK" : "PDF";
       return `
         <button type="button" class="sa-offline-shelf-card" data-sa-open-id="${esc(String(record.id))}">
           <div>
@@ -329,9 +328,11 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
   function fileMarkup(record) {
     const id = esc(String(record.id));
     let pinned = false;
-    try { pinned = typeof offlinePinned === "function" ? offlinePinned(record) : record?.pinned === true; } catch (_) { pinned = record?.pinned === true; }
+    try { pinned = typeof offlinePinned === "function" ? offlinePinned(record) : record?.pinned === true; }
+    catch (_) { pinned = record?.pinned === true; }
     const saved = recordSaved(record);
     const meta = [recordType(record), saved ? `Saved ${saved}` : ""].filter(Boolean).join(" · ");
+
     return `
       <article class="sa-offline-file${pinned ? " is-pinned" : ""}" data-offline-id="${id}">
         <div class="sa-offline-file-main">
@@ -354,6 +355,7 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     const list = document.getElementById("offlineLibraryList");
     if (!list) return;
     const visible = filterRecords(records);
+
     if (!visible.length) {
       list.innerHTML = `<div class="sa-offline-empty">No offline files match your current search or filter.</div>`;
       return;
@@ -366,11 +368,16 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
       groups.get(subject).push(record);
     });
 
-    const subjects = [...groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+    const subjects = [...groups.keys()].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base", numeric: true })
+    );
+
     if (!state.openSubject || !subjects.includes(state.openSubject)) state.openSubject = subjects[0];
 
     list.innerHTML = subjects.map(subject => {
-      const items = groups.get(subject).sort((a, b) => recordTitle(a).localeCompare(recordTitle(b), undefined, { sensitivity: "base", numeric: true }));
+      const items = groups.get(subject).sort((a, b) =>
+        recordTitle(a).localeCompare(recordTitle(b), undefined, { sensitivity: "base", numeric: true })
+      );
       const open = state.openSubject === subject;
       return `
         <section class="sa-offline-group${open ? " open" : ""}" data-sa-subject="${esc(subject)}">
@@ -389,9 +396,8 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     const count = (records || []).length;
     const bytes = (records || []).reduce((sum, r) => sum + Number(r?.blob?.size || r?.size || 0), 0);
     const subjects = new Set((records || []).map(recordSubject)).size;
-    if (summary) summary.textContent = count
-      ? `${count} ${count === 1 ? "file" : "files"} · ${fmt(bytes)} stored on this device`
-      : "Saved files stay on this device and can be opened without internet.";
+
+    if (summary) summary.textContent = STUDY_VAULT_TEXT;
 
     const savedCount = document.getElementById("offlineSavedCount");
     const subjectCount = document.getElementById("offlineSubjectCount");
@@ -408,6 +414,7 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     if (!buildShell()) return;
     const list = document.getElementById("offlineLibraryList");
     let records = [];
+
     try {
       records = await getOfflineFiles();
     } catch (err) {
@@ -416,6 +423,7 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     }
 
     cleanRecent(records);
+
     try {
       offlineEntryIds.clear();
       records.forEach(record => offlineEntryIds.add(String(record.id)));
@@ -431,7 +439,11 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
 
   async function doOpen(id) {
     markRecent(id);
-    buildShelf(await getOfflineFiles());
+    try {
+      const records = await getOfflineFiles();
+      buildShelf(records);
+    } catch (_) {}
+
     try {
       await openOfflineFile(id);
     } catch (err) {
@@ -464,11 +476,12 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     try { record = await getOfflineFile(id); } catch (_) {}
     const name = record ? recordTitle(record) : "this file";
     if (!window.confirm(`Remove “${name}” from Offline Library?`)) return;
+
     try {
       await removeOfflineFile(id);
       const recent = readRecent();
       delete recent[String(id)];
-      try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)); } catch (_) {}
+      writeRecent(recent);
       await renderHybrid();
     } catch (err) {
       try { showError(err?.message || "Could not remove that offline file."); } catch (_) {}
@@ -484,11 +497,13 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
 
   function bindShellEvents(overlay, card) {
     card.querySelector("#closeOfflineLibraryBtn")?.addEventListener("click", () => {
-      try { closeOfflineLibrary(); } catch (_) { overlay.style.display = "none"; document.body.classList.remove("no-scroll"); }
+      try { closeOfflineLibrary(); }
+      catch (_) { overlay.style.display = "none"; document.body.classList.remove("no-scroll"); }
     });
 
     card.querySelector("#saOfflineMenuBtn")?.addEventListener("click", () => showUtility(true));
     card.querySelector("#saOfflineUtilityClose")?.addEventListener("click", () => showUtility(false));
+
     card.querySelector("#saOfflineStorageBtn")?.addEventListener("click", () => {
       const info = document.getElementById("saOfflineUtilityInfo")?.textContent || "Offline Library storage";
       window.alert(info);
@@ -519,7 +534,9 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
       const button = event.target.closest("[data-sa-offline-type]");
       if (!button) return;
       state.type = button.dataset.saOfflineType || "All";
-      card.querySelectorAll("[data-sa-offline-type]").forEach(btn => btn.classList.toggle("active", btn === button));
+      card.querySelectorAll("[data-sa-offline-type]").forEach(btn =>
+        btn.classList.toggle("active", btn === button)
+      );
       getOfflineFiles().then(records => { buildShelf(records); buildGroups(records); });
     });
 
@@ -541,6 +558,7 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
         getOfflineFiles().then(buildGroups);
         return;
       }
+
       const pin = event.target.closest("[data-sa-pin-id]");
       if (pin) return void doPin(pin.dataset.saPinId);
       const open = event.target.closest("[data-sa-open-id]");
@@ -567,13 +585,9 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     ensureStyle();
     buildShell();
 
-    /* Replace only the Offline Library renderer. The database and real file
-       operations remain the original implementations from offline.js. */
     try { window.renderOfflineLibrary = renderHybrid; } catch (_) {}
     try { renderOfflineLibrary = renderHybrid; } catch (_) {}
 
-    /* Ensure opening the library always uses the new renderer even on
-       browsers that retain an older global function binding. */
     const originalOpen = window.openOfflineLibrary;
     if (typeof originalOpen === "function" && !originalOpen.__saHybridWrapped) {
       const wrapped = function(focusId = null) {
@@ -597,6 +611,9 @@ body[data-theme="light"] .sa-offline-utility-card button{color:#27302d;}
     if (document.getElementById("offlineLibraryOverlay")?.style.display === "flex") renderHybrid();
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
-  else install();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
 })();
