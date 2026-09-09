@@ -1,19 +1,10 @@
-/* Stat Archive — compact fixed Menu header v2
-   Uses the same structure as Offline Library: the header never scrolls;
-   only the Menu body beneath it owns vertical scrolling. */
+/* Stat Archive — simple fixed Menu header v3
+   Fixed header + dedicated scroll body, matching the Offline Library structure. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_MENU_HEADER_V2__) return;
-  window.__STAT_ARCHIVE_MENU_HEADER_V2__ = "2";
-
-  const archiveIcon = `
-    <svg viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M7 24.5h18" />
-      <rect x="8.5" y="16.5" width="4.5" height="8" rx="1" />
-      <rect x="14.2" y="9" width="4.5" height="15.5" rx="1" />
-      <rect x="20" y="13" width="4.5" height="11.5" rx="1" />
-    </svg>`;
+  if (window.__STAT_ARCHIVE_MENU_HEADER_V3__) return;
+  window.__STAT_ARCHIVE_MENU_HEADER_V3__ = "3";
 
   function installStyle() {
     document.getElementById("statArchiveReferenceMenuHeaderStyle")?.remove();
@@ -21,8 +12,6 @@
     const style = document.createElement("style");
     style.id = "statArchiveReferenceMenuHeaderStyle";
     style.textContent = `
-/* The Menu itself is no longer the scroller. This mirrors Offline Library:
-   fixed header + one dedicated scroll area below it. */
 #mainSideMenu{
   display:flex !important;
   flex-direction:column !important;
@@ -35,17 +24,17 @@
   flex:0 0 auto !important;
   z-index:20 !important;
   width:100% !important;
-  min-height:78px !important;
+  min-height:96px !important;
   margin:0 !important;
-  padding:14px 15px !important;
+  padding:17px 18px 16px !important;
   display:grid !important;
-  grid-template-columns:minmax(0,1fr) 40px !important;
+  grid-template-columns:minmax(0,1fr) 46px !important;
   align-items:center !important;
-  gap:12px !important;
+  gap:16px !important;
   border:0 !important;
   border-bottom:1px solid rgba(148,163,184,.13) !important;
   border-radius:0 !important;
-  background:rgba(13,20,30,.98) !important;
+  background:rgba(13,20,30,.985) !important;
   box-shadow:none !important;
   backdrop-filter:blur(14px) !important;
   -webkit-backdrop-filter:blur(14px) !important;
@@ -64,64 +53,49 @@
 }
 
 #mainSideMenu .stat-menu-reference-brand{
-  min-width:0 !important;
-  display:grid !important;
-  grid-template-columns:42px minmax(0,1fr) !important;
-  align-items:center !important;
-  gap:11px !important;
-}
-
-#mainSideMenu .stat-menu-reference-icon{
-  width:42px !important;
-  height:42px !important;
-  display:grid !important;
-  place-items:center !important;
-  border:1px solid rgba(94,231,247,.13) !important;
-  border-radius:12px !important;
-  background:linear-gradient(145deg,rgba(94,231,247,.10),rgba(94,231,247,.045)) !important;
-  color:#69dbe9 !important;
-  box-shadow:inset 0 1px rgba(255,255,255,.035) !important;
-}
-
-#mainSideMenu .stat-menu-reference-icon svg{
-  width:24px !important;
-  height:24px !important;
-  fill:none !important;
-  stroke:currentColor !important;
-  stroke-width:2.25 !important;
-  stroke-linecap:round !important;
-  stroke-linejoin:round !important;
-}
-
-#mainSideMenu .stat-menu-reference-copy{
+  position:relative !important;
   min-width:0 !important;
   display:flex !important;
   flex-direction:column !important;
   align-items:flex-start !important;
   justify-content:center !important;
-  gap:2px !important;
+  gap:5px !important;
+  padding-left:16px !important;
+}
+
+#mainSideMenu .stat-menu-reference-brand::before{
+  content:"" !important;
+  position:absolute !important;
+  left:0 !important;
+  top:2px !important;
+  bottom:2px !important;
+  width:3px !important;
+  border-radius:999px !important;
+  background:#4da3ff !important;
+}
+
+#mainSideMenu .stat-menu-reference-kicker{
+  order:1 !important;
+  margin:0 !important;
+  padding:0 !important;
+  color:#63aef6 !important;
+  font:700 10px/1.1 'JetBrains Mono',Inter,sans-serif !important;
+  letter-spacing:.13em !important;
+  text-transform:uppercase !important;
 }
 
 #mainSideMenu .stat-menu-reference-title{
+  order:2 !important;
   margin:0 !important;
   padding:0 !important;
   max-width:100% !important;
   overflow:hidden !important;
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
-  color:#f4f7fb !important;
-  font:750 22px/1.08 'Plus Jakarta Sans',Inter,sans-serif !important;
-  letter-spacing:-.035em !important;
+  color:#f5f7fb !important;
+  font:750 28px/1.02 'Plus Jakarta Sans',Inter,sans-serif !important;
+  letter-spacing:-.045em !important;
   text-transform:none !important;
-}
-
-#mainSideMenu .stat-menu-reference-kicker{
-  margin:0 !important;
-  padding:0 !important;
-  color:#79879a !important;
-  font:600 9.5px/1.2 'JetBrains Mono',Inter,sans-serif !important;
-  letter-spacing:.10em !important;
-  text-transform:uppercase !important;
 }
 
 #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn{
@@ -130,83 +104,75 @@
   transform:none !important;
   justify-self:end !important;
   align-self:center !important;
-  width:38px !important;
-  height:38px !important;
-  min-width:38px !important;
-  min-height:38px !important;
+  width:44px !important;
+  height:44px !important;
+  min-width:44px !important;
+  min-height:44px !important;
   margin:0 !important;
   padding:0 !important;
   display:grid !important;
   place-items:center !important;
-  border:1px solid rgba(148,163,184,.17) !important;
-  border-radius:12px !important;
-  background:rgba(255,255,255,.018) !important;
-  color:#aab5c5 !important;
-  font:400 23px/1 Inter,sans-serif !important;
+  border:1px solid rgba(148,163,184,.20) !important;
+  border-radius:50% !important;
+  background:transparent !important;
+  color:#d6dde7 !important;
+  font:300 27px/1 Inter,sans-serif !important;
   box-shadow:none !important;
 }
 
 #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:hover,
 #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:focus-visible{
-  border-color:rgba(94,231,247,.30) !important;
-  background:rgba(94,231,247,.055) !important;
-  color:#edf8fa !important;
+  border-color:rgba(94,231,247,.32) !important;
+  background:rgba(94,231,247,.045) !important;
+  color:#fff !important;
   outline:none !important;
 }
 
 body[data-theme="light"] #mainSideMenu > .stat-menu-reference-head{
   border-bottom-color:rgba(75,54,95,.10) !important;
-  background:rgba(250,249,246,.985) !important;
+  background:rgba(250,249,246,.988) !important;
 }
-body[data-theme="light"] #mainSideMenu .stat-menu-reference-icon{
-  border-color:rgba(75,54,95,.10) !important;
-  background:linear-gradient(145deg,rgba(75,54,95,.075),rgba(75,54,95,.035)) !important;
-  color:#5c4771 !important;
-  box-shadow:inset 0 1px rgba(255,255,255,.7) !important;
+body[data-theme="light"] #mainSideMenu .stat-menu-reference-brand::before{
+  background:#2f86db !important;
 }
-body[data-theme="light"] #mainSideMenu .stat-menu-reference-title{color:#27302d !important;}
-body[data-theme="light"] #mainSideMenu .stat-menu-reference-kicker{color:#8b8580 !important;}
+body[data-theme="light"] #mainSideMenu .stat-menu-reference-kicker{
+  color:#2869a5 !important;
+}
+body[data-theme="light"] #mainSideMenu .stat-menu-reference-title{
+  color:#151515 !important;
+}
 body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn{
-  border-color:rgba(75,54,95,.12) !important;
-  background:rgba(255,255,255,.58) !important;
-  color:#69645f !important;
-}
-body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:hover,
-body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:focus-visible{
-  border-color:rgba(75,54,95,.23) !important;
-  background:rgba(75,54,95,.05) !important;
-  color:#27302d !important;
+  border-color:rgba(39,48,45,.16) !important;
+  background:rgba(255,255,255,.42) !important;
+  color:#171717 !important;
 }
 
 @media(max-width:700px){
   #mainSideMenu > .stat-menu-reference-head{
-    min-height:72px !important;
-    padding:12px 13px !important;
-    grid-template-columns:minmax(0,1fr) 38px !important;
-    gap:10px !important;
+    min-height:88px !important;
+    padding:14px 14px 13px !important;
+    grid-template-columns:minmax(0,1fr) 42px !important;
+    gap:12px !important;
   }
   #mainSideMenu .stat-menu-reference-brand{
-    grid-template-columns:38px minmax(0,1fr) !important;
-    gap:10px !important;
+    gap:4px !important;
+    padding-left:13px !important;
   }
-  #mainSideMenu .stat-menu-reference-icon{
-    width:38px !important;
-    height:38px !important;
-    border-radius:11px !important;
+  #mainSideMenu .stat-menu-reference-brand::before{
+    width:3px !important;
   }
-  #mainSideMenu .stat-menu-reference-icon svg{
-    width:22px !important;
-    height:22px !important;
+  #mainSideMenu .stat-menu-reference-kicker{
+    font-size:9px !important;
   }
-  #mainSideMenu .stat-menu-reference-title{font-size:20px !important;}
-  #mainSideMenu .stat-menu-reference-kicker{font-size:8.5px !important;}
+  #mainSideMenu .stat-menu-reference-title{
+    font-size:25px !important;
+  }
   #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn{
-    width:36px !important;
-    height:36px !important;
-    min-width:36px !important;
-    min-height:36px !important;
-    border-radius:11px !important;
-    font-size:21px !important;
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    min-height:40px !important;
+    font-size:25px !important;
   }
 }
 `;
@@ -218,9 +184,6 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     if (!body) {
       body = document.createElement("div");
       body.className = "stat-menu-scroll-body";
-
-      /* Move existing Menu content, not the header, into the dedicated scroller.
-         Existing nodes/listeners are preserved because nodes are moved, not cloned. */
       const content = Array.from(menu.children).filter(el => el !== head && el !== body);
       content.forEach(el => body.appendChild(el));
       menu.appendChild(body);
@@ -240,22 +203,18 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
       head.appendChild(close);
     }
 
-    /* Restore a clean compact header even if v1 already decorated this DOM. */
     Array.from(head.children).forEach(child => {
       if (child !== close) child.remove();
     });
 
     head.className = "stat-menu-reference-head";
-    head.dataset.statReferenceHeader = "2";
+    head.dataset.statReferenceHeader = "3";
 
     const brand = document.createElement("div");
     brand.className = "stat-menu-reference-brand";
     brand.innerHTML = `
-      <span class="stat-menu-reference-icon">${archiveIcon}</span>
-      <span class="stat-menu-reference-copy">
-        <strong class="stat-menu-reference-title">Stat Archive</strong>
-        <span class="stat-menu-reference-kicker">Menu</span>
-      </span>`;
+      <span class="stat-menu-reference-kicker">Menu</span>
+      <strong class="stat-menu-reference-title">Stat archive</strong>`;
 
     head.insertBefore(brand, close);
     close.textContent = "×";
