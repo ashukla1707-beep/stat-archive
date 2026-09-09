@@ -84,9 +84,72 @@
   });
 })();
 
-/* Offline action hard-enable for web + PWA. */
+/* Offline action hard-enable for web + PWA, with compact content-width actions. */
 (function(){
   "use strict";
+
+  const style = document.createElement("style");
+  style.id = "statArchiveCardActionLayoutFix";
+  style.textContent = `
+html body .card .card-actions{
+  display:flex !important;
+  grid-template-columns:none !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+}
+html body .card .card-actions .action-btn{
+  display:inline-flex !important;
+  flex:0 0 auto !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:auto !important;
+  min-width:max-content !important;
+  max-width:none !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow-wrap:normal !important;
+  text-align:center !important;
+  line-height:1 !important;
+  font-size:12px !important;
+  min-height:32px !important;
+  height:32px !important;
+  padding:0 9px !important;
+  border-radius:9px !important;
+  margin:0 !important;
+  gap:4px !important;
+  box-sizing:border-box !important;
+}
+html body .card .card-actions .dl-btn,
+html body .card .card-actions .pv-btn,
+html body .card .card-actions .offline-btn,
+html body .card .card-actions .edit-btn,
+html body .card .card-actions .del-btn{
+  white-space:nowrap !important;
+  flex-direction:row !important;
+}
+html body .card .card-actions .dl-btn br,
+html body .card .card-actions .pv-btn br,
+html body .card .card-actions .offline-btn br,
+html body .card .card-actions .edit-btn br,
+html body .card .card-actions .del-btn br{
+  display:none !important;
+}
+@media(max-width:700px){
+  html body .card .card-actions{
+    gap:6px !important;
+  }
+  html body .card .card-actions .action-btn{
+    font-size:11.5px !important;
+    min-height:30px !important;
+    height:30px !important;
+    padding:0 7px !important;
+    border-radius:8px !important;
+  }
+}
+`;
+  document.head.appendChild(style);
 
   function forceOfflineActions(root){
     const scope = root && root.querySelectorAll ? root : document;
@@ -102,13 +165,33 @@
     scope.querySelectorAll(".card .card-actions").forEach(row => {
       const offline = row.querySelector(".offline-btn");
       if (!offline) return;
-      row.style.setProperty("display", "grid", "important");
-      row.style.setProperty("grid-template-columns", "repeat(3,minmax(0,1fr))", "important");
+
+      row.style.setProperty("display", "flex", "important");
+      row.style.removeProperty("grid-template-columns");
+      row.style.setProperty("align-items", "center", "important");
+      row.style.setProperty("justify-content", "space-between", "important");
       row.style.setProperty("gap", window.innerWidth <= 700 ? "6px" : "8px", "important");
+
       row.querySelectorAll(".action-btn").forEach(btn => {
-        btn.style.setProperty("width", "100%", "important");
-        btn.style.setProperty("min-width", "0", "important");
+        btn.style.setProperty("display", "inline-flex", "important");
+        btn.style.setProperty("flex", "0 0 auto", "important");
+        btn.style.setProperty("flex-direction", "row", "important");
+        btn.style.setProperty("align-items", "center", "important");
+        btn.style.setProperty("justify-content", "center", "important");
+        btn.style.setProperty("width", "auto", "important");
+        btn.style.setProperty("min-width", "max-content", "important");
+        btn.style.setProperty("white-space", "nowrap", "important");
+        btn.style.setProperty("word-break", "keep-all", "important");
+        btn.style.setProperty("overflow-wrap", "normal", "important");
+        btn.style.setProperty("line-height", "1", "important");
       });
+
+      const download = row.querySelector(".dl-btn");
+      if (download) {
+        download.querySelectorAll("br").forEach(br => br.remove());
+        const label = download.textContent.replace(/\s+/g, " ").trim();
+        if (/download/i.test(label)) download.textContent = "⬇ Download";
+      }
     });
   }
 
