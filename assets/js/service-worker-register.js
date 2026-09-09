@@ -259,3 +259,23 @@ body[data-theme="light"] .manual-choice-icon{background:rgba(75,54,95,.085);colo
     bindManualButton();
   }
 })();
+
+/* =========================================================
+   OFFLINE LIBRARY HYBRID UI LOADER
+   ========================================================= */
+(() => {
+  function loadOfflineHybrid() {
+    if (document.querySelector('script[data-sa-offline-hybrid="1"]')) return;
+    const script = document.createElement('script');
+    script.src = './assets/js/offline-library-hybrid.js?v=20260909-1';
+    script.async = false;
+    script.dataset.saOfflineHybrid = '1';
+    document.body.appendChild(script);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadOfflineHybrid, { once: true });
+  } else {
+    loadOfflineHybrid();
+  }
+})();
