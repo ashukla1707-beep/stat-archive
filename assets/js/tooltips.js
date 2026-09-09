@@ -151,17 +151,64 @@ html body .card .card-actions .del-btn{
   min-width:28px !important;
 }
 
+/* Mobile: tighten the whole card and keep the three primary actions balanced. */
 @media(max-width:700px){
+  html body .subject-track .card{
+    padding:14px 14px 12px !important;
+    border-radius:13px !important;
+  }
+
+  html body .card .card-meta-row{
+    margin-bottom:8px !important;
+  }
+
+  html body .card.card-no-title .card-meta-row{
+    min-height:46px !important;
+  }
+
   html body .card .card-actions{
-    gap:4px !important;
+    justify-content:center !important;
+    gap:5px !important;
+    padding-top:8px !important;
   }
 
   html body .card .card-actions .action-btn{
-    height:27px !important;
-    min-height:27px !important;
-    padding:0 6px !important;
-    border-radius:7px !important;
-    font-size:11px !important;
+    height:26px !important;
+    min-height:26px !important;
+    padding:0 5px !important;
+    border-radius:6px !important;
+    font-size:10.5px !important;
+    line-height:1 !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    justify-content:center !important;
+    row-gap:5px !important;
+  }
+
+  html body .card .card-actions .edit-btn,
+  html body .card .card-actions .del-btn{
+    min-width:26px !important;
+  }
+}
+
+/* Extra-narrow phones: shave a little more space without wrapping labels. */
+@media(max-width:380px){
+  html body .subject-track .card{
+    padding-left:12px !important;
+    padding-right:12px !important;
+  }
+
+  html body .card .card-actions{
+    gap:3px !important;
+  }
+
+  html body .card .card-actions .action-btn{
+    height:25px !important;
+    min-height:25px !important;
+    padding:0 4px !important;
+    font-size:10px !important;
   }
 }
 `;
