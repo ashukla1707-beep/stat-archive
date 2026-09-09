@@ -1,12 +1,13 @@
-/* Stat Archive — seamless Menu -> Offline Library handoff v2
+/* Stat Archive — seamless Menu -> Offline Library handoff v3
    Keeps Menu visible while Offline Library finishes rendering, then swaps the
-   two UIs in one paint. Resets Offline Library scroll on fresh opens and hands
-   nested subject scrolling back to the main library at top/bottom boundaries. */
+   two UIs in one paint. Resets Offline Library scroll on fresh opens, hands
+   nested subject scrolling back to the main library at top/bottom boundaries,
+   and returns Menu sign-out directly to Home. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V2__) return;
-  window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V2__ = "2";
+  if (window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V3__) return;
+  window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V3__ = "3";
 
   let opening = false;
   let activeTouchBody = null;
@@ -38,6 +39,48 @@
     button?.setAttribute("aria-expanded", "false");
 
     try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
+  }
+
+  function isSignOutAction(button) {
+    if (!button) return false;
+    if (document.documentElement?.dataset?.authenticated === "true") return true;
+    return /sign\s*out/i.test(button.textContent || "");
+  }
+
+  function returnHomeForSignOut() {
+    const nav = window.__statArchiveNavigation;
+    const nextState = { ...(history.state || {}), statArchiveNav: "home" };
+    delete nextState.statArchiveChild;
+    delete nextState.statArchiveMenuOpen;
+
+    try {
+      const url = new URL(location.href);
+      url.searchParams.delete("menu");
+      history.replaceState(nextState, "", url.href);
+    } catch (_) {
+      try { history.replaceState(nextState, "", location.href); } catch (_) {}
+    }
+
+    try { nav?.closeChildren?.(); } catch (_) {}
+    try { nav?.closeMenu?.(); } catch (_) {}
+    try { nav?.releaseMenuScrollLock?.(); } catch (_) {}
+
+    const menu = document.getElementById("mainSideMenu");
+    const backdrop = document.getElementById("mainMenuBackdrop");
+    const menuButton = document.getElementById("mainMenuBtn");
+
+    menu?.classList.remove("is-open");
+    backdrop?.classList.remove("is-open");
+    menu?.setAttribute("aria-hidden", "true");
+    backdrop?.setAttribute("aria-hidden", "true");
+    menuButton?.setAttribute("aria-expanded", "false");
+
+    document.body?.classList.remove("no-scroll");
+    try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
+    requestAnimationFrame(() => {
+      try { nav?.releaseMenuScrollLock?.(); } catch (_) {}
+      try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
+    });
   }
 
   async function openFromMenu() {
@@ -179,6 +222,16 @@
 
   document.addEventListener("click", event => {
     const target = event.target instanceof Element ? event.target : null;
+
+    const accountButton = target?.closest("#menuAuthBtn");
+    if (accountButton && isSignOutAction(accountButton)) {
+      /* The single navigation core has already normalized this click to Menu.
+         Convert that same entry to Home before the auth handler runs. Do not
+         stop propagation: the real sign-out handler must still receive it. */
+      returnHomeForSignOut();
+      return;
+    }
+
     const button = target?.closest("#menuOfflineLibraryBtn");
     if (!button || button.disabled || button.getAttribute("aria-disabled") === "true") return;
 
