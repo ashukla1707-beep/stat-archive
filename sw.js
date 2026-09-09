@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-preview-v58-scrollfix2";
+const CACHE = "stat-archive-shell-v20260909-preview-scratch-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
