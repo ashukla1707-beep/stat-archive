@@ -77,9 +77,20 @@ jobs:
               null,
               { timeout: 15000 }
             );
+
+            // Let the intentional hero SVG/JS animation reach its final state
+            // before freezing CSS. Comparing mid-animation produced flaky pixel
+            // deltas even when candidate and main were behaviorally identical.
+            await page.waitForFunction(() => {
+              const curve = document.querySelector('.gaussian-curve');
+              if (!curve) return true;
+              return curve.style.getPropertyValue('stroke-dasharray') === 'none'
+                && curve.style.getPropertyValue('stroke-dashoffset') === '0';
+            }, null, { timeout: 7000 }).catch(() => {});
+            await page.waitForTimeout(250);
             await page.addStyleTag({ content: stableCss });
-            await page.waitForTimeout(900);
-            assertNoOverflow(page, `${port}-home`);
+            await page.waitForTimeout(250);
+            await assertNoOverflow(page, `${port}-home`);
             return { context, page, pageErrors };
           }
 
@@ -176,7 +187,6 @@ jobs:
                 }
                 await compareState(base.page, candidate.page, test.name, 'offline-library');
 
-                // One Back from Offline Library must restore Menu, not skip Home.
                 await base.page.goBack();
                 await candidate.page.goBack();
                 await base.page.waitForFunction(() => history.state?.statArchiveNav === 'menu');
@@ -184,7 +194,6 @@ jobs:
                 await candidate.page.waitForSelector('#mainSideMenu.is-open');
                 await compareState(base.page, candidate.page, test.name, 'menu-after-offline-back');
 
-                // The next Back closes Menu and restores Home.
                 await candidate.page.goBack();
                 await candidate.page.waitForFunction(
                   () => history.state?.statArchiveNav === 'home'
