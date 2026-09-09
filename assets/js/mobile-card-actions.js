@@ -4,15 +4,16 @@
   const style = document.createElement('style');
   style.id = 'statArchiveMobileCardActionsFinal';
   style.textContent = `
-/* Contributor/admin cards: show ALL five actions inside desktop web cards. */
+/* Contributor/admin cards: keep all five actions on one desktop-web row,
+   but reserve most of the width for the three reader actions. */
 @media (min-width:701px){
   html body .card .card-actions:has(.edit-btn),
   html body .card .card-actions:has(.del-btn){
     display:grid !important;
-    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+    grid-template-columns:minmax(78px,1.05fr) minmax(92px,1.25fr) minmax(78px,1.05fr) 34px 34px !important;
     align-items:stretch !important;
     justify-content:stretch !important;
-    gap:6px !important;
+    gap:4px !important;
     width:100% !important;
     max-width:100% !important;
     overflow:hidden !important;
@@ -29,11 +30,11 @@
     max-width:100% !important;
     height:30px !important;
     min-height:30px !important;
-    padding:0 4px !important;
+    padding:0 5px !important;
     margin:0 !important;
     gap:3px !important;
     border-radius:8px !important;
-    font-size:10px !important;
+    font-size:10.5px !important;
     line-height:1 !important;
     white-space:nowrap !important;
     word-break:keep-all !important;
@@ -50,15 +51,40 @@
   html body .card .card-actions:has(.edit-btn) .download-btn,
   html body .card .card-actions:has(.del-btn) .download-btn,
   html body .card .card-actions:has(.edit-btn) .offline-btn,
-  html body .card .card-actions:has(.del-btn) .offline-btn,
-  html body .card .card-actions:has(.edit-btn) .edit-btn,
-  html body .card .card-actions:has(.del-btn) .edit-btn,
-  html body .card .card-actions:has(.edit-btn) .del-btn,
-  html body .card .card-actions:has(.del-btn) .del-btn{
+  html body .card .card-actions:has(.del-btn) .offline-btn{
     min-width:0 !important;
     width:100% !important;
-    padding-left:4px !important;
-    padding-right:4px !important;
+    padding-left:5px !important;
+    padding-right:5px !important;
+  }
+
+  /* Edit and Delete are compact management controls on desktop web.
+     Keep the original accessible button text in the DOM; only hide it visually. */
+  html body .card .card-actions:has(.edit-btn) .edit-btn,
+  html body .card .card-actions:has(.del-btn) .edit-btn{
+    width:34px !important;
+    min-width:34px !important;
+    max-width:34px !important;
+    padding:0 !important;
+    gap:0 !important;
+    font-size:0 !important;
+    overflow:hidden !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .edit-btn::before,
+  html body .card .card-actions:has(.del-btn) .edit-btn::before{
+    content:"✎" !important;
+    font-size:13px !important;
+    line-height:1 !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .del-btn,
+  html body .card .card-actions:has(.del-btn) .del-btn{
+    width:34px !important;
+    min-width:34px !important;
+    max-width:34px !important;
+    padding:0 !important;
+    gap:0 !important;
   }
 }
 
