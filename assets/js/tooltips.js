@@ -105,14 +105,14 @@ html.stat-archive-pwa body .card .card-actions .offline-btn{
   pointer-events:auto !important;
 }
 
-/* Card action row: content-width controls, never equal-width grid cells. */
+/* Card action row: compact content-width controls, never equal-width grid cells. */
 html body .card .card-actions{
   display:flex !important;
   flex-direction:row !important;
   flex-wrap:nowrap !important;
   align-items:center !important;
   justify-content:space-between !important;
-  gap:6px !important;
+  gap:5px !important;
   grid-template-columns:none !important;
 }
 
@@ -125,17 +125,17 @@ html body .card .card-actions .action-btn{
   width:auto !important;
   min-width:0 !important;
   max-width:none !important;
-  height:34px !important;
-  min-height:34px !important;
-  padding:0 9px !important;
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 7px !important;
   margin:0 !important;
-  border-radius:9px !important;
+  border-radius:7px !important;
   white-space:nowrap !important;
   word-break:keep-all !important;
   overflow-wrap:normal !important;
   text-align:center !important;
   line-height:1 !important;
-  font-size:12.5px !important;
+  font-size:11.5px !important;
   box-sizing:border-box !important;
 }
 
@@ -148,20 +148,20 @@ html body .card .card-actions:has(.del-btn){
 
 html body .card .card-actions .edit-btn,
 html body .card .card-actions .del-btn{
-  min-width:34px !important;
+  min-width:28px !important;
 }
 
 @media(max-width:700px){
   html body .card .card-actions{
-    gap:5px !important;
+    gap:4px !important;
   }
 
   html body .card .card-actions .action-btn{
-    height:32px !important;
-    min-height:32px !important;
-    padding:0 7px !important;
-    border-radius:8px !important;
-    font-size:12px !important;
+    height:27px !important;
+    min-height:27px !important;
+    padding:0 6px !important;
+    border-radius:7px !important;
+    font-size:11px !important;
   }
 }
 `;
