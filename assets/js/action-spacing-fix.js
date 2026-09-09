@@ -1,5 +1,24 @@
 (() => {
   if (document.getElementById('statArchiveActionSpacingFix')) return;
+
+  /* One-time cleanup for the old card-action UI cache. The previous versions
+     of this file contained mobile/card button sizing rules, so a stale shell
+     could temporarily restore that older view. Purge the old shell once while
+     online; the active service worker immediately repopulates fresh assets. */
+  const PURGE_KEY = 'statArchiveCardUiCachePurge20260910v2';
+  try {
+    if (navigator.onLine && !localStorage.getItem(PURGE_KEY) && 'caches' in window) {
+      caches.keys()
+        .then(keys => Promise.all(
+          keys
+            .filter(key => key.startsWith('stat-archive-shell-'))
+            .map(key => caches.delete(key))
+        ))
+        .then(() => localStorage.setItem(PURGE_KEY, '1'))
+        .catch(() => {});
+    }
+  } catch (_) {}
+
   const style = document.createElement('style');
   style.id = 'statArchiveActionSpacingFix';
   style.textContent = `
@@ -22,6 +41,7 @@ html body .toolbar > .archive-type-filter-section + .archive-action-row{
   margin-top:0 !important;
   position:relative !important;
 }
+
 html body .toolbar > .archive-action-row::before,
 html body .toolbar > .archive-action-row::after,
 html body .toolbar > .archive-type-filter-section + .archive-action-row::before,
@@ -68,192 +88,24 @@ html body .archive-entries-divider::after{
   box-shadow:none !important;
 }
 
-/* Desktop card sizing remains owned by tooltips.js. */
-
 @media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
     padding-top:18px !important;
     margin-bottom:12px !important;
   }
-
-  /* FINAL MOBILE OWNER: proportions matched to the supplied reference. */
-  html body .subject-track .card{
-    padding:14px 15px 12px !important;
-    border-radius:15px !important;
-  }
-
-  html body .card .card-meta-row{
-    margin-bottom:7px !important;
-  }
-
-  html body .card.card-no-title .card-meta-row{
-    min-height:40px !important;
-  }
-
-  html body .card .card-actions,
-  html body .card .card-actions:has(.edit-btn),
-  html body .card .card-actions:has(.del-btn){
-    display:flex !important;
-    flex-direction:row !important;
-    flex-wrap:nowrap !important;
-    align-items:center !important;
-    justify-content:space-between !important;
-    gap:0 !important;
-    padding-top:8px !important;
-    grid-template-columns:none !important;
-  }
-
-  html body .card .card-actions .action-btn,
-  html body .card .card-actions > button,
-  html body .card .card-actions > a{
-    display:inline-flex !important;
-    flex:0 0 auto !important;
-    flex-direction:row !important;
-    flex-wrap:nowrap !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:auto !important;
-    max-width:none !important;
-    height:32px !important;
-    min-height:32px !important;
-    padding:0 10px !important;
-    margin:0 !important;
-    border-radius:9px !important;
-    white-space:nowrap !important;
-    word-break:keep-all !important;
-    overflow-wrap:normal !important;
-    text-align:center !important;
-    line-height:1 !important;
-    font-size:12.5px !important;
-    font-weight:700 !important;
-    box-sizing:border-box !important;
-    gap:4px !important;
-  }
-
-  html body .card .card-actions .pv-btn{
-    min-width:clamp(88px,27vw,104px) !important;
-  }
-
-  html body .card .card-actions .dl-btn,
-  html body .card .card-actions .download-btn{
-    min-width:clamp(103px,31vw,122px) !important;
-  }
-
-  html body .card .card-actions .offline-btn{
-    min-width:clamp(86px,26vw,102px) !important;
-  }
-
-  html body .card .card-actions .action-btn br,
-  html body .card .card-actions .dl-btn br,
-  html body .card .card-actions .download-btn br{
-    display:none !important;
-  }
-
-  html body .card .card-actions .action-btn > *,
-  html body .card .card-actions > button > *,
-  html body .card .card-actions > a > *{
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:auto !important;
-    height:auto !important;
-    min-width:0 !important;
-    min-height:0 !important;
-    margin:0 !important;
-    padding:0 !important;
-    line-height:1 !important;
-    white-space:nowrap !important;
-  }
-
-  /* Dark mobile appearance from the reference. */
-  body:not([data-theme="light"]) .card .card-actions .pv-btn,
-  body:not([data-theme="light"]) .card .card-actions .offline-btn{
-    color:#63efff !important;
-    background:rgba(18,52,63,.78) !important;
-    border:1px solid rgba(99,239,255,.34) !important;
-    box-shadow:inset 0 0 0 1px rgba(99,239,255,.08) !important;
-  }
-
-  body:not([data-theme="light"]) .card .card-actions .dl-btn,
-  body:not([data-theme="light"]) .card .card-actions .download-btn{
-    color:#eef2f8 !important;
-    background:rgba(17,24,36,.92) !important;
-    border:1px solid rgba(255,255,255,.035) !important;
-    box-shadow:none !important;
-  }
-
-  /* Preserve Stat Archive light palette while using the same geometry. */
-  body[data-theme="light"] .card .card-actions .pv-btn,
-  body[data-theme="light"] .card .card-actions .offline-btn{
-    color:#4b365f !important;
-    background:#f1ebf6 !important;
-    border:1px solid #d8cce2 !important;
-    box-shadow:none !important;
-  }
-
-  body[data-theme="light"] .card .card-actions .dl-btn,
-  body[data-theme="light"] .card .card-actions .download-btn{
-    color:#27302d !important;
-    background:#eee9f4 !important;
-    border:1px solid #ddd4e4 !important;
-    box-shadow:none !important;
-  }
-
-  body[data-theme="light"] .card .card-actions .offline-btn.is-saved,
-  body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,
-  body[data-theme="light"] .card .card-actions .dl-btn.is-downloaded{
-    color:#fff !important;
-    background:#4b365f !important;
-    border-color:#4b365f !important;
-  }
-
-  /* Contributor/admin controls move to a clean second row. */
-  html body .card .card-actions:has(.edit-btn),
-  html body .card .card-actions:has(.del-btn){
-    flex-wrap:wrap !important;
-    justify-content:flex-start !important;
-    column-gap:7px !important;
-    row-gap:7px !important;
-  }
-
-  html body .card .card-actions .edit-btn,
-  html body .card .card-actions .del-btn{
-    height:30px !important;
-    min-height:30px !important;
-    min-width:72px !important;
-    padding:0 9px !important;
-    border-radius:8px !important;
-    font-size:11px !important;
-  }
 }
 
-@media(max-width:380px){
-  html body .subject-track .card{
-    padding-left:12px !important;
-    padding-right:12px !important;
-  }
-
-  html body .card .card-actions .action-btn,
-  html body .card .card-actions > button,
-  html body .card .card-actions > a{
-    height:30px !important;
-    min-height:30px !important;
-    padding:0 7px !important;
-    border-radius:8px !important;
-    font-size:11.5px !important;
-    gap:3px !important;
-  }
-
-  html body .card .card-actions .pv-btn{min-width:82px !important;}
-  html body .card .card-actions .dl-btn,
-  html body .card .card-actions .download-btn{min-width:96px !important;}
-  html body .card .card-actions .offline-btn{min-width:80px !important;}
-}
+/* IMPORTANT: card action buttons are intentionally NOT styled here anymore.
+   mobile-card-actions.js is the only final owner of Preview / Download /
+   Offline / Edit / Delete sizing and visibility. */
 `;
   document.head.appendChild(style);
 
-  const CENTER_PROPS = ['position','top','left','right','bottom','width','max-width','height','max-height','transform','transform-origin'];
+  const CENTER_PROPS = [
+    'position','top','left','right','bottom','width','max-width',
+    'height','max-height','transform','transform-origin'
+  ];
 
   function clearOldWrongTarget(el){
     if (!el) return;
@@ -263,7 +115,8 @@ html body .archive-entries-divider::after{
   function findActualMenuPanel(){
     const marker = document.getElementById('menuOfflineLibraryBtn') ||
                    document.getElementById('mainMenuCloseBtn') ||
-                   Array.from(document.querySelectorAll('button,div,a')).find(el => /About Stat Archive/i.test(el.textContent || ''));
+                   Array.from(document.querySelectorAll('button,div,a'))
+                     .find(el => /About Stat Archive/i.test(el.textContent || ''));
     if (!marker) return null;
 
     let node = marker;
@@ -309,6 +162,12 @@ html body .archive-entries-divider::after{
     setTimeout(centerActualDesktopMenu, 0);
     setTimeout(centerActualDesktopMenu, 80);
   });
+
   new MutationObserver(() => requestAnimationFrame(centerActualDesktopMenu))
-    .observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
+    .observe(document.body, {
+      subtree:true,
+      childList:true,
+      attributes:true,
+      attributeFilter:['class','style']
+    });
 })();
