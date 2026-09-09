@@ -431,3 +431,32 @@ html body #archiveEntriesDivider::after{
     transform:translate(-50%,-50%) scale(1) !important;
   }
 }
+
+/* =========================================================
+   GLOBAL BACKGROUND — REMOVE GRID / BLOCK EFFECT
+   Keep the ambient radial depth and theme colors only.
+   ========================================================= */
+html body .grid-bg{
+  display:none !important;
+  background:none !important;
+}
+
+body:not([data-theme="light"]){
+  background:
+    radial-gradient(900px 560px at 4% -5%,rgba(47,197,225,.19),transparent 61%),
+    radial-gradient(760px 520px at 98% 8%,rgba(74,222,165,.11),transparent 63%),
+    radial-gradient(780px 520px at 72% 72%,rgba(45,122,160,.065),transparent 67%),
+    linear-gradient(180deg,#071017 0%,#060b10 48%,#05080c 100%) !important;
+  background-size:auto,auto,auto,auto !important;
+  background-attachment:fixed !important;
+}
+
+body[data-theme="light"]{
+  background:
+    radial-gradient(900px 560px at 5% -5%,rgba(52,125,115,.14),transparent 62%),
+    radial-gradient(760px 520px at 98% 9%,rgba(217,111,95,.10),transparent 64%),
+    radial-gradient(820px 560px at 68% 76%,rgba(75,54,95,.055),transparent 68%),
+    linear-gradient(180deg,#f8f4ea 0%,#f4f0e7 52%,#f1ede4 100%) !important;
+  background-size:auto,auto,auto,auto !important;
+  background-attachment:fixed !important;
+}
