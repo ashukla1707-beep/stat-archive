@@ -29,29 +29,27 @@ html:not([data-authenticated="true"]) body .card .card-actions .action-btn{
   white-space:nowrap !important;
 }
 
-/* Signed-in contributor/admin cards: always reserve space for all 5 actions.
-   This deliberately avoids :has(), so older WebViews cannot push Edit/Delete
-   outside the card. */
+/* Signed-in contributor/admin cards use a flexible row instead of reserving
+   a hard-coded number of columns. Contributors have 4 actions; admins may
+   have 5. The three reader actions automatically receive all remaining width. */
 html[data-authenticated="true"] body .card .card-actions{
-  display:grid !important;
-  grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 34px 34px !important;
-  align-items:stretch !important;
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+  align-items:center !important;
   justify-content:stretch !important;
-  gap:4px !important;
+  gap:5px !important;
   width:100% !important;
   max-width:100% !important;
-  overflow:visible !important;
+  overflow:hidden !important;
 }
 
 html[data-authenticated="true"] body .card .card-actions .action-btn{
-  display:flex !important;
+  display:inline-flex !important;
   align-items:center !important;
   justify-content:center !important;
   min-width:0 !important;
-  max-width:100% !important;
-  width:100% !important;
   margin:0 !important;
-  padding:0 5px !important;
   gap:3px !important;
   white-space:nowrap !important;
   word-break:keep-all !important;
@@ -60,12 +58,27 @@ html[data-authenticated="true"] body .card .card-actions .action-btn{
   box-sizing:border-box !important;
 }
 
-/* Management buttons stay visible but compact. */
+/* Reader actions share all available width and keep their full labels. */
+html[data-authenticated="true"] body .card .card-actions .pv-btn,
+html[data-authenticated="true"] body .card .card-actions .dl-btn,
+html[data-authenticated="true"] body .card .card-actions .download-btn,
+html[data-authenticated="true"] body .card .card-actions .offline-btn{
+  flex:1 1 0 !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  padding-left:6px !important;
+  padding-right:6px !important;
+}
+
+/* Management buttons stay compact. Contributor has Edit only; admin can also
+   have Delete. No empty space is reserved for a button that is not present. */
 html[data-authenticated="true"] body .card .card-actions .edit-btn,
 html[data-authenticated="true"] body .card .card-actions .del-btn{
-  display:flex !important;
+  display:inline-flex !important;
   visibility:visible !important;
   opacity:1 !important;
+  flex:0 0 34px !important;
   width:34px !important;
   min-width:34px !important;
   max-width:34px !important;
@@ -74,7 +87,7 @@ html[data-authenticated="true"] body .card .card-actions .del-btn{
   overflow:hidden !important;
 }
 
-/* Remove the word Edit while retaining an obvious edit control. */
+/* Edit is icon-only, as requested. */
 html[data-authenticated="true"] body .card .card-actions .edit-btn{
   font-size:0 !important;
 }
@@ -86,7 +99,7 @@ html[data-authenticated="true"] body .card .card-actions .edit-btn::before{
 
 /* Offline must remain available on both web and PWA. */
 html body .card .card-actions .offline-btn{
-  display:flex !important;
+  display:inline-flex !important;
   visibility:visible !important;
   opacity:1 !important;
   pointer-events:auto !important;
@@ -94,10 +107,19 @@ html body .card .card-actions .offline-btn{
 
 @media (min-width:701px){
   html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:30px !important;
-    min-height:30px !important;
-    border-radius:8px !important;
-    font-size:10.5px !important;
+    height:32px !important;
+    min-height:32px !important;
+    border-radius:9px !important;
+    font-size:11.5px !important;
+    font-weight:650 !important;
+  }
+
+  html[data-authenticated="true"] body .card .card-actions .edit-btn,
+  html[data-authenticated="true"] body .card .card-actions .del-btn{
+    flex-basis:36px !important;
+    width:36px !important;
+    min-width:36px !important;
+    max-width:36px !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .edit-btn{
@@ -124,24 +146,24 @@ html body .card .card-actions .offline-btn{
   }
 
   html[data-authenticated="true"] body .card .card-actions{
-    grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 32px 32px !important;
     gap:4px !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:38px !important;
-    min-height:38px !important;
+    height:36px !important;
+    min-height:36px !important;
     padding:0 4px !important;
-    border-radius:10px !important;
-    font-size:11px !important;
+    border-radius:9px !important;
+    font-size:10.5px !important;
     font-weight:700 !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .edit-btn,
   html[data-authenticated="true"] body .card .card-actions .del-btn{
-    width:32px !important;
-    min-width:32px !important;
-    max-width:32px !important;
+    flex:0 0 30px !important;
+    width:30px !important;
+    min-width:30px !important;
+    max-width:30px !important;
     padding:0 !important;
   }
 
@@ -202,33 +224,30 @@ html body .card .card-actions .offline-btn{
 
 @media (max-width:380px){
   html[data-authenticated="true"] body .card .card-actions{
-    grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) 29px 29px !important;
     gap:3px !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:36px !important;
-    min-height:36px !important;
+    height:34px !important;
+    min-height:34px !important;
     padding:0 3px !important;
     font-size:10px !important;
-    border-radius:9px !important;
+    border-radius:8px !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .edit-btn,
   html[data-authenticated="true"] body .card .card-actions .del-btn{
-    width:29px !important;
-    min-width:29px !important;
-    max-width:29px !important;
-  }
-
-  html[data-authenticated="true"] body .card .card-actions .edit-btn{
-    font-size:0 !important;
+    flex:0 0 28px !important;
+    width:28px !important;
+    min-width:28px !important;
+    max-width:28px !important;
   }
 }
 `;
 
   document.head.appendChild(style);
 
+  /* Session-only preview highlight. */
   document.querySelectorAll('.card .card-actions .pv-btn').forEach(btn => {
     btn.classList.remove('sa-preview-used');
   });
