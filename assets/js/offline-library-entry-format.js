@@ -1,12 +1,9 @@
-/* Stat Archive — Offline Library presentation refinement v5
+/* Stat Archive — Offline Library presentation refinement v6
    Event-driven only. No MutationObserver. */
 (() => {
   "use strict";
 
-  const STUDY_LINE_1 = "Your study vault. Saved files stay on this device";
-  const STUDY_LINE_2 = "and can be opened without internet.";
   const RECENT_KEY = "statArchiveOfflineRecentlyOpened";
-
   let refreshTimer = 0;
   let refreshing = false;
   let openWrapped = false;
@@ -62,38 +59,42 @@
     return title;
   }
 
+  function metaOf(record) {
+    const type = typeOf(record);
+    const year = yearOf(record);
+    return year ? `${type} · ${year}` : type;
+  }
+
   function installStyle() {
     document.getElementById("saOfflineEntryFormatStyle")?.remove();
-
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
+/* Header: title only. Remove the old study-vault line and pull filters upward. */
 #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
-  padding-right:0 !important;
   width:100% !important;
+  padding-right:0 !important;
 }
 #offlineLibraryOverlay .sa-offline-title{
   box-sizing:border-box !important;
   padding-right:88px !important;
 }
 #offlineLibraryOverlay .sa-offline-subtitle{
-  width:100% !important;
-  max-width:none !important;
-  padding-right:0 !important;
-  margin:10px 0 0 !important;
-  font:500 12px/1.42 Inter,sans-serif !important;
-  letter-spacing:0 !important;
+  display:none !important;
 }
-#offlineLibraryOverlay .sa-study-line{display:inline;}
-#offlineLibraryOverlay .sa-study-line + .sa-study-line::before{content:" ";}
-
+#offlineLibraryOverlay .sa-offline-tabs{
+  display:none !important;
+}
+#offlineLibraryOverlay .sa-offline-head{
+  padding-bottom:7px !important;
+}
 #offlineLibraryOverlay .sa-offline-filterbar{
   gap:7px !important;
-  margin-top:13px !important;
+  margin-top:9px !important;
 }
 #offlineLibraryOverlay .sa-offline-search,
 #offlineLibraryOverlay #offlineSubjectSelect{
-  height:46px !important;
+  height:45px !important;
   border-radius:13px !important;
 }
 #offlineLibraryOverlay .sa-offline-search{
@@ -109,8 +110,12 @@
   background-size:14px 14px !important;
 }
 
-/* Continue studying cards: equal width, natural content height.
-   JS equalizes all visible cards to only the tallest content. */
+/* Three-dot menu: remove Storage details, keep Clear + Cancel. */
+#offlineLibraryOverlay #saOfflineStorageBtn{
+  display:none !important;
+}
+
+/* Continue studying: natural compact cards, equalized only to tallest content. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
   align-items:flex-start !important;
@@ -163,12 +168,16 @@
   display:none !important;
 }
 
+/* Subject entries: distinct title only, then Type · Year once. */
 #offlineLibraryOverlay .sa-offline-file-main{
   grid-template-columns:28px minmax(0,1fr) !important;
   gap:9px !important;
 }
 #offlineLibraryOverlay .sa-offline-file-title{
   font:800 11.5px/1.34 Inter,sans-serif !important;
+}
+#offlineLibraryOverlay .sa-offline-file-title:empty{
+  display:none !important;
 }
 #offlineLibraryOverlay .sa-offline-file-meta{
   margin-top:4px !important;
@@ -211,34 +220,25 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     box-shadow:0 26px 72px rgba(0,0,0,.42) !important;
     overflow:hidden !important;
   }
-
-  #offlineLibraryOverlay .sa-offline-head{padding-bottom:7px !important;}
-  #offlineLibraryOverlay .sa-offline-title{padding-right:78px !important;}
-  #offlineLibraryOverlay .sa-offline-subtitle{
-    margin-top:9px !important;
-    font-size:10.8px !important;
-    line-height:1.35 !important;
+  #offlineLibraryOverlay .sa-offline-title{
+    padding-right:78px !important;
   }
-  #offlineLibraryOverlay .sa-study-line{
-    display:block !important;
-    white-space:nowrap !important;
+  #offlineLibraryOverlay .sa-offline-head{
+    padding-bottom:5px !important;
   }
-  #offlineLibraryOverlay .sa-study-line + .sa-study-line::before{content:"" !important;}
-
   #offlineLibraryOverlay .sa-offline-filterbar{
     gap:7px !important;
-    margin-top:12px !important;
-  }
-  #offlineLibraryOverlay .sa-offline-search,
-  #offlineLibraryOverlay #offlineSubjectSelect{
-    height:45px !important;
+    margin-top:7px !important;
   }
   #offlineLibraryOverlay #offlineSubjectSelect{
     background-position:right 15px center !important;
   }
-
-  #offlineLibraryOverlay .sa-offline-scroll{padding-top:0 !important;}
-  #offlineLibraryOverlay .sa-offline-section{margin-top:17px !important;}
+  #offlineLibraryOverlay .sa-offline-scroll{
+    padding-top:0 !important;
+  }
+  #offlineLibraryOverlay .sa-offline-section{
+    margin-top:15px !important;
+  }
   #offlineLibraryOverlay .sa-offline-shelf-card{
     flex-basis:128px !important;
     width:128px !important;
@@ -254,16 +254,12 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     document.head.appendChild(style);
   }
 
-  function formatSubtitle() {
+  function formatHeader() {
     const subtitle = document.getElementById("saOfflineSummary");
-    if (!subtitle) return;
-    subtitle.innerHTML = `<span class="sa-study-line">${STUDY_LINE_1}</span><span class="sa-study-line">${STUDY_LINE_2}</span>`;
-  }
-
-  function metaOf(record) {
-    const type = typeOf(record);
-    const year = yearOf(record);
-    return year ? `${type} · ${year}` : type;
+    if (subtitle) {
+      subtitle.textContent = "";
+      subtitle.hidden = true;
+    }
   }
 
   function formatShelfCard(card, record) {
@@ -321,6 +317,11 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     });
   }
 
+  function cleanUtilityMenu() {
+    const storageBtn = document.getElementById("saOfflineStorageBtn");
+    if (storageBtn) storageBtn.remove();
+  }
+
   async function refreshPresentation() {
     if (refreshing) return;
     const overlay = document.getElementById("offlineLibraryOverlay");
@@ -332,22 +333,28 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       const records = await getOfflineFiles();
       const map = new Map((records || []).map(record => [String(record.id), record]));
 
-      formatSubtitle();
+      formatHeader();
+      cleanUtilityMenu();
 
       overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]").forEach(card => {
         const record = map.get(String(card.dataset.saOpenId || ""));
         if (record) formatShelfCard(card, record);
       });
-
       requestAnimationFrame(equalizeShelfCards);
 
       overlay.querySelectorAll(".sa-offline-file[data-offline-id]").forEach(card => {
         const record = map.get(String(card.dataset.offlineId || ""));
         if (!record) return;
+
         const title = card.querySelector(".sa-offline-file-title");
         const meta = card.querySelector(".sa-offline-file-meta");
         const size = card.querySelector(".sa-offline-file-size");
-        if (title) title.textContent = titleOf(record);
+        const distinctTitle = displayTitleOf(record);
+
+        if (title) {
+          title.textContent = distinctTitle;
+          title.style.display = distinctTitle ? "" : "none";
+        }
         if (meta) meta.textContent = metaOf(record);
         if (size) size.style.display = "none";
       });
@@ -383,9 +390,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   async function openWithoutBackgroundRefresh(id) {
     rememberRecentWithoutRerender(id);
     try {
-      if (typeof openOfflineFile === "function") {
-        await openOfflineFile(id);
-      }
+      if (typeof openOfflineFile === "function") await openOfflineFile(id);
     } catch (err) {
       try {
         if (typeof showError === "function") showError(err?.message || "Could not open that offline file.");
@@ -396,7 +401,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   function wrapFunctions() {
     if (!openWrapped && typeof window.openOfflineLibrary === "function") {
       const originalOpen = window.openOfflineLibrary;
-      if (!originalOpen.__saEntryFormatV5Wrapped) {
+      if (!originalOpen.__saEntryFormatV6Wrapped) {
         const wrappedOpen = function(...args) {
           expandedSubject = "";
           const result = originalOpen.apply(this, args);
@@ -405,7 +410,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
           scheduleRefresh(220);
           return result;
         };
-        wrappedOpen.__saEntryFormatV5Wrapped = true;
+        wrappedOpen.__saEntryFormatV6Wrapped = true;
         window.openOfflineLibrary = wrappedOpen;
         try { openOfflineLibrary = wrappedOpen; } catch (_) {}
       }
@@ -414,13 +419,13 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
     if (!renderWrapped && typeof window.renderOfflineLibrary === "function") {
       const originalRender = window.renderOfflineLibrary;
-      if (!originalRender.__saEntryFormatV5Wrapped) {
+      if (!originalRender.__saEntryFormatV6Wrapped) {
         const wrappedRender = function(...args) {
           const result = originalRender.apply(this, args);
           Promise.resolve(result).finally(() => scheduleRefresh(0));
           return result;
         };
-        wrappedRender.__saEntryFormatV5Wrapped = true;
+        wrappedRender.__saEntryFormatV6Wrapped = true;
         window.renderOfflineLibrary = wrappedRender;
         try { renderOfflineLibrary = wrappedRender; } catch (_) {}
       }
@@ -444,8 +449,6 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
         return;
       }
 
-      /* Opening a file must not rebuild/reorder the library underneath the
-         Android chooser. Record the recent timestamp, then open directly. */
       const open = target.closest("#offlineLibraryOverlay [data-sa-open-id]");
       if (open) {
         event.preventDefault();
