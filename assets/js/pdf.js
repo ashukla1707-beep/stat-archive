@@ -1,92 +1,57 @@
 (function(){
   "use strict";
 
-  /* Preview is a temporary action. Older builds remembered every previewed
-     file in localStorage and added .is-previewed, which made the button stay
-     teal even after the preview/app was closed. Clear that history before
-     archive-ui.js initializes, then strip any class an old click handler
-     tries to add during this session. */
+  /* Preview highlight is session-only.
+     archive-ui.js already keeps previewedEntryIds in memory and applies
+     .is-previewed after a preview click. We only prevent that state from
+     surviving a fresh app launch by clearing its localStorage copy.
+     Result:
+       - close Preview -> teal stays
+       - keep using the same app session -> teal stays
+       - close/reopen Stat Archive -> preview buttons start grey */
   const PREVIEW_HISTORY_KEY="statArchivePreviewedEntries";
 
-  function clearPreviewHistory(){
+  function clearPersistentPreviewHistory(){
     try{ localStorage.removeItem(PREVIEW_HISTORY_KEY); }catch(e){}
   }
 
-  function resetPreviewButton(button){
-    if(!button) return;
-    button.classList.remove("is-previewed");
-    if(document.activeElement===button){
-      try{ button.blur(); }catch(e){}
-    }
-  }
+  /* Runs before archive-ui.js, so a fresh launch always starts with an empty
+     previewedEntryIds set. */
+  clearPersistentPreviewHistory();
 
-  function resetPreviewButtons(root=document){
-    clearPreviewHistory();
-    root.querySelectorAll?.(".pv-btn.is-previewed").forEach(resetPreviewButton);
-  }
-
-  clearPreviewHistory();
-
-  function installPreviewButtonReset(){
-    resetPreviewButtons();
-
-    const root=document.getElementById("grid")||document.body;
-    if(root && root.dataset.previewButtonResetObserver!=="1"){
-      root.dataset.previewButtonResetObserver="1";
-      const observer=new MutationObserver((mutations)=>{
-        let changed=false;
-        for(const mutation of mutations){
-          if(mutation.type==="attributes"){
-            const target=mutation.target;
-            if(target instanceof Element && target.matches(".pv-btn.is-previewed")){
-              resetPreviewButton(target);
-              changed=true;
-            }
-            continue;
-          }
-
-          mutation.addedNodes.forEach((node)=>{
-            if(!(node instanceof Element)) return;
-            if(node.matches?.(".pv-btn.is-previewed")){
-              resetPreviewButton(node);
-              changed=true;
-            }
-            node.querySelectorAll?.(".pv-btn.is-previewed").forEach((button)=>{
-              resetPreviewButton(button);
-              changed=true;
-            });
-          });
-        }
-        if(changed) clearPreviewHistory();
-      });
-
-      observer.observe(root,{
-        subtree:true,
-        childList:true,
-        attributes:true,
-        attributeFilter:["class"]
-      });
-    }
-
+  function installPreviewSessionGuard(){
+    /* Let the existing archive UI add .is-previewed normally. After it has
+       done so, remove only the persistent localStorage copy — never the class
+       and never the in-memory Set. */
     document.addEventListener("click",(event)=>{
       const button=event.target?.closest?.(".pv-btn");
       if(!button) return;
-      setTimeout(()=>{
-        resetPreviewButton(button);
-        clearPreviewHistory();
-      },0);
+
+      /* The existing preview handler may write its history immediately or
+         after a small async step. Clear a few times without touching UI. */
+      [0,150,600,1500].forEach((delay)=>{
+        setTimeout(clearPersistentPreviewHistory,delay);
+      });
     },true);
 
+    /* If the app is backgrounded and Android later kills the WebView, the
+       stored copy has already been removed. Returning to the same live page
+       still keeps teal because archive-ui.js retains its in-memory Set. */
     document.addEventListener("visibilitychange",()=>{
-      if(document.visibilityState==="visible") resetPreviewButtons();
+      if(document.visibilityState==="hidden") clearPersistentPreviewHistory();
     });
-    window.addEventListener("pageshow",()=>resetPreviewButtons());
+
+    window.addEventListener("pagehide",clearPersistentPreviewHistory);
+    window.addEventListener("beforeunload",clearPersistentPreviewHistory);
+
+    const closeBtn=document.getElementById("closePreviewBtn");
+    closeBtn?.addEventListener("click",clearPersistentPreviewHistory,true);
   }
 
   if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",installPreviewButtonReset,{once:true});
+    document.addEventListener("DOMContentLoaded",installPreviewSessionGuard,{once:true});
   }else{
-    installPreviewButtonReset();
+    installPreviewSessionGuard();
   }
 
   const BASE="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
