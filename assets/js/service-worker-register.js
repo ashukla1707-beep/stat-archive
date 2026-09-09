@@ -92,6 +92,51 @@
     menuBtn.setAttribute("aria-expanded", "false");
   }
 
+  /*
+   * subject-panel.js owns the legacy visual scroll lock for the Menu. Newer
+   * navigation compatibility code can restore that lock without access to
+   * subject-panel.js's private bodyStyleSnapshot. In that case its own unlock
+   * routine can remove classes but leave body { position:fixed; overflow:hidden },
+   * which makes the Home screen appear frozen after Menu -> Home.
+   *
+   * Home is the one state where no Menu child should be holding this lock, so
+   * forcibly normalize only the Menu-specific lock here. Preserve the scroll
+   * position encoded in body.style.top before clearing the fixed positioning.
+   */
+  function releaseMenuScrollLock() {
+    const body = document.body;
+    if (!body) return;
+
+    const hadMenuLock =
+      body.dataset.statMenuLocked === "1" ||
+      body.classList.contains("stat-menu-scroll-locked") ||
+      document.documentElement.classList.contains("stat-menu-scroll-locked");
+
+    if (!hadMenuLock && body.style.position !== "fixed") return;
+
+    let restoreY = window.scrollY || window.pageYOffset || 0;
+    const top = String(body.style.top || "").trim();
+    if (/^-?\d+(?:\.\d+)?px$/.test(top)) {
+      const n = parseFloat(top);
+      if (Number.isFinite(n) && n < 0) restoreY = Math.abs(n);
+    }
+
+    delete body.dataset.statMenuLocked;
+    document.documentElement.classList.remove("stat-menu-scroll-locked");
+    body.classList.remove("stat-menu-scroll-locked");
+
+    body.style.position = "";
+    body.style.top = "";
+    body.style.left = "";
+    body.style.right = "";
+    body.style.width = "";
+    body.style.overflow = "";
+
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: restoreY, left: 0, behavior: "auto" });
+    });
+  }
+
   function closeManualChooserUI() {
     const overlay = document.getElementById("manualChooserOverlay");
     if (!overlay) return;
@@ -236,6 +281,10 @@
     if (state === "home") {
       closeAllMenuChildren();
       closeMenuUI();
+      /* Run after the menu class mutation observers as well, so even a legacy
+         unlock that had no saved snapshot cannot leave fixed body styles. */
+      releaseMenuScrollLock();
+      requestAnimationFrame(releaseMenuScrollLock);
       return;
     }
 
@@ -256,6 +305,7 @@
     openMenu: openMenuUI,
     closeMenu: closeMenuUI,
     closeChildren: closeAllMenuChildren,
+    releaseMenuScrollLock,
     menuUrl
   };
 
@@ -436,50 +486,39 @@
   const style = document.createElement("style");
   style.id = "statArchiveManualChooserStyle";
   style.textContent = `
-.manual-chooser-overlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));background:rgba(2,6,12,.68);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,visibility .16s ease;}
+.manual-chooser-overlay{
+  position:fixed;inset:0;z-index:10120;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(2,6,12,.68);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;visibility:hidden;pointer-events:none;transition:opacity .17s ease,visibility .17s ease;
+}
 .manual-chooser-overlay.is-open{opacity:1;visibility:visible;pointer-events:auto;}
-.manual-chooser-card{width:min(520px,100%);max-height:calc(100dvh - 28px);overflow:auto;border:1px solid rgba(148,163,184,.20);border-radius:22px;padding:22px;background:#0d141e;color:#eef3f8;box-shadow:0 28px 80px rgba(0,0,0,.48);transform:translateY(8px) scale(.992);transition:transform .16s ease;}
-.manual-chooser-overlay.is-open .manual-chooser-card{transform:none;}
-.manual-chooser-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px;}
-.manual-chooser-kicker{color:#5ee7f7;font:700 10px/1.2 'JetBrains Mono',monospace;letter-spacing:.14em;}
-.manual-chooser-head h2{margin:5px 0 4px;font:800 28px/1.05 'Plus Jakarta Sans',Inter,sans-serif;letter-spacing:-.035em;}
-.manual-chooser-head p{margin:0;color:#8491a2;font:500 12.5px/1.5 Inter,sans-serif;}
-.manual-chooser-close{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(148,163,184,.18);background:#111a25;color:#eef3f8;font-size:22px;line-height:1;cursor:pointer;}
+.manual-chooser-card{
+  width:min(520px,100%);border:1px solid rgba(148,163,184,.19);border-radius:23px;padding:22px;
+  background:#0d141e;color:#eef3f8;box-shadow:0 30px 90px rgba(0,0,0,.52);
+}
+.manual-chooser-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:18px;}
+.manual-chooser-kicker{margin-bottom:5px;color:#5ee7f7;font:800 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;}
+.manual-chooser-head h2{margin:0 0 5px;font:800 28px/1.06 'Plus Jakarta Sans',Inter,sans-serif;letter-spacing:-.035em;}
+.manual-chooser-head p{margin:0;color:#8491a2;font:500 12px/1.5 Inter,sans-serif;}
+.manual-chooser-close{width:39px;height:39px;flex:0 0 auto;border:1px solid rgba(148,163,184,.18);border-radius:50%;background:#111a25;color:#eef3f8;font-size:21px;cursor:pointer;}
 .manual-chooser-options{display:grid;gap:10px;}
-.manual-choice{width:100%;min-height:78px;display:grid;grid-template-columns:38px 1fr 20px;align-items:center;gap:12px;text-align:left;padding:13px 14px;border:1px solid rgba(148,163,184,.16);border-radius:15px;background:#111a25;color:#eef3f8;cursor:pointer;}
-.manual-choice:hover{border-color:rgba(94,231,247,.32);background:rgba(94,231,247,.065);}
-.manual-choice-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(94,231,247,.09);color:#5ee7f7;font-size:18px;}
-.manual-choice-copy{min-width:0;display:flex;flex-direction:column;gap:4px;}
-.manual-choice-copy strong{font:700 14px/1.3 Inter,sans-serif;}
-.manual-choice-copy small{color:#8491a2;font:500 11px/1.45 Inter,sans-serif;}
-.manual-choice-arrow{color:#8491a2;font-size:25px;}
-body[data-theme="light"] .manual-chooser-overlay{background:rgba(52,48,42,.30);}
-body[data-theme="light"] .manual-chooser-card{background:#fbfaf7;color:#27302d;border-color:rgba(75,54,95,.15);box-shadow:0 24px 70px rgba(58,53,42,.18);}
-body[data-theme="light"] .manual-chooser-kicker{color:#4b365f;}
-body[data-theme="light"] .manual-chooser-head p,body[data-theme="light"] .manual-choice-copy small,body[data-theme="light"] .manual-choice-arrow{color:#817d77;}
-body[data-theme="light"] .manual-chooser-close,body[data-theme="light"] .manual-choice{background:rgba(255,255,255,.78);color:#27302d;border-color:rgba(75,54,95,.14);}
-body[data-theme="light"] .manual-choice:hover{border-color:rgba(75,54,95,.28);background:rgba(75,54,95,.055);}
-body[data-theme="light"] .manual-choice-icon{background:rgba(75,54,95,.085);color:#4b365f;}
-@media(max-width:700px){.manual-chooser-overlay{align-items:center;padding:12px}.manual-chooser-card{width:100%;max-height:calc(100dvh - 24px);border-radius:20px;padding:19px 16px}.manual-chooser-head h2{font-size:24px}.manual-choice{min-height:72px;padding:12px;grid-template-columns:36px 1fr 18px;gap:10px}.manual-choice-copy strong{font-size:13px}.manual-choice-copy small{font-size:10.5px}}
+.manual-choice{width:100%;min-height:76px;display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:12px;padding:12px 13px;border:1px solid rgba(148,163,184,.15);border-radius:16px;background:#111a25;color:#eef3f8;text-align:left;cursor:pointer;}
+.manual-choice:hover{border-color:rgba(94,231,247,.30);background:rgba(94,231,247,.055);}
+.manual-choice-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:12px;background:rgba(94,231,247,.09);color:#76eaf6;font-size:21px;}
+.manual-choice-copy{display:flex;min-width:0;flex-direction:column;gap:3px;}
+.manual-choice-copy strong{font:750 13.5px/1.3 Inter,sans-serif;}
+.manual-choice-copy small{color:#8491a2;font:500 10.5px/1.4 Inter,sans-serif;}
+.manual-choice-arrow{color:#718091;font-size:23px;}
+body[data-theme='light'] .manual-chooser-overlay{background:rgba(52,48,42,.31);}
+body[data-theme='light'] .manual-chooser-card{background:#fbfaf7;color:#27302d;border-color:rgba(75,54,95,.15);box-shadow:0 26px 75px rgba(58,53,42,.19);}
+body[data-theme='light'] .manual-chooser-head p,body[data-theme='light'] .manual-choice-copy small{color:#817d77;}
+body[data-theme='light'] .manual-chooser-kicker{color:#4b365f;}
+body[data-theme='light'] .manual-chooser-close,body[data-theme='light'] .manual-choice{background:rgba(255,255,255,.76);color:#27302d;border-color:rgba(75,54,95,.14);}
+body[data-theme='light'] .manual-choice-icon{background:rgba(75,54,95,.075);color:#4b365f;}
+@media(max-width:620px){.manual-chooser-card{padding:18px 15px;border-radius:20px}.manual-chooser-head h2{font-size:25px}.manual-choice{min-height:70px;grid-template-columns:38px minmax(0,1fr) 16px;padding:11px}.manual-choice-icon{width:36px;height:36px}.manual-choice-copy strong{font-size:13px}.manual-choice-copy small{font-size:10px}}
 `;
   document.head.appendChild(style);
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindManualButton, { once:true });
   else bindManualButton();
-})();
-
-/* =========================================================
-   OFFLINE LIBRARY HYBRID UI LOADER
-   ========================================================= */
-(() => {
-  function loadOfflineHybrid() {
-    if (document.querySelector('script[data-sa-offline-hybrid="1"]')) return;
-    const script = document.createElement("script");
-    script.src = "./assets/js/offline-library-hybrid.js?v=20260909-1";
-    script.async = false;
-    script.dataset.saOfflineHybrid = "1";
-    document.body.appendChild(script);
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadOfflineHybrid, { once:true });
-  else loadOfflineHybrid();
 })();
