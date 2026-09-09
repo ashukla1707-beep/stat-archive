@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-menu-polish-v3";
+const CACHE = "stat-archive-shell-v20260909-preview-state-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./assets/js/core.js",
   "./assets/js/archive-ui.js",
   "./assets/js/preview.js",
+  "./assets/js/preview-state-guard.js",
   "./assets/js/offline.js",
   "./assets/js/management.js",
   "./assets/js/speed-boost.js",
@@ -52,6 +53,7 @@ const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=2
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-2"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-1"></script>';
+const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -94,6 +96,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/entry-method-fix.js')) out = out.replace('</body>', `${ENTRY_METHOD_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
+  if (!out.includes('assets/js/preview-state-guard.js')) out = out.replace('</body>', `${PREVIEW_STATE_GUARD_TAG}\n</body>`);
   return out;
 }
 
@@ -242,7 +245,8 @@ self.addEventListener("fetch", event => {
 
   const isPreviewRuntime =
     url.pathname.endsWith('/assets/js/preview.js') ||
-    url.pathname.endsWith('/assets/js/pdf.js');
+    url.pathname.endsWith('/assets/js/pdf.js') ||
+    url.pathname.endsWith('/assets/js/preview-state-guard.js');
 
   if (isPreviewRuntime) {
     event.respondWith(servePreviewRuntimeNetworkFirst(request));
