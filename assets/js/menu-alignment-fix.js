@@ -130,10 +130,16 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
    (notably Offline Library) before WebView.goBack(). Watch those child UIs;
    if one disappears while the navigation state is still "child", pop that
    single child entry so Menu is restored immediately.
+
+   Important: some children (Offline Library) open after a short timeout.
+   Never treat an overlay as "closed" until that exact child has first been
+   observed visible. Otherwise its delayed opening is cancelled immediately.
    ========================================================= */
 (() => {
   let scheduled = false;
   let suppressUntil = 0;
+  let activeChild = '';
+  let activeChildSeenOpen = false;
 
   function isVisible(el) {
     if (!el) return false;
@@ -167,12 +173,31 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
     if (performance.now() < suppressUntil) return;
 
     const nav = window.__statArchiveNavigation;
-    if (!nav || nav.state?.() !== 'child') return;
+    if (!nav || nav.state?.() !== 'child') {
+      activeChild = '';
+      activeChildSeenOpen = false;
+      return;
+    }
 
     const child = nav.child?.() || '';
-    if (!child || childStillOpen(child)) return;
+    if (!child) return;
+
+    if (child !== activeChild) {
+      activeChild = child;
+      activeChildSeenOpen = false;
+    }
+
+    if (childStillOpen(child)) {
+      activeChildSeenOpen = true;
+      return;
+    }
+
+    /* A delayed-opening child has not been seen yet: wait. Only a child that
+       was definitely visible and later disappeared may trigger Back. */
+    if (!activeChildSeenOpen) return;
 
     suppressUntil = performance.now() + 250;
+    activeChildSeenOpen = false;
     history.back();
   }
 
@@ -192,6 +217,7 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
 
   window.addEventListener('popstate', () => {
     suppressUntil = performance.now() + 150;
+    requestAnimationFrame(checkClosedChild);
   });
 })();
 
