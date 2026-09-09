@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-manual-role-v1";
+const CACHE = "stat-archive-shell-v20260909-menu-polish-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -27,6 +27,7 @@ const APP_SHELL = [
   "./assets/js/hero-layout-fix.js",
   "./assets/js/action-spacing-fix.js",
   "./assets/js/entry-method-fix.js",
+  "./assets/js/menu-polish.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
@@ -48,6 +49,7 @@ const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
+const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -88,6 +90,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/search-suggestions.js')) out = out.replace('</body>', `${SEARCH_SUGGESTIONS_TAG}\n</body>`);
   if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/entry-method-fix.js')) out = out.replace('</body>', `${ENTRY_METHOD_FIX_TAG}\n</body>`);
+  if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   return out;
 }
 
