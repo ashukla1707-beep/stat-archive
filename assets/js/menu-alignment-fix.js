@@ -48,6 +48,79 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
 })();
 
 /* =========================================================
+   LEGACY MENU HISTORY GUARD
+
+   subject-panel.js contains the original September 1 menu-history behavior.
+   That was correct while it was the only navigation owner, but newer Manual /
+   Offline / About navigation now lives in service-worker-register.js.
+
+   Keep subject-panel.js for its styling, level/theme controls and scroll lock,
+   but neutralize only its legacy statArchiveMenuOpen history writes and stop
+   its old close-on-popstate behavior from defeating the canonical menu state.
+   ========================================================= */
+(() => {
+  if (window.__statArchiveLegacyMenuGuardInstalled) return;
+  window.__statArchiveLegacyMenuGuardInstalled = true;
+
+  const rawPushState = history.pushState.bind(history);
+  const rawReplaceState = history.replaceState.bind(history);
+
+  history.pushState = function(state, title, url) {
+    if (state?.statArchiveMenuOpen === true && window.__statArchiveNavigation) {
+      const clean = { ...(state || {}) };
+      delete clean.statArchiveMenuOpen;
+
+      /* The canonical navigation core has already created the Menu row.
+         Replacing the current row avoids the legacy observer creating a
+         duplicate Menu entry. */
+      return rawReplaceState(clean, title, url);
+    }
+    return rawPushState(state, title, url);
+  };
+
+  const rawCloseMenu = window.statArchiveCloseMenu;
+  if (typeof rawCloseMenu === 'function' && !rawCloseMenu.__saLegacyGuardWrapped) {
+    const guardedCloseMenu = function(...args) {
+      /* On Back from a child/manual the canonical core restores state=menu.
+         The old subject-panel popstate listener runs later and used to close
+         that freshly restored Menu immediately. Ignore that obsolete close. */
+      if (history.state?.statArchiveNav === 'menu') return;
+      return rawCloseMenu.apply(this, args);
+    };
+    guardedCloseMenu.__saLegacyGuardWrapped = true;
+    guardedCloseMenu.__saOriginal = rawCloseMenu;
+    window.statArchiveCloseMenu = guardedCloseMenu;
+  }
+
+  function ensureMenuScrollLock() {
+    if (history.state?.statArchiveNav !== 'menu') return;
+    const menu = document.getElementById('mainSideMenu');
+    if (!menu?.classList.contains('is-open')) return;
+
+    /* subject-panel.js may unlock the body after its obsolete popstate close
+       was blocked. Restore only the lock state; do not create history. */
+    if (document.body?.dataset.statMenuLocked === '1') return;
+    const y = window.scrollY || window.pageYOffset || 0;
+    document.body.dataset.statMenuLocked = '1';
+    document.documentElement.classList.add('stat-menu-scroll-locked');
+    document.body.classList.add('stat-menu-scroll-locked');
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${y}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+  }
+
+  window.addEventListener('popstate', () => {
+    requestAnimationFrame(ensureMenuScrollLock);
+  });
+  window.addEventListener('pageshow', () => {
+    requestAnimationFrame(ensureMenuScrollLock);
+  });
+})();
+
+/* =========================================================
    MENU CHILD CLOSE SYNCHRONIZER
 
    Navigation history is owned by service-worker-register.js. This file no
