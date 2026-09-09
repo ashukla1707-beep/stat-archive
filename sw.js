@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-navigation-core-v3-offline-canonical-v1";
+const CACHE = "stat-archive-shell-v20260910-mobile-actions-reference-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -23,7 +23,7 @@ const MENU_FLASH_GUARD = `
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-7"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260909-5"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260909-15"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260910-mobile-reference-1"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
@@ -43,8 +43,6 @@ function decorateNavigationHtml(html) {
 
   out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
 
-  /* Offline Library has exactly one runtime owner. Remove any old hybrid,
-     heading or formatter tags from source/cached HTML, then add one canonical tag. */
   out = out.replace(/<script[^>]+assets\/js\/offline-library-(?:hybrid|heading-search-fix|entry-format)\.js[^>]*><\/script>/gi, '');
 
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
@@ -169,9 +167,6 @@ async function serveAppShellFast(request, url, isNavigation, event) {
   }
 }
 
-/* Navigation documents are network-first. This is intentionally different
-   from ordinary app assets: Back to ?menu=1 must execute the newest direct
-   navigation core instead of an older cached index.html. */
 async function serveNavigationNetworkFirst(request, url) {
   const cache = await caches.open(CACHE);
 
