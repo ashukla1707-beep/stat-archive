@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library presentation refinement v6
+/* Stat Archive — Offline Library presentation refinement v7
    Event-driven only. No MutationObserver. */
 (() => {
   "use strict";
@@ -9,6 +9,7 @@
   let openWrapped = false;
   let renderWrapped = false;
   let expandedSubject = "";
+  let expandFirstOnNextRefresh = true;
 
   function subjectOf(record) {
     return String(record?.subjectName || record?.subject || "Other").trim() || "Other";
@@ -70,14 +71,44 @@
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
-/* Header: title only. Remove the old study-vault line and pull filters upward. */
-#offlineLibraryOverlay .sa-offline-title-row > div:first-child{
+/* Header: title | centered menu | close. */
+#offlineLibraryOverlay .sa-offline-title-row{
+  display:grid !important;
+  grid-template-columns:max-content minmax(36px,1fr) 36px !important;
+  align-items:center !important;
+  column-gap:4px !important;
   width:100% !important;
-  padding-right:0 !important;
+}
+#offlineLibraryOverlay .sa-offline-title-row > div:first-child{
+  display:contents !important;
 }
 #offlineLibraryOverlay .sa-offline-title{
+  grid-column:1 !important;
   box-sizing:border-box !important;
-  padding-right:88px !important;
+  padding-right:0 !important;
+  min-width:0 !important;
+}
+#offlineLibraryOverlay .sa-offline-head-actions{
+  display:contents !important;
+  position:static !important;
+  inset:auto !important;
+  width:auto !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+#offlineLibraryOverlay #saOfflineMenuBtn{
+  grid-column:2 !important;
+  justify-self:center !important;
+  align-self:center !important;
+  position:static !important;
+  margin:0 !important;
+}
+#offlineLibraryOverlay #closeOfflineLibraryBtn{
+  grid-column:3 !important;
+  justify-self:end !important;
+  align-self:center !important;
+  position:static !important;
+  margin:0 !important;
 }
 #offlineLibraryOverlay .sa-offline-subtitle{
   display:none !important;
@@ -110,12 +141,12 @@
   background-size:14px 14px !important;
 }
 
-/* Three-dot menu: remove Storage details, keep Clear + Cancel. */
+/* Three-dot menu: only Clear + Cancel. */
 #offlineLibraryOverlay #saOfflineStorageBtn{
   display:none !important;
 }
 
-/* Continue studying: natural compact cards, equalized only to tallest content. */
+/* Continue studying: natural compact cards, equalized to tallest content. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
   align-items:flex-start !important;
@@ -220,8 +251,12 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     box-shadow:0 26px 72px rgba(0,0,0,.42) !important;
     overflow:hidden !important;
   }
+  #offlineLibraryOverlay .sa-offline-title-row{
+    grid-template-columns:max-content minmax(28px,1fr) 34px !important;
+    column-gap:2px !important;
+  }
   #offlineLibraryOverlay .sa-offline-title{
-    padding-right:78px !important;
+    padding-right:0 !important;
   }
   #offlineLibraryOverlay .sa-offline-head{
     padding-bottom:5px !important;
@@ -305,8 +340,15 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     const overlay = document.getElementById("offlineLibraryOverlay");
     if (!overlay) return;
     const groups = [...overlay.querySelectorAll(".sa-offline-group[data-sa-subject]")];
+    if (!groups.length) return;
+
     const available = new Set(groups.map(group => group.dataset.saSubject || ""));
     if (expandedSubject && !available.has(expandedSubject)) expandedSubject = "";
+
+    if (expandFirstOnNextRefresh && !expandedSubject) {
+      expandedSubject = groups[0].dataset.saSubject || "";
+      expandFirstOnNextRefresh = false;
+    }
 
     groups.forEach(group => {
       const subject = group.dataset.saSubject || "";
@@ -401,16 +443,17 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   function wrapFunctions() {
     if (!openWrapped && typeof window.openOfflineLibrary === "function") {
       const originalOpen = window.openOfflineLibrary;
-      if (!originalOpen.__saEntryFormatV6Wrapped) {
+      if (!originalOpen.__saEntryFormatV7Wrapped) {
         const wrappedOpen = function(...args) {
           expandedSubject = "";
+          expandFirstOnNextRefresh = true;
           const result = originalOpen.apply(this, args);
           scheduleRefresh(0);
           scheduleRefresh(60);
           scheduleRefresh(220);
           return result;
         };
-        wrappedOpen.__saEntryFormatV6Wrapped = true;
+        wrappedOpen.__saEntryFormatV7Wrapped = true;
         window.openOfflineLibrary = wrappedOpen;
         try { openOfflineLibrary = wrappedOpen; } catch (_) {}
       }
@@ -419,13 +462,13 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
     if (!renderWrapped && typeof window.renderOfflineLibrary === "function") {
       const originalRender = window.renderOfflineLibrary;
-      if (!originalRender.__saEntryFormatV6Wrapped) {
+      if (!originalRender.__saEntryFormatV7Wrapped) {
         const wrappedRender = function(...args) {
           const result = originalRender.apply(this, args);
           Promise.resolve(result).finally(() => scheduleRefresh(0));
           return result;
         };
-        wrappedRender.__saEntryFormatV6Wrapped = true;
+        wrappedRender.__saEntryFormatV7Wrapped = true;
         window.renderOfflineLibrary = wrappedRender;
         try { renderOfflineLibrary = wrappedRender; } catch (_) {}
       }
@@ -442,9 +485,9 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       if (toggle) {
         event.preventDefault();
         event.stopPropagation();
-        expandedSubject = expandedSubject === (toggle.dataset.saToggleSubject || "")
-          ? ""
-          : (toggle.dataset.saToggleSubject || "");
+        expandFirstOnNextRefresh = false;
+        const subject = toggle.dataset.saToggleSubject || "";
+        expandedSubject = expandedSubject === subject ? "" : subject;
         applyAccordionState();
         return;
       }
@@ -466,6 +509,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     document.addEventListener("input", event => {
       if (event.target?.id === "offlineSearchInput") {
         expandedSubject = "";
+        expandFirstOnNextRefresh = true;
         scheduleRefresh(45);
       }
     }, true);
@@ -473,6 +517,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     document.addEventListener("change", event => {
       if (event.target?.id === "offlineSubjectSelect") {
         expandedSubject = "";
+        expandFirstOnNextRefresh = true;
         scheduleRefresh(45);
       }
     }, true);
