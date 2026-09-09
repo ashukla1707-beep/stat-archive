@@ -39,7 +39,8 @@ const APP_SHELL = [
   "./manuals/contributor.html",
   "./manifest.json",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./icons/icon-512-maskable.png"
 ];
 
 const MENU_FLASH_GUARD = `
