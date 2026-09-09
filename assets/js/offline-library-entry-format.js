@@ -113,19 +113,19 @@
   background-size:14px 14px !important;
 }
 
-/* Continue studying: every card has exactly the same dimensions and hierarchy:
-   Subject -> Type -> distinct title -> Year at the bottom. */
+/* Continue studying: every card has the same compact dimensions and hierarchy:
+   Subject -> Type -> distinct title -> Year. Empty title/year rows consume no space. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
   align-items:stretch !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-card{
-  flex:0 0 150px !important;
-  width:150px !important;
-  height:150px !important;
-  min-height:150px !important;
-  max-height:150px !important;
-  padding:11px !important;
+  flex:0 0 134px !important;
+  width:134px !important;
+  height:126px !important;
+  min-height:126px !important;
+  max-height:126px !important;
+  padding:10px !important;
   border-radius:15px !important;
   display:flex !important;
   flex-direction:column !important;
@@ -138,12 +138,12 @@
   -webkit-line-clamp:2;
   overflow:hidden;
   color:#f4f7fb;
-  font:800 10.8px/1.28 Inter,sans-serif;
+  font:800 10.5px/1.24 Inter,sans-serif;
 }
 #offlineLibraryOverlay .sa-recent-type{
-  margin-top:7px;
+  margin-top:6px;
   color:#8d99aa;
-  font:600 9.6px/1.25 Inter,sans-serif;
+  font:600 9.3px/1.2 Inter,sans-serif;
 }
 #offlineLibraryOverlay .sa-recent-title{
   display:-webkit-box;
@@ -151,19 +151,22 @@
   -webkit-line-clamp:2;
   overflow:hidden;
   min-height:0;
-  margin-top:5px;
+  margin-top:4px;
   color:#d6dee8;
-  font:650 9.6px/1.28 Inter,sans-serif;
+  font:650 9.2px/1.22 Inter,sans-serif;
 }
 #offlineLibraryOverlay .sa-recent-title.is-empty{
-  visibility:hidden;
-  flex:1 1 auto;
+  display:none !important;
 }
 #offlineLibraryOverlay .sa-recent-year{
-  margin-top:auto;
-  min-height:13px;
+  display:block;
+  margin-top:5px;
+  min-height:0;
   color:#7f8da1;
-  font:600 9.3px/1.2 'JetBrains Mono',monospace;
+  font:600 9px/1.15 'JetBrains Mono',monospace;
+}
+#offlineLibraryOverlay .sa-recent-year:empty{
+  display:none !important;
 }
 
 /* Expanded subject entries: actual file title, then Type · Year; no size/date. */
@@ -255,17 +258,17 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     margin-top:17px !important;
   }
   #offlineLibraryOverlay .sa-offline-shelf-card{
-    flex-basis:142px !important;
-    width:142px !important;
-    height:142px !important;
-    min-height:142px !important;
-    max-height:142px !important;
-    padding:10px !important;
+    flex-basis:128px !important;
+    width:128px !important;
+    height:120px !important;
+    min-height:120px !important;
+    max-height:120px !important;
+    padding:9px !important;
   }
-  #offlineLibraryOverlay .sa-recent-subject{font-size:10.3px !important;}
-  #offlineLibraryOverlay .sa-recent-type,
-  #offlineLibraryOverlay .sa-recent-title{font-size:9.2px !important;}
-  #offlineLibraryOverlay .sa-recent-year{font-size:9px !important;}
+  #offlineLibraryOverlay .sa-recent-subject{font-size:10px !important;}
+  #offlineLibraryOverlay .sa-recent-type{font-size:9px !important;}
+  #offlineLibraryOverlay .sa-recent-title{font-size:8.9px !important;}
+  #offlineLibraryOverlay .sa-recent-year{font-size:8.8px !important;}
   #offlineLibraryOverlay .sa-offline-file-title{font-size:11px !important;}
 }
 `;
@@ -299,7 +302,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
     card.querySelector(".sa-recent-subject").textContent = subject;
     card.querySelector(".sa-recent-type").textContent = type;
-    card.querySelector(".sa-recent-title").textContent = title || "placeholder";
+    card.querySelector(".sa-recent-title").textContent = title || "";
     card.querySelector(".sa-recent-year").textContent = year;
   }
 
