@@ -70,7 +70,6 @@
     }
   }
 
-  // Observe existing app modals instead of changing their visual behavior.
   const observer = new MutationObserver(syncModalFocus);
   observer.observe(document.documentElement, {
     subtree: true,
@@ -140,7 +139,6 @@
     });
   }
 
-  // Announce existing status/toast regions when their content changes.
   document.querySelectorAll(
     ".toast, #toast, .status-message, #statusMessage, .upload-status"
   ).forEach(el => {
@@ -205,6 +203,9 @@
    OFFLINE LIBRARY — WEB + PWA ENABLEMENT
    The IndexedDB implementation already works in normal browsers/PWAs.
    This connects the visible side-menu option to it and keeps its count live.
+
+   Navigation history is intentionally NOT handled here. The single canonical
+   owner is service-worker-register.js.
    ========================================================= */
 (() => {
   const menuButton = document.getElementById("menuOfflineLibraryBtn");
@@ -250,12 +251,15 @@
     event.preventDefault();
     if (!supported) return;
 
-    try { window.statArchiveCloseMenu?.(); } catch (_) {}
+    /* The canonical navigation core has already changed the logical state to
+       child/offline-library. This code only performs the visual transition. */
+    try { window.__statArchiveNavigation?.closeMenu?.(); } catch (_) {}
     document.getElementById("mainSideMenu")?.classList.remove("is-open");
     document.getElementById("mainMenuBackdrop")?.classList.remove("is-open");
+    document.getElementById("mainSideMenu")?.setAttribute("aria-hidden", "true");
+    document.getElementById("mainMenuBackdrop")?.setAttribute("aria-hidden", "true");
     document.getElementById("mainMenuBtn")?.setAttribute("aria-expanded", "false");
 
-    // Allow the menu close animation to finish before opening the library.
     window.setTimeout(() => {
       if (typeof window.openOfflineLibrary === "function") {
         window.openOfflineLibrary();
@@ -264,148 +268,6 @@
       }
     }, 120);
 
-    // Ask the browser to make saved study files less likely to be evicted.
     try { navigator.storage?.persist?.(); } catch (_) {}
   });
-})();
-
-/* =========================================================
-   SIDE-MENU HISTORY
-   Browser/Android Back now follows the visible navigation hierarchy:
-   Home -> Menu -> Menu child -> Menu -> Home.
-   ========================================================= */
-(() => {
-  const NAV_KEY = "statArchiveNav";
-  const CHILD_OVERLAY_BUTTONS = new Set([
-    "menuAboutBtn",
-    "menuOfflineLibraryBtn",
-    "menuLocalFeedbackBtn"
-  ]);
-
-  const menu = document.getElementById("mainSideMenu");
-  const menuBtn = document.getElementById("mainMenuBtn");
-  const backdrop = document.getElementById("mainMenuBackdrop");
-  const closeBtn = document.getElementById("mainMenuCloseBtn");
-
-  if (!menu || !menuBtn) return;
-
-  const navState = () => history.state?.[NAV_KEY] || "home";
-
-  function stateWith(value) {
-    return { ...(history.state || {}), [NAV_KEY]: value };
-  }
-
-  function openMenuOnly() {
-    closeChildOverlay();
-    try { window.statArchiveOpenMenu?.(); } catch (_) {}
-    menu.classList.add("is-open");
-    backdrop?.classList.add("is-open");
-    menu.setAttribute("aria-hidden", "false");
-    backdrop?.setAttribute("aria-hidden", "false");
-    menuBtn.setAttribute("aria-expanded", "true");
-  }
-
-  function closeMenuOnly() {
-    try { window.statArchiveCloseMenu?.(); } catch (_) {}
-    menu.classList.remove("is-open");
-    backdrop?.classList.remove("is-open");
-    menu.setAttribute("aria-hidden", "true");
-    backdrop?.setAttribute("aria-hidden", "true");
-    menuBtn.setAttribute("aria-expanded", "false");
-  }
-
-  function closeChildOverlay() {
-    const closeTargets = [
-      document.getElementById("closeAboutArchiveBtn"),
-      document.querySelector("#offlineLibraryOverlay .offline-close"),
-      document.querySelector("#offlineLibraryOverlay [aria-label*='Close' i]"),
-      document.getElementById("statFeedbackClose")
-    ].filter(Boolean);
-
-    for (const button of closeTargets) {
-      const host = button.closest(".overlay, .modal-overlay, #offlineLibraryOverlay, #statLocalFeedbackOverlay");
-      if (host && host.getClientRects().length && getComputedStyle(host).display !== "none") {
-        try { button.click(); } catch (_) {}
-      }
-    }
-
-    const feedback = document.getElementById("statLocalFeedbackOverlay");
-    if (feedback?.classList.contains("is-open")) {
-      feedback.classList.remove("is-open");
-      feedback.setAttribute("aria-hidden", "true");
-      document.body.classList.remove("no-scroll");
-    }
-  }
-
-  function enterMenuHistory() {
-    if (navState() === "home") {
-      history.pushState(stateWith("menu"), "", location.href);
-    }
-  }
-
-  // Tag the current entry as the plain Home state without changing the URL.
-  if (!history.state || !history.state[NAV_KEY]) {
-    history.replaceState(stateWith("home"), "", location.href);
-  }
-
-  document.addEventListener("click", event => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-
-    const clickedMenuButton = target.closest("#mainMenuBtn");
-    if (clickedMenuButton) {
-      if (menu.classList.contains("is-open") && navState() === "menu") {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        history.back();
-      } else if (!menu.classList.contains("is-open")) {
-        enterMenuHistory();
-      }
-      return;
-    }
-
-    if ((target.closest("#mainMenuCloseBtn") || target.closest("#mainMenuBackdrop")) &&
-        menu.classList.contains("is-open") && navState() === "menu") {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      history.back();
-      return;
-    }
-
-    const action = target.closest("#mainSideMenu .main-menu-action");
-    if (!action) return;
-
-    // Manual is allowed to navigate normally while the current history entry
-    // remains the Menu state. Browser Back therefore returns directly to Menu.
-    if (action.id === "menuManualsBtn") return;
-
-    // In-app child screens get one extra history level so Back returns to Menu.
-    if (CHILD_OVERLAY_BUTTONS.has(action.id) && navState() === "menu") {
-      history.pushState(stateWith("child"), "", location.href);
-    }
-  }, true);
-
-  window.addEventListener("popstate", () => {
-    const state = navState();
-    if (state === "menu") {
-      openMenuOnly();
-    } else if (state === "home") {
-      closeChildOverlay();
-      closeMenuOnly();
-    }
-  });
-
-  // When returning from a separate Manual page, the restored homepage entry
-  // is the Menu entry. Re-open the menu immediately so the first Back lands
-  // there instead of appearing to jump straight to Home.
-  const restoreFromHistory = () => {
-    if (navState() === "menu") {
-      requestAnimationFrame(openMenuOnly);
-    } else if (navState() === "home") {
-      closeMenuOnly();
-    }
-  };
-
-  window.addEventListener("pageshow", restoreFromHistory);
-  restoreFromHistory();
 })();
