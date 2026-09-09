@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library compact header/search refinement */
+/* Stat Archive — Offline Library compact header/search refinement v3 */
 (() => {
   "use strict";
 
@@ -10,20 +10,18 @@
     style.id = "saOfflineHeadingSearchFixStyle";
     style.textContent = `
 #offlineLibraryOverlay .sa-offline-head{
+  position:relative !important;
   padding:28px 26px 13px !important;
 }
 
-/* Keep title + menu + close on ONE row. */
+/* Title stays on one line; utility controls are pinned to the real top-right. */
 #offlineLibraryOverlay .sa-offline-title-row{
-  display:flex !important;
-  align-items:flex-start !important;
-  justify-content:space-between !important;
-  gap:12px !important;
+  display:block !important;
 }
 
 #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
   min-width:0 !important;
-  flex:1 1 auto !important;
+  padding-right:88px !important;
 }
 
 #offlineLibraryOverlay .sa-offline-title{
@@ -38,11 +36,15 @@
 }
 
 #offlineLibraryOverlay .sa-offline-head-actions{
-  flex:0 0 auto !important;
+  position:absolute !important;
+  top:24px !important;
+  right:22px !important;
+  z-index:3 !important;
   display:flex !important;
   align-items:center !important;
-  gap:3px !important;
-  padding-top:0 !important;
+  gap:2px !important;
+  padding:0 !important;
+  margin:0 !important;
 }
 
 #offlineLibraryOverlay .sa-offline-icon-btn{
@@ -51,7 +53,6 @@
   font-size:25px !important;
 }
 
-/* Study-vault sentence stays immediately below the title row. */
 #offlineLibraryOverlay .sa-offline-subtitle{
   max-width:720px !important;
   margin:18px 0 0 !important;
@@ -59,12 +60,11 @@
   font:500 14px/1.58 Inter,sans-serif !important;
 }
 
-/* Remove file-type pills completely. Subject selector is enough. */
+/* File-type pills remain removed. */
 #offlineLibraryOverlay .sa-offline-tabs{
   display:none !important;
 }
 
-/* Normal controls: search and subject have the same visual weight. */
 #offlineLibraryOverlay .sa-offline-filterbar{
   display:grid !important;
   grid-template-columns:1fr !important;
@@ -87,6 +87,15 @@
   border-radius:15px !important;
   background:rgba(255,255,255,.018) !important;
   color:#8f9aae !important;
+  outline:0 !important;
+  box-shadow:none !important;
+}
+
+/* Do not draw a second inner focus box when the search field is tapped. */
+#offlineLibraryOverlay .sa-offline-search:focus,
+#offlineLibraryOverlay .sa-offline-search:focus-within{
+  outline:0 !important;
+  box-shadow:none !important;
 }
 
 #offlineLibraryOverlay .sa-offline-search span{
@@ -98,20 +107,35 @@
   line-height:1 !important;
 }
 
-#offlineLibraryOverlay .sa-offline-search input{
+#offlineLibraryOverlay #offlineSearchInput,
+#offlineLibraryOverlay #offlineSearchInput:hover,
+#offlineLibraryOverlay #offlineSearchInput:focus,
+#offlineLibraryOverlay #offlineSearchInput:focus-visible,
+#offlineLibraryOverlay #offlineSearchInput:active{
   width:100% !important;
   min-width:0 !important;
   height:100% !important;
   margin:0 !important;
   padding:0 !important;
   border:0 !important;
+  border-radius:0 !important;
   outline:0 !important;
+  box-shadow:none !important;
   background:transparent !important;
   color:#f4f7fb !important;
   font:500 14px/1.2 Inter,sans-serif !important;
+  appearance:none !important;
+  -webkit-appearance:none !important;
 }
 
-#offlineLibraryOverlay .sa-offline-search input::placeholder{
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-decoration,
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-cancel-button,
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-results-button,
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-results-decoration{
+  -webkit-appearance:none !important;
+}
+
+#offlineLibraryOverlay #offlineSearchInput::placeholder{
   color:#68768a !important;
   opacity:1 !important;
 }
@@ -128,6 +152,11 @@
   font:600 14px/1 Inter,sans-serif !important;
 }
 
+/* Keep Continue studying, but remove the redundant right-side label. */
+#offlineLibraryOverlay #saOfflineContinueLabel{
+  display:none !important;
+}
+
 body[data-theme="light"] #offlineLibraryOverlay .sa-offline-title{
   color:#27302d !important;
 }
@@ -138,10 +167,10 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-search{
   background:rgba(255,255,255,.72) !important;
   border-color:rgba(75,54,95,.14) !important;
 }
-body[data-theme="light"] #offlineLibraryOverlay .sa-offline-search input{
+body[data-theme="light"] #offlineLibraryOverlay #offlineSearchInput{
   color:#27302d !important;
 }
-body[data-theme="light"] #offlineLibraryOverlay .sa-offline-search input::placeholder{
+body[data-theme="light"] #offlineLibraryOverlay #offlineSearchInput::placeholder{
   color:#8a8580 !important;
 }
 body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
@@ -155,9 +184,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     padding:24px 18px 11px !important;
   }
 
-  #offlineLibraryOverlay .sa-offline-title-row{
-    gap:7px !important;
-    align-items:center !important;
+  #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
+    padding-right:78px !important;
   }
 
   #offlineLibraryOverlay .sa-offline-title{
@@ -167,6 +195,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   }
 
   #offlineLibraryOverlay .sa-offline-head-actions{
+    top:20px !important;
+    right:14px !important;
     gap:0 !important;
   }
 
@@ -204,7 +234,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     font-size:18px !important;
   }
 
-  #offlineLibraryOverlay .sa-offline-search input,
+  #offlineLibraryOverlay #offlineSearchInput,
   #offlineLibraryOverlay #offlineSubjectSelect{
     font-size:13.5px !important;
   }
@@ -218,17 +248,22 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     if (input) {
       input.placeholder = "Search saved files, subjects, year...";
       input.setAttribute("aria-label", "Search saved files, subjects, year");
+      input.style.boxShadow = "none";
+      input.style.outline = "none";
     }
 
-    /* Also force the type-filter state back to All because the pills are removed. */
+    const recentLabel = document.getElementById("saOfflineContinueLabel");
+    if (recentLabel) recentLabel.textContent = "";
+
+    /* Type pills are removed, so always keep the hidden state on All. */
     const allTab = document.querySelector('#saOfflineTypeTabs [data-sa-offline-type="All"]');
     if (allTab && !allTab.classList.contains("active")) allTab.click();
   }
 
   function installObserver() {
     syncShell();
-    if (document.documentElement.dataset.saOfflineHeadingSearchObserverV2 === "1") return;
-    document.documentElement.dataset.saOfflineHeadingSearchObserverV2 = "1";
+    if (document.documentElement.dataset.saOfflineHeadingSearchObserverV3 === "1") return;
+    document.documentElement.dataset.saOfflineHeadingSearchObserverV3 = "1";
     const observer = new MutationObserver(syncShell);
     observer.observe(document.body || document.documentElement, { childList:true, subtree:true });
   }
