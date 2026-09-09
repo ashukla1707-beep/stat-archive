@@ -1,14 +1,16 @@
-/* Stat Archive — seamless Menu -> Offline Library handoff v1
+/* Stat Archive — seamless Menu -> Offline Library handoff v2
    Keeps Menu visible while Offline Library finishes rendering, then swaps the
-   two UIs in one paint. Also resets the Offline Library scroll position on
-   every fresh Menu open. */
+   two UIs in one paint. Resets Offline Library scroll on fresh opens and hands
+   nested subject scrolling back to the main library at top/bottom boundaries. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_OFFLINE_HANDOFF__) return;
-  window.__STAT_ARCHIVE_OFFLINE_HANDOFF__ = "1";
+  if (window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V2__) return;
+  window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V2__ = "2";
 
   let opening = false;
+  let activeTouchBody = null;
+  let lastTouchY = 0;
 
   function resetOfflineScrollPosition() {
     const overlay = document.getElementById("offlineLibraryOverlay");
@@ -85,6 +87,96 @@
     try { navigator.storage?.persist?.(); } catch (_) {}
   }
 
+  function mainScrollFor(body) {
+    return body?.closest(".sa-offline-scroll") ||
+      document.querySelector("#offlineLibraryOverlay .sa-offline-scroll");
+  }
+
+  function atBoundary(body, delta) {
+    if (!body) return false;
+    const max = Math.max(0, body.scrollHeight - body.clientHeight);
+    if (max <= 1) return true;
+    if (delta > 0) return body.scrollTop >= max - 1;
+    if (delta < 0) return body.scrollTop <= 1;
+    return false;
+  }
+
+  function canMainScroll(main, delta) {
+    if (!main || !delta) return false;
+    const max = Math.max(0, main.scrollHeight - main.clientHeight);
+    if (delta > 0) return main.scrollTop < max - 1;
+    return main.scrollTop > 1;
+  }
+
+  function transferToMain(body, delta) {
+    const main = mainScrollFor(body);
+    if (!main || !canMainScroll(main, delta)) return false;
+
+    const max = Math.max(0, main.scrollHeight - main.clientHeight);
+    main.scrollTop = Math.max(0, Math.min(max, main.scrollTop + delta));
+    return true;
+  }
+
+  function installBoundaryScrollHandoff() {
+    if (document.getElementById("saOfflineBoundaryHandoffStyle")) return;
+
+    const style = document.createElement("style");
+    style.id = "saOfflineBoundaryHandoffStyle";
+    style.textContent = `
+#offlineLibraryOverlay .sa-offline-group.open .sa-offline-group-body{
+  overscroll-behavior-y:auto!important;
+}
+`;
+    document.head.appendChild(style);
+
+    document.addEventListener("touchstart", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      activeTouchBody = target?.closest("#offlineLibraryOverlay .sa-offline-group.open .sa-offline-group-body") || null;
+      if (!activeTouchBody || !event.touches?.length) return;
+      lastTouchY = event.touches[0].clientY;
+    }, { capture:true, passive:true });
+
+    document.addEventListener("touchmove", event => {
+      if (!activeTouchBody || !event.touches?.length) return;
+      if (!document.contains(activeTouchBody)) {
+        activeTouchBody = null;
+        return;
+      }
+
+      const y = event.touches[0].clientY;
+      const delta = lastTouchY - y;
+      lastTouchY = y;
+
+      if (Math.abs(delta) < 0.5) return;
+      if (!atBoundary(activeTouchBody, delta)) return;
+
+      if (transferToMain(activeTouchBody, delta)) {
+        /* Once the nested subject reaches its edge, keep the same finger gesture
+           moving the main Offline Library so the next/previous subject becomes
+           reachable without lifting the finger. */
+        event.preventDefault();
+      }
+    }, { capture:true, passive:false });
+
+    const endTouch = () => {
+      activeTouchBody = null;
+      lastTouchY = 0;
+    };
+    document.addEventListener("touchend", endTouch, { capture:true, passive:true });
+    document.addEventListener("touchcancel", endTouch, { capture:true, passive:true });
+
+    document.addEventListener("wheel", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const body = target?.closest("#offlineLibraryOverlay .sa-offline-group.open .sa-offline-group-body");
+      if (!body || !event.deltaY) return;
+      if (!atBoundary(body, event.deltaY)) return;
+
+      if (transferToMain(body, event.deltaY)) {
+        event.preventDefault();
+      }
+    }, { capture:true, passive:false });
+  }
+
   document.addEventListener("click", event => {
     const target = event.target instanceof Element ? event.target : null;
     const button = target?.closest("#menuOfflineLibraryBtn");
@@ -97,4 +189,6 @@
     event.stopImmediatePropagation();
     void openFromMenu();
   }, true);
+
+  installBoundaryScrollHandoff();
 })();
