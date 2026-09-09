@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library stable loader v8
+/* Stat Archive — Offline Library stable loader v9
    No MutationObserver. Keeps stable CSS, search copy and formatter loader. */
 (() => {
   "use strict";
@@ -63,7 +63,7 @@
     padding-right:12px !important;
   }
 
-  /* Reliable mobile header: title gets one column, actions get their own fixed column. */
+  /* Mobile header: large title + fixed action area. */
   #offlineLibraryOverlay .sa-offline-title-row{
     display:grid !important;
     grid-template-columns:minmax(0,1fr) 68px !important;
@@ -72,6 +72,7 @@
     position:relative !important;
     width:100% !important;
     min-height:42px !important;
+    overflow:visible !important;
   }
   #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
     display:block !important;
@@ -79,7 +80,7 @@
     width:100% !important;
     padding:0 !important;
     margin:0 !important;
-    overflow:hidden !important;
+    overflow:visible !important;
   }
   #offlineLibraryOverlay .sa-offline-title{
     display:inline-block !important;
@@ -89,9 +90,9 @@
     padding:0 !important;
     font-size:34px !important;
     line-height:1.04 !important;
-    letter-spacing:-.4px !important;
+    letter-spacing:-.55px !important;
     white-space:nowrap !important;
-    transform:scaleX(.88) !important;
+    transform:scaleX(.84) !important;
     transform-origin:left center !important;
     overflow:visible !important;
   }
