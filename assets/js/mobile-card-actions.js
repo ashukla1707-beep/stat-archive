@@ -175,31 +175,68 @@ html body .card .card-actions .offline-btn{
     min-width:clamp(86px,26vw,102px) !important;
   }
 
-  /* Signed-in mobile layout intentionally unchanged. */
+  /* Signed-in contributor/admin mobile: restore the original one-line layout.
+     Contributors naturally show 4 controls; admins show 5. */
   html[data-authenticated="true"] body .card .card-actions{
-    grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 30px 30px !important;
+    display:flex !important;
+    flex-direction:row !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:stretch !important;
     gap:4px !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow:hidden !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:32px !important;
-    min-height:32px !important;
-    padding:0 4px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:34px !important;
+    min-height:34px !important;
+    padding:0 5px !important;
     border-radius:9px !important;
     font-size:10.5px !important;
     font-weight:700 !important;
+    gap:3px !important;
   }
 
-  html[data-authenticated="true"] body .card .card-actions .edit-btn,
-  html[data-authenticated="true"] body .card .card-actions .del-btn{
-    width:30px !important;
-    min-width:30px !important;
-    max-width:30px !important;
-    padding:0 !important;
+  html[data-authenticated="true"] body .card .card-actions .pv-btn,
+  html[data-authenticated="true"] body .card .card-actions .dl-btn,
+  html[data-authenticated="true"] body .card .card-actions .download-btn,
+  html[data-authenticated="true"] body .card .card-actions .offline-btn{
+    flex:1 1 0 !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
   }
 
+  /* Edit text is visible again on mobile, matching the original screenshot. */
   html[data-authenticated="true"] body .card .card-actions .edit-btn{
-    font-size:0 !important;
+    flex:0 0 52px !important;
+    width:52px !important;
+    min-width:52px !important;
+    max-width:52px !important;
+    padding:0 4px !important;
+    font-size:10.5px !important;
+    gap:2px !important;
+  }
+
+  html[data-authenticated="true"] body .card .card-actions .edit-btn::before{
+    content:none !important;
+    display:none !important;
+  }
+
+  html[data-authenticated="true"] body .card .card-actions .del-btn{
+    flex:0 0 34px !important;
+    width:34px !important;
+    min-width:34px !important;
+    max-width:34px !important;
+    padding:0 !important;
   }
 
   html body .card .card-actions .action-btn br{
@@ -276,24 +313,32 @@ html body .card .card-actions .offline-btn{
     min-width:80px !important;
   }
 
-  html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:30px !important;
-    min-height:30px !important;
-    padding:0 3px !important;
-    font-size:10px !important;
-    border-radius:8px !important;
-  }
-
   html[data-authenticated="true"] body .card .card-actions{
-    grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) 28px 28px !important;
     gap:3px !important;
   }
 
-  html[data-authenticated="true"] body .card .card-actions .edit-btn,
+  html[data-authenticated="true"] body .card .card-actions .action-btn{
+    height:32px !important;
+    min-height:32px !important;
+    padding:0 3px !important;
+    font-size:9.5px !important;
+    border-radius:8px !important;
+    gap:2px !important;
+  }
+
+  html[data-authenticated="true"] body .card .card-actions .edit-btn{
+    flex-basis:46px !important;
+    width:46px !important;
+    min-width:46px !important;
+    max-width:46px !important;
+    font-size:9.5px !important;
+  }
+
   html[data-authenticated="true"] body .card .card-actions .del-btn{
-    width:28px !important;
-    min-width:28px !important;
-    max-width:28px !important;
+    flex-basis:30px !important;
+    width:30px !important;
+    min-width:30px !important;
+    max-width:30px !important;
   }
 }
 `;
