@@ -74,8 +74,8 @@
   content:"" !important;
   position:absolute !important;
   left:0 !important;
-  top:5px !important;
-  bottom:5px !important;
+  top:1px !important;
+  bottom:1px !important;
   width:2px !important;
   border-radius:999px !important;
   background:rgba(94,231,247,.78) !important;
@@ -169,8 +169,8 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     padding-left:11px !important;
   }
   #mainSideMenu .stat-menu-reference-brand::before{
-    top:5px !important;
-    bottom:5px !important;
+    top:1px !important;
+    bottom:1px !important;
     width:2px !important;
   }
   #mainSideMenu .stat-menu-reference-kicker{
