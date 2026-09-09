@@ -84,11 +84,7 @@
   });
 })();
 
-/* =========================================================
-   OFFLINE ACTION — HARD ENABLE FOR WEB + PWA
-   styles.css contains an older PWA-only !important hide rule.
-   Use inline !important so no author stylesheet can hide the action.
-   ========================================================= */
+/* Offline action hard-enable for web + PWA. */
 (function(){
   "use strict";
 
@@ -132,4 +128,81 @@
 
   document.addEventListener("DOMContentLoaded", () => forceOfflineActions(document), { once:true });
   window.addEventListener("pageshow", () => forceOfflineActions(document));
+})();
+
+/* =========================================================
+   FILTER DIVIDER — ONE LINE ONLY
+   styles.css adds its own border-top to .archive-action-row.
+   Keep the single divider owned by the Types section and remove every
+   possible action-row / Archive Entries separator source.
+   ========================================================= */
+(function(){
+  "use strict";
+
+  const style = document.createElement("style");
+  style.id = "statArchiveSingleTypesDivider";
+  style.textContent = `
+html body .toolbar > .archive-type-filter-section{
+  border-bottom:1px solid var(--line) !important;
+}
+html body .toolbar > .archive-action-row,
+html body .toolbar > .archive-type-filter-section + .archive-action-row{
+  border:0 !important;
+  border-top:0 !important;
+  border-bottom:0 !important;
+  box-shadow:none !important;
+  outline:0 !important;
+}
+html body .toolbar > .archive-action-row::before,
+html body .toolbar > .archive-action-row::after,
+html body .toolbar > .archive-type-filter-section + .archive-action-row::before,
+html body .toolbar > .archive-type-filter-section + .archive-action-row::after{
+  content:none !important;
+  display:none !important;
+  border:0 !important;
+  background:none !important;
+  box-shadow:none !important;
+}
+html body .archive-entries-divider,
+html body .archive-entries-divider::before,
+html body .archive-entries-divider::after,
+html body .archive-entries-divider > i{
+  border:0 !important;
+  border-top:0 !important;
+  background:none !important;
+  box-shadow:none !important;
+}
+html body .archive-entries-divider::before,
+html body .archive-entries-divider::after,
+html body .archive-entries-divider > i{
+  content:none !important;
+  display:none !important;
+}
+`;
+  document.head.appendChild(style);
+
+  function enforce(){
+    const typeSection = document.querySelector(".toolbar > .archive-type-filter-section");
+    const actionRow = document.querySelector(".toolbar > .archive-action-row");
+    const entriesDivider = document.querySelector(".archive-entries-divider");
+
+    if (typeSection) typeSection.style.setProperty("border-bottom", "1px solid var(--line)", "important");
+    if (actionRow) {
+      actionRow.style.setProperty("border", "0", "important");
+      actionRow.style.setProperty("border-top", "0", "important");
+      actionRow.style.setProperty("border-bottom", "0", "important");
+      actionRow.style.setProperty("box-shadow", "none", "important");
+      actionRow.style.setProperty("outline", "0", "important");
+    }
+    if (entriesDivider) {
+      entriesDivider.style.setProperty("border", "0", "important");
+      entriesDivider.style.setProperty("border-top", "0", "important");
+      entriesDivider.style.setProperty("box-shadow", "none", "important");
+    }
+  }
+
+  enforce();
+  document.addEventListener("DOMContentLoaded", enforce, {once:true});
+  window.addEventListener("pageshow", enforce);
+  new MutationObserver(enforce).observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:["class","style"]});
 })();
