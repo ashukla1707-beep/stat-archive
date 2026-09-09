@@ -151,88 +151,90 @@ html body .card .card-actions .del-btn{
 }
 
 /* =========================================================
-   MOBILE CARD ACTIONS — reference-style large touch pills
+   MOBILE CARD ACTIONS — compact reference proportions
    ========================================================= */
 @media(max-width:700px){
   html body .subject-track .card{
-    padding:16px 16px 14px !important;
-    border-radius:16px !important;
+    padding:14px 15px 12px !important;
+    border-radius:15px !important;
   }
 
   html body .card .card-meta-row{
-    margin-bottom:10px !important;
+    margin-bottom:8px !important;
   }
 
   html body .card.card-no-title .card-meta-row{
-    min-height:50px !important;
+    min-height:42px !important;
   }
 
   html body .card .card-actions,
   html body .card .card-actions:has(.edit-btn),
   html body .card .card-actions:has(.del-btn){
-    display:grid !important;
-    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-    align-items:stretch !important;
-    justify-content:stretch !important;
-    gap:10px !important;
-    padding-top:12px !important;
-    flex-wrap:unset !important;
+    display:flex !important;
+    flex-direction:row !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:8px !important;
+    padding-top:9px !important;
+    grid-template-columns:none !important;
   }
 
   html body .card .card-actions .action-btn{
-    display:flex !important;
-    flex:1 1 auto !important;
+    display:inline-flex !important;
+    flex:0 0 auto !important;
     flex-direction:row !important;
     align-items:center !important;
     justify-content:center !important;
-    gap:6px !important;
-    width:100% !important;
+    gap:5px !important;
+    width:auto !important;
     min-width:0 !important;
     max-width:none !important;
-    height:48px !important;
-    min-height:48px !important;
-    padding:0 8px !important;
+    height:38px !important;
+    min-height:38px !important;
+    padding:0 13px !important;
     margin:0 !important;
-    border-radius:14px !important;
+    border-radius:11px !important;
     white-space:nowrap !important;
     word-break:keep-all !important;
     overflow-wrap:normal !important;
     text-align:center !important;
     line-height:1 !important;
-    font-size:14px !important;
+    font-size:12.5px !important;
     font-weight:700 !important;
     box-sizing:border-box !important;
+  }
+
+  html body .card .card-actions .dl-btn{
+    padding-left:15px !important;
+    padding-right:15px !important;
   }
 
   html body .card .card-actions .action-btn br{
     display:none !important;
   }
 
-  /* Dark theme — matches the supplied reference. */
   body:not([data-theme="light"]) .card .card-actions .pv-btn,
   body:not([data-theme="light"]) .card .card-actions .offline-btn{
     color:#63efff !important;
-    background:rgba(21,56,68,.78) !important;
+    background:rgba(21,56,68,.72) !important;
     border:1px solid rgba(99,239,255,.34) !important;
-    box-shadow:
-      inset 0 0 0 1px rgba(99,239,255,.08),
-      0 0 18px rgba(56,210,235,.08) !important;
+    box-shadow:inset 0 0 0 1px rgba(99,239,255,.08) !important;
   }
 
   body:not([data-theme="light"]) .card .card-actions .dl-btn{
     color:#eef2f8 !important;
-    background:rgba(17,24,36,.92) !important;
-    border:1px solid rgba(255,255,255,.045) !important;
-    box-shadow:0 8px 18px rgba(0,0,0,.12) !important;
+    background:rgba(17,24,36,.90) !important;
+    border:1px solid rgba(255,255,255,.05) !important;
+    box-shadow:none !important;
   }
 
-  /* Light theme — same geometry, existing Stat Archive palette. */
   body[data-theme="light"] .card .card-actions .pv-btn,
   body[data-theme="light"] .card .card-actions .offline-btn{
     color:#4b365f !important;
     background:#f1ebf6 !important;
     border:1px solid #d8cce2 !important;
-    box-shadow:0 5px 14px rgba(75,54,95,.07) !important;
+    box-shadow:none !important;
   }
 
   body[data-theme="light"] .card .card-actions .offline-btn.is-saved,
@@ -255,36 +257,45 @@ html body .card .card-actions .del-btn{
     border-color:#4b365f !important;
   }
 
-  /* Contributor controls continue on a clean second row when present. */
+  /* Contributor buttons can continue on a second row without enlarging primary actions. */
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    flex-wrap:wrap !important;
+    justify-content:flex-start !important;
+    row-gap:7px !important;
+  }
+
   html body .card .card-actions .edit-btn,
   html body .card .card-actions .del-btn{
-    height:42px !important;
-    min-height:42px !important;
-    border-radius:12px !important;
-    font-size:12.5px !important;
+    height:34px !important;
+    min-height:34px !important;
+    border-radius:10px !important;
+    font-size:11.5px !important;
   }
 }
 
-/* Very narrow phones: retain the 3-column layout while trimming typography. */
 @media(max-width:380px){
   html body .subject-track .card{
-    padding-left:13px !important;
-    padding-right:13px !important;
+    padding-left:12px !important;
+    padding-right:12px !important;
   }
 
-  html body .card .card-actions,
-  html body .card .card-actions:has(.edit-btn),
-  html body .card .card-actions:has(.del-btn){
-    gap:6px !important;
+  html body .card .card-actions{
+    gap:5px !important;
   }
 
   html body .card .card-actions .action-btn{
-    height:44px !important;
-    min-height:44px !important;
-    padding:0 5px !important;
-    border-radius:12px !important;
-    font-size:12px !important;
+    height:35px !important;
+    min-height:35px !important;
+    padding:0 9px !important;
+    border-radius:10px !important;
+    font-size:11.5px !important;
     gap:4px !important;
+  }
+
+  html body .card .card-actions .dl-btn{
+    padding-left:10px !important;
+    padding-right:10px !important;
   }
 }
 `;
