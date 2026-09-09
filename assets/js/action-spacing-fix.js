@@ -68,72 +68,16 @@ html body .archive-entries-divider::after{
   box-shadow:none !important;
 }
 
-/* Archive cards: compact action pills, single-line and truly centered. */
-html body .card .card-actions{
-  align-items:center !important;
-}
-html body .card .card-actions .action-btn,
-html body .card .card-actions > button,
-html body .card .card-actions > a{
-  display:flex !important;
-  flex-direction:row !important;
-  flex-wrap:nowrap !important;
-  align-items:center !important;
-  justify-content:center !important;
-  gap:4px !important;
-  text-align:center !important;
-  white-space:nowrap !important;
-  word-break:keep-all !important;
-  overflow-wrap:normal !important;
-  line-height:1 !important;
-  font-size:12px !important;
-  min-height:31px !important;
-  height:31px !important;
-  padding:0 5px !important;
-  border-radius:9px !important;
-  margin:0 !important;
-  box-sizing:border-box !important;
-  vertical-align:middle !important;
-}
-html body .card .card-actions .action-btn > *,
-html body .card .card-actions > button > *,
-html body .card .card-actions > a > *{
-  display:inline-flex !important;
-  width:auto !important;
-  height:auto !important;
-  min-width:0 !important;
-  min-height:0 !important;
-  margin:0 !important;
-  padding:0 !important;
-  line-height:1 !important;
-  align-self:center !important;
-  white-space:nowrap !important;
-}
-html body .card .card-actions .dl-btn,
-html body .card .card-actions .download-btn{
-  flex-direction:row !important;
-  flex-wrap:nowrap !important;
-}
-html body .card .card-actions .dl-btn br,
-html body .card .card-actions .download-btn br{
-  display:none !important;
-}
+/* Card action sizing is intentionally NOT defined here.
+   tooltips.js is the single source of truth for Preview / Download / Offline
+   dimensions on desktop and mobile. Keeping this file out of that layout
+   prevents later !important rules from overriding the mobile reference design. */
 
 @media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
     padding-top:18px !important;
     margin-bottom:12px !important;
-  }
-  html body .card .card-actions .action-btn,
-  html body .card .card-actions > button,
-  html body .card .card-actions > a{
-    font-size:11.5px !important;
-    min-height:30px !important;
-    height:30px !important;
-    padding:0 4px !important;
-    border-radius:8px !important;
-    gap:3px !important;
   }
 }
 `;
