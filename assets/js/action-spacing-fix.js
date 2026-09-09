@@ -3,8 +3,16 @@
   const style = document.createElement('style');
   style.id = 'statArchiveActionSpacingFix';
   style.textContent = `
-/* Keep only the Types divider above signed-in actions. */
-html body .toolbar > .archive-action-row{
+/* One separator only: the Types section owns the divider. */
+html body .toolbar > .archive-type-filter-section{
+  border-top:0 !important;
+  border-bottom:1px solid var(--line) !important;
+  box-shadow:none !important;
+}
+
+/* The signed-in action row must never draw a second separator. */
+html body .toolbar > .archive-action-row,
+html body .toolbar > .archive-type-filter-section + .archive-action-row{
   border:0 !important;
   border-top:0 !important;
   border-bottom:0 !important;
@@ -15,15 +23,23 @@ html body .toolbar > .archive-action-row{
   position:relative !important;
 }
 html body .toolbar > .archive-action-row::before,
-html body .toolbar > .archive-action-row::after{
+html body .toolbar > .archive-action-row::after,
+html body .toolbar > .archive-type-filter-section + .archive-action-row::before,
+html body .toolbar > .archive-type-filter-section + .archive-action-row::after{
   content:none !important;
   display:none !important;
   border:0 !important;
+  width:0 !important;
+  height:0 !important;
+  background:none !important;
+  box-shadow:none !important;
 }
 
 /* Archive Entries: show label only, no horizontal rule. */
 html body .archive-entries-divider{
+  border:0 !important;
   border-top:0 !important;
+  box-shadow:none !important;
   margin-top:0 !important;
   padding-top:20px !important;
   margin-bottom:16px !important;
@@ -40,8 +56,16 @@ html body .archive-entries-divider > span{
   transform:none !important;
 }
 
-html body .archive-entries-divider > i{
+html body .archive-entries-divider > i,
+html body .archive-entries-divider::before,
+html body .archive-entries-divider::after{
   display:none !important;
+  content:none !important;
+  border:0 !important;
+  width:0 !important;
+  height:0 !important;
+  background:none !important;
+  box-shadow:none !important;
 }
 
 @media(max-width:700px){
