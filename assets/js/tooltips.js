@@ -84,50 +84,88 @@
   });
 })();
 
-/* Offline action hard-enable for web + PWA. */
+/* =========================================================
+   WEB + PWA CARD ACTIONS
+   Static CSS only. No MutationObserver or DOM rewriting.
+   ========================================================= */
 (function(){
   "use strict";
+  if (document.getElementById("statArchiveStableCardActions")) return;
 
-  function forceOfflineActions(root){
-    const scope = root && root.querySelectorAll ? root : document;
-    scope.querySelectorAll(".card .card-actions .offline-btn").forEach(btn => {
-      btn.style.setProperty("display", "inline-flex", "important");
-      btn.style.setProperty("visibility", "visible", "important");
-      btn.style.setProperty("opacity", "1", "important");
-      btn.style.setProperty("pointer-events", "auto", "important");
-      btn.removeAttribute("aria-hidden");
-      btn.tabIndex = 0;
-    });
+  const style = document.createElement("style");
+  style.id = "statArchiveStableCardActions";
+  style.textContent = `
+/* Offline is available on both normal web and installed PWA. */
+html body .card .card-actions .offline-btn,
+html:not(.stat-archive-pwa) body .card .card-actions .offline-btn,
+html.stat-archive-pwa body .card .card-actions .offline-btn{
+  display:inline-flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
 
-    scope.querySelectorAll(".card .card-actions").forEach(row => {
-      const offline = row.querySelector(".offline-btn");
-      if (!offline) return;
-      row.style.setProperty("display", "grid", "important");
-      row.style.setProperty("grid-template-columns", "repeat(3,minmax(0,1fr))", "important");
-      row.style.setProperty("gap", window.innerWidth <= 700 ? "6px" : "8px", "important");
-      row.querySelectorAll(".action-btn").forEach(btn => {
-        btn.style.setProperty("width", "100%", "important");
-        btn.style.setProperty("min-width", "0", "important");
-      });
-    });
+/* Card action row: content-width controls, never equal-width grid cells. */
+html body .card .card-actions{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:6px !important;
+  grid-template-columns:none !important;
+}
+
+html body .card .card-actions .action-btn{
+  display:inline-flex !important;
+  flex:0 0 auto !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:34px !important;
+  min-height:34px !important;
+  padding:0 9px !important;
+  margin:0 !important;
+  border-radius:9px !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow-wrap:normal !important;
+  text-align:center !important;
+  line-height:1 !important;
+  font-size:12.5px !important;
+  box-sizing:border-box !important;
+}
+
+/* Contributor/admin cards may have more controls; let those wrap cleanly. */
+html body .card .card-actions:has(.edit-btn),
+html body .card .card-actions:has(.del-btn){
+  flex-wrap:wrap !important;
+  justify-content:flex-start !important;
+}
+
+html body .card .card-actions .edit-btn,
+html body .card .card-actions .del-btn{
+  min-width:34px !important;
+}
+
+@media(max-width:700px){
+  html body .card .card-actions{
+    gap:5px !important;
   }
 
-  forceOfflineActions(document);
-
-  const grid = document.getElementById("grid");
-  if (grid) {
-    new MutationObserver(records => {
-      for (const record of records) {
-        record.addedNodes.forEach(node => {
-          if (node instanceof Element) forceOfflineActions(node);
-        });
-      }
-      forceOfflineActions(grid);
-    }).observe(grid, { childList:true, subtree:true });
+  html body .card .card-actions .action-btn{
+    height:32px !important;
+    min-height:32px !important;
+    padding:0 7px !important;
+    border-radius:8px !important;
+    font-size:12px !important;
   }
-
-  document.addEventListener("DOMContentLoaded", () => forceOfflineActions(document), { once:true });
-  window.addEventListener("pageshow", () => forceOfflineActions(document));
+}
+`;
+  document.head.appendChild(style);
 })();
 
 /* =========================================================
@@ -206,8 +244,6 @@ html body .archive-entries-divider > i{
 
 /* =========================================================
    WEB / PWA REDESIGN SYNC
-   The APK packages these presentation files, while web index.html only
-   loads the base stack. Load the same redesign files explicitly on web.
    ========================================================= */
 (function(){
   "use strict";
