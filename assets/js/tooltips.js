@@ -132,9 +132,6 @@
 
 /* =========================================================
    FILTER DIVIDER — ONE LINE ONLY
-   styles.css adds its own border-top to .archive-action-row.
-   Keep the single divider owned by the Types section and remove every
-   possible action-row / Archive Entries separator source.
    ========================================================= */
 (function(){
   "use strict";
@@ -205,4 +202,49 @@ html body .archive-entries-divider > i{
   document.addEventListener("DOMContentLoaded", enforce, {once:true});
   window.addEventListener("pageshow", enforce);
   new MutationObserver(enforce).observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:["class","style"]});
+})();
+
+/* =========================================================
+   WEB / PWA REDESIGN SYNC
+   The APK packages these presentation files, while web index.html only
+   loads the base stack. Load the same redesign files explicitly on web.
+   ========================================================= */
+(function(){
+  "use strict";
+
+  const scripts = [
+    ["menu-polish", "./assets/js/menu-polish.js?v=20260909-websync-1"],
+    ["menu-alignment", "./assets/js/menu-alignment-fix.js?v=20260909-websync-1"],
+    ["offline-hybrid", "./assets/js/offline-library-hybrid.js?v=20260909-websync-1"],
+    ["offline-heading", "./assets/js/offline-library-heading-search-fix.js?v=20260909-websync-1"]
+  ];
+
+  function alreadyLoaded(key, src){
+    const bare = src.split("?")[0].replace(/^\.\//, "");
+    return !!document.querySelector(`script[data-sa-web-redesign="${key}"]`) ||
+      Array.from(document.scripts).some(s => (s.src || "").includes(bare));
+  }
+
+  function loadOne(key, src){
+    return new Promise(resolve => {
+      if (alreadyLoaded(key, src)) { resolve(); return; }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.dataset.saWebRedesign = key;
+      script.addEventListener("load", resolve, {once:true});
+      script.addEventListener("error", resolve, {once:true});
+      document.body.appendChild(script);
+    });
+  }
+
+  async function loadRedesign(){
+    for (const [key, src] of scripts) await loadOne(key, src);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadRedesign, {once:true});
+  } else {
+    loadRedesign();
+  }
 })();
