@@ -29,8 +29,7 @@ html:not([data-authenticated="true"]) body .card .card-actions .action-btn{
   white-space:nowrap !important;
 }
 
-/* Baseline signed-in layout. This is the exact mobile layout that was stable
-   before the web contributor adjustment. */
+/* Baseline signed-in layout. */
 html[data-authenticated="true"] body .card .card-actions{
   display:grid !important;
   grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 34px 34px !important;
@@ -88,8 +87,7 @@ html body .card .card-actions .offline-btn{
   pointer-events:auto !important;
 }
 
-/* WEB ONLY: contributor/admin rows adapt to 4 or 5 actions without changing
-   any phone/APK geometry. */
+/* WEB ONLY: contributor/admin rows adapt to 4 or 5 actions. */
 @media (min-width:701px){
   html[data-authenticated="true"] body .card .card-actions{
     display:flex !important;
@@ -139,10 +137,10 @@ html body .card .card-actions .offline-btn{
   }
 }
 
-/* MOBILE / APK — restored exactly to the previously stable values. */
+/* MOBILE / APK — compact reference sizing only. */
 @media (max-width:700px){
   html body .card .card-actions{
-    padding-top:10px !important;
+    padding-top:8px !important;
   }
 
   html:not([data-authenticated="true"]) body .card .card-actions{
@@ -150,33 +148,33 @@ html body .card .card-actions .offline-btn{
   }
 
   html:not([data-authenticated="true"]) body .card .card-actions .action-btn{
-    height:44px !important;
-    min-height:44px !important;
-    padding:0 8px !important;
-    border-radius:13px !important;
-    font-size:14px !important;
+    height:32px !important;
+    min-height:32px !important;
+    padding:0 10px !important;
+    border-radius:9px !important;
+    font-size:12.5px !important;
     font-weight:700 !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions{
-    grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 32px 32px !important;
+    grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 30px 30px !important;
     gap:4px !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:38px !important;
-    min-height:38px !important;
+    height:32px !important;
+    min-height:32px !important;
     padding:0 4px !important;
-    border-radius:10px !important;
-    font-size:11px !important;
+    border-radius:9px !important;
+    font-size:10.5px !important;
     font-weight:700 !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .edit-btn,
   html[data-authenticated="true"] body .card .card-actions .del-btn{
-    width:32px !important;
-    min-width:32px !important;
-    max-width:32px !important;
+    width:30px !important;
+    min-width:30px !important;
+    max-width:30px !important;
     padding:0 !important;
   }
 
@@ -236,28 +234,25 @@ html body .card .card-actions .offline-btn{
 }
 
 @media (max-width:380px){
-  html[data-authenticated="true"] body .card .card-actions{
-    grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) 29px 29px !important;
-    gap:3px !important;
-  }
-
+  html:not([data-authenticated="true"]) body .card .card-actions .action-btn,
   html[data-authenticated="true"] body .card .card-actions .action-btn{
-    height:36px !important;
-    min-height:36px !important;
+    height:30px !important;
+    min-height:30px !important;
     padding:0 3px !important;
     font-size:10px !important;
-    border-radius:9px !important;
+    border-radius:8px !important;
+  }
+
+  html[data-authenticated="true"] body .card .card-actions{
+    grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) 28px 28px !important;
+    gap:3px !important;
   }
 
   html[data-authenticated="true"] body .card .card-actions .edit-btn,
   html[data-authenticated="true"] body .card .card-actions .del-btn{
-    width:29px !important;
-    min-width:29px !important;
-    max-width:29px !important;
-  }
-
-  html[data-authenticated="true"] body .card .card-actions .edit-btn{
-    font-size:0 !important;
+    width:28px !important;
+    min-width:28px !important;
+    max-width:28px !important;
   }
 }
 `;
