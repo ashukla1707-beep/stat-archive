@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "1.5.13",
+  "versionCode": 21,
+  "versionName": "1.5.14",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.13 uses the approved splash artwork as the Android app launcher logo as well, keeping the splash screen and app icon visually consistent."
+  "message": "Stat Archive 1.5.14 rebuilds the Android app after the navigation fix so Back follows Home → Menu → Manual → Menu → Home correctly with the latest deployed website code."
 }
