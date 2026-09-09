@@ -1,12 +1,16 @@
-/* Stat Archive — Offline Library entry format
-   Stable, event-driven card formatting. No MutationObserver. */
+/* Stat Archive — Offline Library presentation refinement v4
+   Event-driven only. No MutationObserver. */
 (() => {
   "use strict";
+
+  const STUDY_LINE_1 = "Your study vault. Saved files stay on this device";
+  const STUDY_LINE_2 = "and can be opened without internet.";
 
   let refreshTimer = 0;
   let refreshing = false;
   let openWrapped = false;
   let renderWrapped = false;
+  let expandedSubject = "";
 
   function subjectOf(record) {
     return String(record?.subjectName || record?.subject || "Other").trim() || "Other";
@@ -22,7 +26,7 @@
 
   function yearOf(record) {
     const direct = String(record?.year || "").trim();
-    if (direct) return direct;
+    if (/^(?:19|20)\d{2}$/.test(direct)) return direct;
 
     const source = [record?.title, record?.filename, record?.name]
       .filter(Boolean)
@@ -31,21 +35,42 @@
     return match ? match[0] : "";
   }
 
-  function metaOf(record) {
+  function normalized(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[–—]/g, "-")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  /* Remove a repeated subject prefix and trailing year from the archive title.
+     If what remains is only the file type (e.g. “Advanced ML — Notes”), it is
+     intentionally omitted so the subject/type are not shown twice. */
+  function displayTitleOf(record) {
+    let title = titleOf(record);
+    const subject = subjectOf(record);
     const type = typeOf(record);
-    const year = yearOf(record);
-    return year ? `${type} · ${year}` : type;
+
+    if (subject) {
+      const escaped = subject.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      title = title.replace(new RegExp(`^${escaped}\\s*(?:[-–—:|]\\s*)?`, "i"), "").trim();
+    }
+
+    title = title
+      .replace(/\s*[:\-–—]?\s*(?:19|20)\d{2}\s*$/i, "")
+      .trim();
+
+    if (!title || normalized(title) === normalized(type)) return "";
+    return title;
   }
 
   function installStyle() {
-    const old = document.getElementById("saOfflineEntryFormatStyle");
-    if (old) old.remove();
+    document.getElementById("saOfflineEntryFormatStyle")?.remove();
 
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
-/* Let the subtitle use the whole row. Only the title itself reserves room
-   for the menu and close controls. */
+/* Subtitle: full available width; on phones it is deliberately two lines. */
 #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
   padding-right:0 !important;
   width:100% !important;
@@ -58,52 +83,90 @@
   width:100% !important;
   max-width:none !important;
   padding-right:0 !important;
-  margin-top:12px !important;
-  font:500 12px/1.45 Inter,sans-serif !important;
+  margin:10px 0 0 !important;
+  font:500 12px/1.42 Inter,sans-serif !important;
   letter-spacing:0 !important;
 }
+#offlineLibraryOverlay .sa-study-line{display:inline;}
+#offlineLibraryOverlay .sa-study-line + .sa-study-line::before{content:" ";}
 
-/* Continue studying: compact horizontal cards with subject, real file title,
-   then Type · Year. */
+/* Compact search + subject controls. */
+#offlineLibraryOverlay .sa-offline-filterbar{
+  gap:7px !important;
+  margin-top:13px !important;
+}
+#offlineLibraryOverlay .sa-offline-search,
+#offlineLibraryOverlay #offlineSubjectSelect{
+  height:46px !important;
+  border-radius:13px !important;
+}
+#offlineLibraryOverlay .sa-offline-search{
+  padding:0 13px !important;
+}
+#offlineLibraryOverlay #offlineSubjectSelect{
+  -webkit-appearance:none !important;
+  appearance:none !important;
+  padding:0 42px 0 14px !important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238f9aae' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat:no-repeat !important;
+  background-position:right 16px center !important;
+  background-size:14px 14px !important;
+}
+
+/* Continue studying: every card has exactly the same dimensions and hierarchy:
+   Subject -> Type -> distinct title -> Year at the bottom. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
+  align-items:stretch !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-card{
-  flex:0 0 142px !important;
-  min-height:118px !important;
-  padding:10px !important;
-  border-radius:14px !important;
+  flex:0 0 150px !important;
+  width:150px !important;
+  height:150px !important;
+  min-height:150px !important;
+  max-height:150px !important;
+  padding:11px !important;
+  border-radius:15px !important;
+  display:flex !important;
+  flex-direction:column !important;
   justify-content:flex-start !important;
-}
-#offlineLibraryOverlay .sa-offline-shelf-badge{
-  display:none !important;
-}
-#offlineLibraryOverlay .sa-offline-shelf-title{
-  margin:0 !important;
-  font:800 10.8px/1.3 Inter,sans-serif !important;
-  -webkit-line-clamp:2 !important;
-}
-#offlineLibraryOverlay .sa-offline-shelf-meta{
-  margin-top:7px !important;
-  color:#8290a3 !important;
-  font:500 9.5px/1.32 Inter,sans-serif !important;
-}
-#offlineLibraryOverlay .sa-offline-shelf-file-title{
-  display:-webkit-box !important;
-  -webkit-box-orient:vertical !important;
-  -webkit-line-clamp:2 !important;
   overflow:hidden !important;
-  color:#d8e0e9 !important;
-  font-weight:650 !important;
-  line-height:1.3 !important;
 }
-#offlineLibraryOverlay .sa-offline-shelf-type-year{
-  display:block !important;
-  margin-top:5px !important;
-  color:#8290a3 !important;
+#offlineLibraryOverlay .sa-recent-subject{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  color:#f4f7fb;
+  font:800 10.8px/1.28 Inter,sans-serif;
+}
+#offlineLibraryOverlay .sa-recent-type{
+  margin-top:7px;
+  color:#8d99aa;
+  font:600 9.6px/1.25 Inter,sans-serif;
+}
+#offlineLibraryOverlay .sa-recent-title{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  min-height:0;
+  margin-top:5px;
+  color:#d6dee8;
+  font:650 9.6px/1.28 Inter,sans-serif;
+}
+#offlineLibraryOverlay .sa-recent-title.is-empty{
+  visibility:hidden;
+  flex:1 1 auto;
+}
+#offlineLibraryOverlay .sa-recent-year{
+  margin-top:auto;
+  min-height:13px;
+  color:#7f8da1;
+  font:600 9.3px/1.2 'JetBrains Mono',monospace;
 }
 
-/* Expanded subject entries: actual file title, then Type · Year. */
+/* Expanded subject entries: actual file title, then Type · Year; no size/date. */
 #offlineLibraryOverlay .sa-offline-file-main{
   grid-template-columns:28px minmax(0,1fr) !important;
   gap:9px !important;
@@ -119,20 +182,23 @@
   display:none !important;
 }
 
-body[data-theme="light"] #offlineLibraryOverlay .sa-offline-shelf-title,
+body[data-theme="light"] #offlineLibraryOverlay .sa-recent-subject,
 body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
   color:#27302d !important;
 }
-body[data-theme="light"] #offlineLibraryOverlay .sa-offline-shelf-file-title{
-  color:#454d49 !important;
+body[data-theme="light"] #offlineLibraryOverlay .sa-recent-title{
+  color:#4b514e !important;
 }
-body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
+body[data-theme="light"] #offlineLibraryOverlay .sa-recent-type,
+body[data-theme="light"] #offlineLibraryOverlay .sa-recent-year{
   color:#817d77 !important;
+}
+body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
+  background-color:#fff !important;
 }
 
 @media(max-width:700px){
-  /* Match the menu-panel feel: inset from the screen with rounded corners,
-     instead of making Offline Library edge-to-edge. */
+  /* Inset rounded panel like the main menu. */
   #offlineLibraryOverlay{
     padding:12px !important;
     align-items:center !important;
@@ -151,51 +217,109 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
     overflow:hidden !important;
   }
 
+  #offlineLibraryOverlay .sa-offline-head{
+    padding-bottom:7px !important;
+  }
   #offlineLibraryOverlay .sa-offline-title{
     padding-right:78px !important;
   }
   #offlineLibraryOverlay .sa-offline-subtitle{
-    margin-top:11px !important;
-    font-size:11.5px !important;
-    line-height:1.42 !important;
+    margin-top:9px !important;
+    font-size:10.8px !important;
+    line-height:1.35 !important;
+  }
+  #offlineLibraryOverlay .sa-study-line{
+    display:block !important;
+    white-space:nowrap !important;
+  }
+  #offlineLibraryOverlay .sa-study-line + .sa-study-line::before{
+    content:"" !important;
+  }
+
+  #offlineLibraryOverlay .sa-offline-filterbar{
+    gap:7px !important;
+    margin-top:12px !important;
+  }
+  #offlineLibraryOverlay .sa-offline-search,
+  #offlineLibraryOverlay #offlineSubjectSelect{
+    height:45px !important;
+  }
+  #offlineLibraryOverlay #offlineSubjectSelect{
+    background-position:right 15px center !important;
+  }
+
+  #offlineLibraryOverlay .sa-offline-scroll{
+    padding-top:0 !important;
+  }
+  #offlineLibraryOverlay .sa-offline-section{
+    margin-top:17px !important;
   }
   #offlineLibraryOverlay .sa-offline-shelf-card{
-    flex-basis:132px !important;
-    min-height:112px !important;
-    padding:9px !important;
+    flex-basis:142px !important;
+    width:142px !important;
+    height:142px !important;
+    min-height:142px !important;
+    max-height:142px !important;
+    padding:10px !important;
   }
-  #offlineLibraryOverlay .sa-offline-shelf-title{
-    font-size:10.3px !important;
-    line-height:1.28 !important;
-  }
-  #offlineLibraryOverlay .sa-offline-shelf-meta{
-    margin-top:6px !important;
-    font-size:9.2px !important;
-  }
-  #offlineLibraryOverlay .sa-offline-file-title{
-    font-size:11px !important;
-  }
+  #offlineLibraryOverlay .sa-recent-subject{font-size:10.3px !important;}
+  #offlineLibraryOverlay .sa-recent-type,
+  #offlineLibraryOverlay .sa-recent-title{font-size:9.2px !important;}
+  #offlineLibraryOverlay .sa-recent-year{font-size:9px !important;}
+  #offlineLibraryOverlay .sa-offline-file-title{font-size:11px !important;}
 }
 `;
     document.head.appendChild(style);
   }
 
-  function fillShelfMeta(meta, record) {
-    if (!meta) return;
-    meta.textContent = "";
-
-    const fileTitle = document.createElement("span");
-    fileTitle.className = "sa-offline-shelf-file-title";
-    fileTitle.textContent = titleOf(record);
-
-    const typeYear = document.createElement("span");
-    typeYear.className = "sa-offline-shelf-type-year";
-    typeYear.textContent = metaOf(record);
-
-    meta.append(fileTitle, typeYear);
+  function formatSubtitle() {
+    const subtitle = document.getElementById("saOfflineSummary");
+    if (!subtitle) return;
+    subtitle.innerHTML = `<span class="sa-study-line">${STUDY_LINE_1}</span><span class="sa-study-line">${STUDY_LINE_2}</span>`;
   }
 
-  async function refreshEntryCards() {
+  function metaOf(record) {
+    const type = typeOf(record);
+    const year = yearOf(record);
+    return year ? `${type} · ${year}` : type;
+  }
+
+  function formatShelfCard(card, record) {
+    if (!card || !record) return;
+    const subject = subjectOf(record);
+    const type = typeOf(record);
+    const title = displayTitleOf(record);
+    const year = yearOf(record);
+
+    card.innerHTML = `
+      <span class="sa-recent-subject"></span>
+      <span class="sa-recent-type"></span>
+      <span class="sa-recent-title${title ? "" : " is-empty"}"></span>
+      <span class="sa-recent-year"></span>`;
+
+    card.querySelector(".sa-recent-subject").textContent = subject;
+    card.querySelector(".sa-recent-type").textContent = type;
+    card.querySelector(".sa-recent-title").textContent = title || "placeholder";
+    card.querySelector(".sa-recent-year").textContent = year;
+  }
+
+  function applyAccordionState() {
+    const overlay = document.getElementById("offlineLibraryOverlay");
+    if (!overlay) return;
+    const groups = [...overlay.querySelectorAll(".sa-offline-group[data-sa-subject]")];
+    const available = new Set(groups.map(group => group.dataset.saSubject || ""));
+    if (expandedSubject && !available.has(expandedSubject)) expandedSubject = "";
+
+    groups.forEach(group => {
+      const subject = group.dataset.saSubject || "";
+      const open = !!expandedSubject && subject === expandedSubject;
+      group.classList.toggle("open", open);
+      const chev = group.querySelector(".sa-offline-group-head .chev");
+      if (chev) chev.textContent = open ? "▼" : "›";
+    });
+  }
+
+  async function refreshPresentation() {
     if (refreshing) return;
     const overlay = document.getElementById("offlineLibraryOverlay");
     if (!overlay || overlay.style.display === "none") return;
@@ -206,35 +330,27 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
       const records = await getOfflineFiles();
       const map = new Map((records || []).map(record => [String(record.id), record]));
 
-      /* Continue studying: Subject -> actual title -> Type · Year. */
+      formatSubtitle();
+
       overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]").forEach(card => {
         const record = map.get(String(card.dataset.saOpenId || ""));
-        if (!record) return;
-
-        const title = card.querySelector(".sa-offline-shelf-title");
-        const meta = card.querySelector(".sa-offline-shelf-meta");
-        const badge = card.querySelector(".sa-offline-shelf-badge");
-
-        if (badge) badge.style.display = "none";
-        if (title) title.textContent = subjectOf(record);
-        fillShelfMeta(meta, record);
+        if (record) formatShelfCard(card, record);
       });
 
-      /* Subject already appears in the accordion heading, so each file shows its own title. */
       overlay.querySelectorAll(".sa-offline-file[data-offline-id]").forEach(card => {
         const record = map.get(String(card.dataset.offlineId || ""));
         if (!record) return;
-
         const title = card.querySelector(".sa-offline-file-title");
         const meta = card.querySelector(".sa-offline-file-meta");
         const size = card.querySelector(".sa-offline-file-size");
-
         if (title) title.textContent = titleOf(record);
         if (meta) meta.textContent = metaOf(record);
         if (size) size.style.display = "none";
       });
+
+      applyAccordionState();
     } catch (_) {
-      /* Presentation failure must never block the Offline Library. */
+      /* Presentation must never block the Offline Library. */
     } finally {
       refreshing = false;
     }
@@ -243,21 +359,23 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
   function scheduleRefresh(delay = 0) {
     window.clearTimeout(refreshTimer);
     refreshTimer = window.setTimeout(() => {
-      requestAnimationFrame(() => void refreshEntryCards());
+      requestAnimationFrame(() => void refreshPresentation());
     }, delay);
   }
 
   function wrapFunctions() {
     if (!openWrapped && typeof window.openOfflineLibrary === "function") {
       const originalOpen = window.openOfflineLibrary;
-      if (!originalOpen.__saEntryFormatWrapped) {
+      if (!originalOpen.__saEntryFormatV4Wrapped) {
         const wrappedOpen = function(...args) {
+          expandedSubject = "";
           const result = originalOpen.apply(this, args);
+          scheduleRefresh(0);
           scheduleRefresh(60);
           scheduleRefresh(220);
           return result;
         };
-        wrappedOpen.__saEntryFormatWrapped = true;
+        wrappedOpen.__saEntryFormatV4Wrapped = true;
         window.openOfflineLibrary = wrappedOpen;
         try { openOfflineLibrary = wrappedOpen; } catch (_) {}
       }
@@ -266,13 +384,13 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
 
     if (!renderWrapped && typeof window.renderOfflineLibrary === "function") {
       const originalRender = window.renderOfflineLibrary;
-      if (!originalRender.__saEntryFormatWrapped) {
+      if (!originalRender.__saEntryFormatV4Wrapped) {
         const wrappedRender = function(...args) {
           const result = originalRender.apply(this, args);
           Promise.resolve(result).finally(() => scheduleRefresh(0));
           return result;
         };
-        wrappedRender.__saEntryFormatWrapped = true;
+        wrappedRender.__saEntryFormatV4Wrapped = true;
         window.renderOfflineLibrary = wrappedRender;
         try { renderOfflineLibrary = wrappedRender; } catch (_) {}
       }
@@ -281,21 +399,40 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
   }
 
   function bindEvents() {
-    document.addEventListener("input", event => {
-      if (event.target?.id === "offlineSearchInput") scheduleRefresh(45);
-    }, true);
-
-    document.addEventListener("change", event => {
-      if (event.target?.id === "offlineSubjectSelect") scheduleRefresh(45);
-    }, true);
-
+    /* Own the accordion interaction in capture phase so the hybrid renderer's
+       forced first-subject state never opens one automatically. */
     document.addEventListener("click", event => {
       const target = event.target;
       if (!(target instanceof Element)) return;
 
-      if (target.closest("#offlineLibraryOverlay [data-sa-toggle-subject], #offlineLibraryOverlay [data-sa-pin-id], #offlineLibraryOverlay [data-sa-delete-id], #offlineLibraryOverlay [data-sa-open-id]")) {
+      const toggle = target.closest("#offlineLibraryOverlay [data-sa-toggle-subject]");
+      if (toggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        expandedSubject = expandedSubject === (toggle.dataset.saToggleSubject || "")
+          ? ""
+          : (toggle.dataset.saToggleSubject || "");
+        applyAccordionState();
+        return;
+      }
+
+      if (target.closest("#offlineLibraryOverlay [data-sa-pin-id], #offlineLibraryOverlay [data-sa-delete-id], #offlineLibraryOverlay [data-sa-open-id]")) {
         scheduleRefresh(80);
         scheduleRefresh(240);
+      }
+    }, true);
+
+    document.addEventListener("input", event => {
+      if (event.target?.id === "offlineSearchInput") {
+        expandedSubject = "";
+        scheduleRefresh(45);
+      }
+    }, true);
+
+    document.addEventListener("change", event => {
+      if (event.target?.id === "offlineSubjectSelect") {
+        expandedSubject = "";
+        scheduleRefresh(45);
       }
     }, true);
   }
@@ -305,7 +442,6 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-subtitle{
     bindEvents();
     wrapFunctions();
 
-    /* Hybrid UI may attach a moment after this script. Poll briefly, then stop. */
     let tries = 0;
     const timer = window.setInterval(() => {
       tries += 1;
