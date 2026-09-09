@@ -38,7 +38,7 @@ jobs:
           python3 -m http.server 4174 --bind 127.0.0.1 --directory /tmp/stat-archive-main >/tmp/baseline-server.log 2>&1 &
           sleep 1
 
-      - name: Compare home and menu rendering
+      - name: Compare home, menu, and Offline Library rendering
         run: |
           cat > visual-check.cjs <<'NODE'
           const { chromium } = require('playwright');
@@ -72,8 +72,6 @@ jobs:
               waitUntil: 'domcontentloaded',
               timeout: 30000
             });
-
-            // service-worker-register.js reloads once when the new worker takes control.
             await page.waitForFunction(
               () => !!window.__statArchiveNavigation,
               null,
@@ -81,15 +79,17 @@ jobs:
             );
             await page.addStyleTag({ content: stableCss });
             await page.waitForTimeout(900);
+            assertNoOverflow(page, `${port}-home`);
+            return { context, page, pageErrors };
+          }
 
+          async function assertNoOverflow(page, label) {
             const overflow = await page.evaluate(
               () => document.documentElement.scrollWidth - window.innerWidth
             );
             if (overflow > 2) {
-              throw new Error(`Horizontal overflow: ${overflow}px on port ${port}`);
+              throw new Error(`${label}: horizontal overflow ${overflow}px`);
             }
-
-            return { context, page, pageErrors };
           }
 
           async function screenshot(page, path) {
@@ -119,6 +119,30 @@ jobs:
             }
           }
 
+          async function compareState(basePage, candidatePage, testName, stateName) {
+            const basePath = `/tmp/${testName}-main-${stateName}.png`;
+            const candidatePath = `/tmp/${testName}-candidate-${stateName}.png`;
+            await screenshot(basePage, basePath);
+            await screenshot(candidatePage, candidatePath);
+            compare(basePath, candidatePath, `${testName}-${stateName}`);
+            await assertNoOverflow(candidatePage, `${testName}-${stateName}`);
+          }
+
+          async function openMenu(page) {
+            await page.click('#mainMenuBtn');
+            await page.waitForSelector('#mainSideMenu.is-open');
+          }
+
+          async function openOfflineLibrary(page) {
+            await page.click('#menuOfflineLibraryBtn');
+            await page.waitForFunction(() => {
+              const el = document.getElementById('offlineLibraryOverlay');
+              if (!el) return false;
+              const style = getComputedStyle(el);
+              return style.display !== 'none' && style.visibility !== 'hidden';
+            });
+          }
+
           (async () => {
             const browser = await chromium.launch({ headless: true });
             try {
@@ -127,32 +151,40 @@ jobs:
                 const base = await prepare(browser, 4174, viewport);
                 const candidate = await prepare(browser, 4173, viewport);
 
-                const baseHome = `/tmp/${test.name}-main-home.png`;
-                const candidateHome = `/tmp/${test.name}-candidate-home.png`;
-                await screenshot(base.page, baseHome);
-                await screenshot(candidate.page, candidateHome);
-                compare(baseHome, candidateHome, `${test.name}-home`);
+                await compareState(base.page, candidate.page, test.name, 'home');
 
-                await base.page.click('#mainMenuBtn');
-                await candidate.page.click('#mainMenuBtn');
-                await base.page.waitForSelector('#mainSideMenu.is-open');
-                await candidate.page.waitForSelector('#mainSideMenu.is-open');
-
+                await openMenu(base.page);
+                await openMenu(candidate.page);
                 const menuState = await candidate.page.evaluate(() => ({
                   nav: history.state?.statArchiveNav,
-                  open: document.getElementById('mainSideMenu')?.classList.contains('is-open'),
-                  overflow: document.documentElement.scrollWidth - window.innerWidth
+                  open: document.getElementById('mainSideMenu')?.classList.contains('is-open')
                 }));
-                if (menuState.nav !== 'menu' || !menuState.open || menuState.overflow > 2) {
+                if (menuState.nav !== 'menu' || !menuState.open) {
                   throw new Error(`${test.name}: invalid candidate Menu state ${JSON.stringify(menuState)}`);
                 }
+                await compareState(base.page, candidate.page, test.name, 'menu');
 
-                const baseMenu = `/tmp/${test.name}-main-menu.png`;
-                const candidateMenu = `/tmp/${test.name}-candidate-menu.png`;
-                await screenshot(base.page, baseMenu);
-                await screenshot(candidate.page, candidateMenu);
-                compare(baseMenu, candidateMenu, `${test.name}-menu`);
+                await openOfflineLibrary(base.page);
+                await openOfflineLibrary(candidate.page);
+                const offlineState = await candidate.page.evaluate(() => ({
+                  nav: history.state?.statArchiveNav,
+                  child: history.state?.statArchiveChild,
+                  menuOpen: document.getElementById('mainSideMenu')?.classList.contains('is-open')
+                }));
+                if (offlineState.nav !== 'child' || offlineState.child !== 'offline-library') {
+                  throw new Error(`${test.name}: invalid Offline Library state ${JSON.stringify(offlineState)}`);
+                }
+                await compareState(base.page, candidate.page, test.name, 'offline-library');
 
+                // One Back from Offline Library must restore Menu, not skip Home.
+                await base.page.goBack();
+                await candidate.page.goBack();
+                await base.page.waitForFunction(() => history.state?.statArchiveNav === 'menu');
+                await candidate.page.waitForFunction(() => history.state?.statArchiveNav === 'menu');
+                await candidate.page.waitForSelector('#mainSideMenu.is-open');
+                await compareState(base.page, candidate.page, test.name, 'menu-after-offline-back');
+
+                // The next Back closes Menu and restores Home.
                 await candidate.page.goBack();
                 await candidate.page.waitForFunction(
                   () => history.state?.statArchiveNav === 'home'
