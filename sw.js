@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-offline-hybrid-v2";
+const CACHE = "stat-archive-shell-v20260909-divider-fix-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -46,7 +46,7 @@ const MENU_FLASH_GUARD = `
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-7"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260909-5"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260905-14"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260909-15"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
@@ -248,7 +248,8 @@ self.addEventListener("fetch", event => {
     url.pathname.endsWith('/assets/js/preview.js') ||
     url.pathname.endsWith('/assets/js/pdf.js') ||
     url.pathname.endsWith('/assets/js/preview-state-guard.js') ||
-    url.pathname.endsWith('/assets/js/hero-layout-fix.js');
+    url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||
+    url.pathname.endsWith('/assets/js/action-spacing-fix.js');
 
   if (isPreviewRuntime) {
     event.respondWith(servePreviewRuntimeNetworkFirst(request));
