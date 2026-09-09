@@ -137,25 +137,45 @@ html body .card .card-actions .offline-btn{
   }
 }
 
-/* MOBILE / APK — compact reference sizing only. */
+/* MOBILE / APK */
 @media (max-width:700px){
   html body .card .card-actions{
     padding-top:8px !important;
   }
 
+  /* Exact three-pill geometry from the supplied reference. */
   html:not([data-authenticated="true"]) body .card .card-actions{
-    gap:8px !important;
+    justify-content:space-between !important;
+    gap:0 !important;
   }
 
   html:not([data-authenticated="true"]) body .card .card-actions .action-btn{
+    flex:0 0 auto !important;
+    width:auto !important;
+    max-width:none !important;
     height:32px !important;
     min-height:32px !important;
     padding:0 10px !important;
     border-radius:9px !important;
     font-size:12.5px !important;
     font-weight:700 !important;
+    gap:4px !important;
   }
 
+  html:not([data-authenticated="true"]) body .card .card-actions .pv-btn{
+    min-width:clamp(88px,27vw,104px) !important;
+  }
+
+  html:not([data-authenticated="true"]) body .card .card-actions .dl-btn,
+  html:not([data-authenticated="true"]) body .card .card-actions .download-btn{
+    min-width:clamp(103px,31vw,122px) !important;
+  }
+
+  html:not([data-authenticated="true"]) body .card .card-actions .offline-btn{
+    min-width:clamp(86px,26vw,102px) !important;
+  }
+
+  /* Signed-in mobile layout intentionally unchanged. */
   html[data-authenticated="true"] body .card .card-actions{
     grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 30px 30px !important;
     gap:4px !important;
@@ -234,7 +254,28 @@ html body .card .card-actions .offline-btn{
 }
 
 @media (max-width:380px){
-  html:not([data-authenticated="true"]) body .card .card-actions .action-btn,
+  html:not([data-authenticated="true"]) body .card .card-actions .action-btn{
+    height:30px !important;
+    min-height:30px !important;
+    padding:0 7px !important;
+    font-size:11.5px !important;
+    border-radius:8px !important;
+    gap:3px !important;
+  }
+
+  html:not([data-authenticated="true"]) body .card .card-actions .pv-btn{
+    min-width:82px !important;
+  }
+
+  html:not([data-authenticated="true"]) body .card .card-actions .dl-btn,
+  html:not([data-authenticated="true"]) body .card .card-actions .download-btn{
+    min-width:96px !important;
+  }
+
+  html:not([data-authenticated="true"]) body .card .card-actions .offline-btn{
+    min-width:80px !important;
+  }
+
   html[data-authenticated="true"] body .card .card-actions .action-btn{
     height:30px !important;
     min-height:30px !important;
