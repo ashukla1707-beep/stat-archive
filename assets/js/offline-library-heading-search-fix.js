@@ -1,5 +1,5 @@
-/* Stat Archive — Offline Library stable loader v6
-   No MutationObserver. Keeps only stable CSS, search copy and formatter loader. */
+/* Stat Archive — Offline Library stable loader v7
+   No MutationObserver. Keeps stable CSS, search copy and formatter loader. */
 (() => {
   "use strict";
 
@@ -53,37 +53,73 @@
 }
 
 @media(max-width:700px){
-  /* Keep the large heading, but reserve a fixed control zone so it can never overlap ⋮ / ×. */
   #offlineLibraryOverlay .sa-offline-head{
     padding-left:12px !important;
     padding-right:12px !important;
   }
+
+  /* Real three-column header. The title and controls cannot occupy each other's space. */
+  #offlineLibraryOverlay .sa-offline-title-row{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) 30px 30px !important;
+    column-gap:4px !important;
+    align-items:center !important;
+    position:relative !important;
+    width:100% !important;
+    min-height:42px !important;
+  }
   #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
-    padding-right:62px !important;
+    display:block !important;
+    grid-column:1 !important;
+    min-width:0 !important;
+    width:100% !important;
+    padding:0 !important;
+    margin:0 !important;
+    overflow:hidden !important;
   }
   #offlineLibraryOverlay .sa-offline-title{
     font-size:34px !important;
     line-height:1.04 !important;
-    letter-spacing:0 !important;
-    transform:scaleX(.93) !important;
+    letter-spacing:-.4px !important;
+    white-space:nowrap !important;
+    width:121.95% !important;
+    max-width:none !important;
+    transform:scaleX(.82) !important;
     transform-origin:left center !important;
+    overflow:visible !important;
+  }
+  #offlineLibraryOverlay .sa-offline-head-actions{
+    display:contents !important;
+    position:static !important;
+    inset:auto !important;
+    width:auto !important;
+    height:auto !important;
+    padding:0 !important;
+    margin:0 !important;
+    pointer-events:auto !important;
   }
   #offlineLibraryOverlay .sa-offline-icon-btn{
-    width:28px !important;
-    min-width:28px !important;
+    position:static !important;
+    top:auto !important;
+    left:auto !important;
+    right:auto !important;
+    transform:none !important;
+    width:30px !important;
+    min-width:30px !important;
     height:34px !important;
-    font-size:22px !important;
+    margin:0 !important;
     padding:0 !important;
+    font-size:22px !important;
+    display:grid !important;
+    place-items:center !important;
   }
   #offlineLibraryOverlay #saOfflineMenuBtn{
-    left:auto !important;
-    right:30px !important;
-    transform:translateY(-50%) !important;
+    grid-column:2 !important;
+    justify-self:center !important;
   }
   #offlineLibraryOverlay #closeOfflineLibraryBtn{
-    left:auto !important;
-    right:0 !important;
-    transform:translateY(-50%) !important;
+    grid-column:3 !important;
+    justify-self:center !important;
   }
 
   #offlineLibraryOverlay .sa-offline-search{
@@ -112,11 +148,20 @@
   }
 
   function loadStableFormatter() {
-    if (document.querySelector('script[data-sa-offline-entry-format="1"]')) return;
+    const existing = document.querySelector('script[data-sa-offline-entry-format="1"]');
+    if (existing) {
+      /* Formatter CSS may have been appended later. Re-append our overrides last. */
+      requestAnimationFrame(() => requestAnimationFrame(installStableOverrides));
+      return;
+    }
+
     const script = document.createElement("script");
     script.src = "./assets/js/offline-library-entry-format.js?v=20260909-5";
     script.async = false;
     script.dataset.saOfflineEntryFormat = "1";
+    script.addEventListener("load", () => {
+      requestAnimationFrame(() => installStableOverrides());
+    }, { once:true });
     document.body.appendChild(script);
   }
 
@@ -126,7 +171,9 @@
     let tries = 0;
     const timer = window.setInterval(() => {
       tries += 1;
-      if (syncSearchCopy() || tries >= 30) window.clearInterval(timer);
+      const found = syncSearchCopy();
+      if (found) installStableOverrides();
+      if (found || tries >= 30) window.clearInterval(timer);
     }, 100);
   }
 
