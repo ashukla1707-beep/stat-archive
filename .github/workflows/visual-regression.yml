@@ -1,0 +1,176 @@
+name: Visual Regression Check
+
+on:
+  push:
+    branches:
+      - cleanup/refactor-2026-09-10
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout optimized branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create main baseline worktree
+        run: git worktree add /tmp/stat-archive-main origin/main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright pixelmatch pngjs
+          npx playwright install --with-deps chromium
+
+      - name: Start local sites
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$GITHUB_WORKSPACE" >/tmp/candidate-server.log 2>&1 &
+          python3 -m http.server 4174 --bind 127.0.0.1 --directory /tmp/stat-archive-main >/tmp/baseline-server.log 2>&1 &
+          sleep 1
+
+      - name: Compare home and menu rendering
+        run: |
+          cat > /tmp/visual-check.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const pixelmatch = require('pixelmatch');
+          const { PNG } = require('pngjs');
+          const fs = require('fs');
+
+          const cases = [
+            { name: 'desktop', width: 1440, height: 900 },
+            { name: 'mobile', width: 390, height: 844 },
+            { name: 'narrow-desktop', width: 980, height: 720 }
+          ];
+
+          const stableCss = `
+            *,*::before,*::after{
+              animation-duration:0s!important;
+              animation-delay:0s!important;
+              transition-duration:0s!important;
+              caret-color:transparent!important;
+            }
+          `;
+
+          async function prepare(browser, port, viewport) {
+            const context = await browser.newContext({ viewport });
+            const page = await context.newPage();
+            const pageErrors = [];
+            page.on('pageerror', error => pageErrors.push(String(error)));
+
+            await page.goto(`http://127.0.0.1:${port}/index.html`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 30000
+            });
+
+            // service-worker-register.js reloads once when the new worker takes control.
+            await page.waitForFunction(
+              () => !!window.__statArchiveNavigation,
+              null,
+              { timeout: 15000 }
+            );
+            await page.addStyleTag({ content: stableCss });
+            await page.waitForTimeout(900);
+
+            const overflow = await page.evaluate(
+              () => document.documentElement.scrollWidth - window.innerWidth
+            );
+            if (overflow > 2) {
+              throw new Error(`Horizontal overflow: ${overflow}px on port ${port}`);
+            }
+
+            return { context, page, pageErrors };
+          }
+
+          async function screenshot(page, path) {
+            await page.screenshot({ path, fullPage: false, animations: 'disabled' });
+          }
+
+          function compare(aPath, bPath, label) {
+            const a = PNG.sync.read(fs.readFileSync(aPath));
+            const b = PNG.sync.read(fs.readFileSync(bPath));
+            if (a.width !== b.width || a.height !== b.height) {
+              throw new Error(`${label}: screenshot dimensions differ`);
+            }
+            const diff = new PNG({ width: a.width, height: a.height });
+            const mismatched = pixelmatch(
+              a.data,
+              b.data,
+              diff.data,
+              a.width,
+              a.height,
+              { threshold: 0.12, includeAA: false }
+            );
+            const ratio = mismatched / (a.width * a.height);
+            fs.writeFileSync(`/tmp/${label}-diff.png`, PNG.sync.write(diff));
+            console.log(`${label}: ${(ratio * 100).toFixed(4)}% pixels differ`);
+            if (ratio > 0.005) {
+              throw new Error(`${label}: visual difference ${(ratio * 100).toFixed(4)}% exceeds 0.5%`);
+            }
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            try {
+              for (const test of cases) {
+                const viewport = { width: test.width, height: test.height };
+                const base = await prepare(browser, 4174, viewport);
+                const candidate = await prepare(browser, 4173, viewport);
+
+                const baseHome = `/tmp/${test.name}-main-home.png`;
+                const candidateHome = `/tmp/${test.name}-candidate-home.png`;
+                await screenshot(base.page, baseHome);
+                await screenshot(candidate.page, candidateHome);
+                compare(baseHome, candidateHome, `${test.name}-home`);
+
+                await base.page.click('#mainMenuBtn');
+                await candidate.page.click('#mainMenuBtn');
+                await base.page.waitForSelector('#mainSideMenu.is-open');
+                await candidate.page.waitForSelector('#mainSideMenu.is-open');
+
+                const menuState = await candidate.page.evaluate(() => ({
+                  nav: history.state?.statArchiveNav,
+                  open: document.getElementById('mainSideMenu')?.classList.contains('is-open'),
+                  overflow: document.documentElement.scrollWidth - window.innerWidth
+                }));
+                if (menuState.nav !== 'menu' || !menuState.open || menuState.overflow > 2) {
+                  throw new Error(`${test.name}: invalid candidate Menu state ${JSON.stringify(menuState)}`);
+                }
+
+                const baseMenu = `/tmp/${test.name}-main-menu.png`;
+                const candidateMenu = `/tmp/${test.name}-candidate-menu.png`;
+                await screenshot(base.page, baseMenu);
+                await screenshot(candidate.page, candidateMenu);
+                compare(baseMenu, candidateMenu, `${test.name}-menu`);
+
+                await candidate.page.goBack();
+                await candidate.page.waitForFunction(
+                  () => history.state?.statArchiveNav === 'home'
+                    && !document.getElementById('mainSideMenu')?.classList.contains('is-open')
+                );
+
+                if (candidate.pageErrors.length) {
+                  console.log(`${test.name}: non-fatal page errors`, candidate.pageErrors);
+                }
+
+                await base.context.close();
+                await candidate.context.close();
+              }
+            } finally {
+              await browser.close();
+            }
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+          node /tmp/visual-check.cjs
