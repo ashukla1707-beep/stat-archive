@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-preview-scratch-v1";
+const CACHE = "stat-archive-shell-v20260909-preview-native-v2";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -174,6 +174,22 @@ async function serveAppShellFast(request, url, isNavigation, event) {
   }
 }
 
+async function servePreviewRuntimeNetworkFirst(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const freshRequest = new Request(request, { cache: 'no-store' });
+    const response = await fetch(freshRequest);
+    if (response && response.ok) {
+      cache.put(request, response.clone()).catch(() => {});
+      return response;
+    }
+    const cached = await cache.match(request);
+    return cached || response;
+  } catch (_) {
+    return (await cache.match(request)) || Response.error();
+  }
+}
+
 async function fetchExternalFast(request, event) {
   const cache = await caches.open(EXTERNAL_CACHE);
   const cached = await cache.match(request);
@@ -212,6 +228,15 @@ self.addEventListener("fetch", event => {
       url.hostname === 'fonts.gstatic.com';
 
     event.respondWith(cacheableExternal ? fetchExternalFast(request, event) : fetch(request));
+    return;
+  }
+
+  const isPreviewRuntime =
+    url.pathname.endsWith('/assets/js/preview.js') ||
+    url.pathname.endsWith('/assets/js/pdf.js');
+
+  if (isPreviewRuntime) {
+    event.respondWith(servePreviewRuntimeNetworkFirst(request));
     return;
   }
 
