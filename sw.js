@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-menu-header-v1";
+const CACHE = "stat-archive-shell-v20260910-menu-header-v3";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -32,7 +32,7 @@ const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=2
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
-const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-1"></script>';
+const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-3"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-15"></script>';
 const SCROLL_LOCK_COORDINATOR_TAG = '<script src="./assets/js/scroll-lock-coordinator.js?v=20260910-2"></script>';
@@ -46,9 +46,6 @@ function decorateNavigationHtml(html) {
   );
 
   out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
-
-  /* Offline Library has one renderer plus navigation helpers. Remove stale
-     tags from network/cached HTML before injecting the current versions. */
   out = out.replace(/<script[^>]+assets\/js\/offline-library-(?:hybrid|heading-search-fix|entry-format|handoff)\.js[^>]*><\/script>/gi, '');
   out = out.replace(/<script[^>]+assets\/js\/scroll-lock-coordinator\.js[^>]*><\/script>/gi, '');
   out = out.replace(/<script[^>]+assets\/js\/menu-header-reference\.js[^>]*><\/script>/gi, '');
@@ -85,7 +82,6 @@ function decorateNavigationHtml(html) {
 
 async function normalizeSameOriginResponse(response, url, isNavigation) {
   if (!response || !response.ok) return response;
-
   if (isNavigation) {
     const html = await response.text();
     return new Response(decorateNavigationHtml(html), {
@@ -94,7 +90,6 @@ async function normalizeSameOriginResponse(response, url, isNavigation) {
       headers: response.headers
     });
   }
-
   if (url.pathname.endsWith('/assets/scanner.css')) {
     const css = await response.text();
     return new Response(css + MENU_FLASH_GUARD, {
@@ -103,27 +98,23 @@ async function normalizeSameOriginResponse(response, url, isNavigation) {
       headers: response.headers
     });
   }
-
   return response;
 }
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-
     await Promise.allSettled(APP_SHELL.map(async asset => {
       try {
         const request = new Request(asset, { cache: 'reload' });
         const response = await fetch(request);
         if (!response || !response.ok) return;
-
         const url = new URL(request.url);
         const isNavigation = asset === './' || asset === './index.html';
         const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
         await cache.put(request, finalResponse.clone());
       } catch (_) {}
     }));
-
     await self.skipWaiting();
   })());
 });
@@ -132,9 +123,7 @@ self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(
-      keys
-        .filter(key => key !== CACHE && key !== EXTERNAL_CACHE)
-        .map(key => caches.delete(key))
+      keys.filter(key => key !== CACHE && key !== EXTERNAL_CACHE).map(key => caches.delete(key))
     );
     await self.clients.claim();
   })());
@@ -144,7 +133,6 @@ async function updateSameOriginInBackground(request, url, isNavigation) {
   try {
     const response = await fetch(request);
     if (!response || !response.ok) return;
-
     const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
     const cache = await caches.open(CACHE);
     await cache.put(request, finalResponse.clone());
@@ -154,20 +142,16 @@ async function updateSameOriginInBackground(request, url, isNavigation) {
 async function serveAppShellFast(request, url, isNavigation, event) {
   const cache = await caches.open(CACHE);
   let cached = await cache.match(request);
-
   if (!cached && isNavigation) {
     cached = (await cache.match('./index.html')) || (await cache.match('./'));
   }
-
   if (cached) {
     event.waitUntil(updateSameOriginInBackground(request, url, isNavigation));
     return cached;
   }
-
   try {
     const response = await fetch(request);
     if (!response || !response.ok) return response;
-
     const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
     cache.put(request, finalResponse.clone()).catch(() => {});
     return finalResponse;
@@ -178,18 +162,15 @@ async function serveAppShellFast(request, url, isNavigation, event) {
 
 async function serveNavigationNetworkFirst(request, url) {
   const cache = await caches.open(CACHE);
-
   try {
     const freshRequest = new Request(request, { cache: 'no-store' });
     const response = await fetch(freshRequest);
-
     if (response && response.ok) {
       const finalResponse = await normalizeSameOriginResponse(response, url, true);
       cache.put(request, finalResponse.clone()).catch(() => {});
       return finalResponse;
     }
   } catch (_) {}
-
   return (await cache.match(request)) ||
     (await cache.match('./index.html')) ||
     (await cache.match('./')) ||
@@ -198,16 +179,13 @@ async function serveNavigationNetworkFirst(request, url) {
 
 async function serveRuntimeNetworkFirst(request) {
   const cache = await caches.open(CACHE);
-
   try {
     const freshRequest = new Request(request, { cache: 'no-store' });
     const response = await fetch(freshRequest);
-
     if (response && response.ok) {
       cache.put(request, response.clone()).catch(() => {});
       return response;
     }
-
     return (await cache.match(request)) || response;
   } catch (_) {
     return (await cache.match(request)) || Response.error();
@@ -217,7 +195,6 @@ async function serveRuntimeNetworkFirst(request) {
 async function fetchExternalFast(request, event) {
   const cache = await caches.open(EXTERNAL_CACHE);
   const cached = await cache.match(request);
-
   if (cached) {
     event.waitUntil(
       fetch(request)
@@ -230,7 +207,6 @@ async function fetchExternalFast(request, event) {
     );
     return cached;
   }
-
   const response = await fetch(request);
   if (response && (response.ok || response.type === 'opaque')) {
     cache.put(request, response.clone()).catch(() => {});
@@ -241,7 +217,6 @@ async function fetchExternalFast(request, event) {
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) {
@@ -250,17 +225,11 @@ self.addEventListener('fetch', event => {
       url.hostname === 'cdnjs.cloudflare.com' ||
       url.hostname === 'fonts.googleapis.com' ||
       url.hostname === 'fonts.gstatic.com';
-
-    event.respondWith(
-      cacheableExternal
-        ? fetchExternalFast(request, event)
-        : fetch(request)
-    );
+    event.respondWith(cacheableExternal ? fetchExternalFast(request, event) : fetch(request));
     return;
   }
 
   const isNavigation = request.mode === 'navigate' || url.pathname.endsWith('/index.html');
-
   if (isNavigation) {
     event.respondWith(serveNavigationNetworkFirst(request, url));
     return;
@@ -301,7 +270,6 @@ self.addEventListener('fetch', event => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);
     if (cached) return cached;
-
     const response = await fetch(request);
     if (response && response.ok) {
       cache.put(request, response.clone()).catch(() => {});
