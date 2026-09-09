@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-divider-fix-v1";
+const CACHE = "stat-archive-shell-v20260909-web-redesign-sync-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -31,6 +31,8 @@ const APP_SHELL = [
   "./assets/js/menu-polish.js",
   "./assets/js/menu-alignment-fix.js",
   "./assets/js/offline-library-hybrid.js",
+  "./assets/js/offline-library-heading-search-fix.js",
+  "./assets/js/offline-library-entry-format.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
@@ -52,9 +54,11 @@ const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
-const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-2"></script>';
-const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-1"></script>';
+const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
+const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-websync-1"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
+const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260909-websync-1"></script>';
+const OFFLINE_HEADING_TAG = '<script src="./assets/js/offline-library-heading-search-fix.js?v=20260909-websync-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -97,6 +101,8 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/entry-method-fix.js')) out = out.replace('</body>', `${ENTRY_METHOD_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
+  if (!out.includes('assets/js/offline-library-hybrid.js')) out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n</body>`);
+  if (!out.includes('assets/js/offline-library-heading-search-fix.js')) out = out.replace('</body>', `${OFFLINE_HEADING_TAG}\n</body>`);
   if (!out.includes('assets/js/preview-state-guard.js')) out = out.replace('</body>', `${PREVIEW_STATE_GUARD_TAG}\n</body>`);
   return out;
 }
@@ -187,7 +193,7 @@ async function serveAppShellFast(request, url, isNavigation, event) {
   }
 }
 
-async function servePreviewRuntimeNetworkFirst(request) {
+async function serveRuntimeNetworkFirst(request) {
   const cache = await caches.open(CACHE);
   try {
     const freshRequest = new Request(request, { cache: 'no-store' });
@@ -244,15 +250,21 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  const isPreviewRuntime =
+  const isLiveRuntime =
     url.pathname.endsWith('/assets/js/preview.js') ||
     url.pathname.endsWith('/assets/js/pdf.js') ||
     url.pathname.endsWith('/assets/js/preview-state-guard.js') ||
     url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||
-    url.pathname.endsWith('/assets/js/action-spacing-fix.js');
+    url.pathname.endsWith('/assets/js/action-spacing-fix.js') ||
+    url.pathname.endsWith('/assets/js/tooltips.js') ||
+    url.pathname.endsWith('/assets/js/menu-polish.js') ||
+    url.pathname.endsWith('/assets/js/menu-alignment-fix.js') ||
+    url.pathname.endsWith('/assets/js/offline-library-hybrid.js') ||
+    url.pathname.endsWith('/assets/js/offline-library-heading-search-fix.js') ||
+    url.pathname.endsWith('/assets/js/offline-library-entry-format.js');
 
-  if (isPreviewRuntime) {
-    event.respondWith(servePreviewRuntimeNetworkFirst(request));
+  if (isLiveRuntime) {
+    event.respondWith(serveRuntimeNetworkFirst(request));
     return;
   }
 
