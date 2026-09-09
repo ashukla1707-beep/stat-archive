@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library presentation refinement v7
+/* Stat Archive — Offline Library presentation refinement v8
    Event-driven only. No MutationObserver. */
 (() => {
   "use strict";
@@ -71,44 +71,50 @@
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
-/* Header: title | centered menu | close. */
+/* Header: true measured midpoint between title and close button. */
 #offlineLibraryOverlay .sa-offline-title-row{
-  display:grid !important;
-  grid-template-columns:max-content minmax(36px,1fr) 36px !important;
+  position:relative !important;
+  display:flex !important;
   align-items:center !important;
-  column-gap:4px !important;
   width:100% !important;
+  min-height:38px !important;
 }
 #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
-  display:contents !important;
+  display:block !important;
+  min-width:0 !important;
+  padding-right:86px !important;
 }
 #offlineLibraryOverlay .sa-offline-title{
-  grid-column:1 !important;
   box-sizing:border-box !important;
   padding-right:0 !important;
   min-width:0 !important;
 }
 #offlineLibraryOverlay .sa-offline-head-actions{
-  display:contents !important;
-  position:static !important;
-  inset:auto !important;
-  width:auto !important;
+  position:absolute !important;
+  inset:0 !important;
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
   padding:0 !important;
   margin:0 !important;
+  pointer-events:none !important;
+}
+#offlineLibraryOverlay #saOfflineMenuBtn,
+#offlineLibraryOverlay #closeOfflineLibraryBtn{
+  position:absolute !important;
+  top:50% !important;
+  margin:0 !important;
+  pointer-events:auto !important;
 }
 #offlineLibraryOverlay #saOfflineMenuBtn{
-  grid-column:2 !important;
-  justify-self:center !important;
-  align-self:center !important;
-  position:static !important;
-  margin:0 !important;
+  left:var(--sa-offline-menu-left, calc(100% - 58px)) !important;
+  right:auto !important;
+  transform:translate(-50%,-50%) !important;
 }
 #offlineLibraryOverlay #closeOfflineLibraryBtn{
-  grid-column:3 !important;
-  justify-self:end !important;
-  align-self:center !important;
-  position:static !important;
-  margin:0 !important;
+  right:0 !important;
+  left:auto !important;
+  transform:translateY(-50%) !important;
 }
 #offlineLibraryOverlay .sa-offline-subtitle{
   display:none !important;
@@ -203,6 +209,7 @@
 #offlineLibraryOverlay .sa-offline-file-main{
   grid-template-columns:28px minmax(0,1fr) !important;
   gap:9px !important;
+  align-items:start !important;
 }
 #offlineLibraryOverlay .sa-offline-file-title{
   font:800 11.5px/1.34 Inter,sans-serif !important;
@@ -216,6 +223,20 @@
 }
 #offlineLibraryOverlay .sa-offline-file-size{
   display:none !important;
+}
+/* When there is no distinct title, put the star and Type · Year on one centered row. */
+#offlineLibraryOverlay .sa-offline-file.sa-type-only .sa-offline-file-main{
+  align-items:center !important;
+}
+#offlineLibraryOverlay .sa-offline-file.sa-type-only .sa-offline-pin{
+  align-self:center !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+#offlineLibraryOverlay .sa-offline-file.sa-type-only .sa-offline-file-meta{
+  margin-top:0 !important;
+  line-height:1.2 !important;
 }
 
 body[data-theme="light"] #offlineLibraryOverlay .sa-recent-subject,
@@ -251,9 +272,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     box-shadow:0 26px 72px rgba(0,0,0,.42) !important;
     overflow:hidden !important;
   }
-  #offlineLibraryOverlay .sa-offline-title-row{
-    grid-template-columns:max-content minmax(28px,1fr) 34px !important;
-    column-gap:2px !important;
+  #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
+    padding-right:76px !important;
   }
   #offlineLibraryOverlay .sa-offline-title{
     padding-right:0 !important;
@@ -295,6 +315,29 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       subtitle.textContent = "";
       subtitle.hidden = true;
     }
+  }
+
+  function alignHeaderMenu() {
+    const overlay = document.getElementById("offlineLibraryOverlay");
+    if (!overlay) return;
+    const row = overlay.querySelector(".sa-offline-title-row");
+    const title = overlay.querySelector(".sa-offline-title");
+    const menu = document.getElementById("saOfflineMenuBtn");
+    const close = document.getElementById("closeOfflineLibraryBtn");
+    if (!row || !title || !menu || !close) return;
+
+    const rowRect = row.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    const closeRect = close.getBoundingClientRect();
+    if (!rowRect.width || !titleRect.width || !closeRect.width) return;
+
+    const leftEdge = titleRect.right;
+    const rightEdge = closeRect.left;
+    if (rightEdge <= leftEdge) return;
+
+    const targetCenter = (leftEdge + rightEdge) / 2;
+    const localLeft = targetCenter - rowRect.left;
+    row.style.setProperty("--sa-offline-menu-left", `${localLeft}px`);
   }
 
   function formatShelfCard(card, record) {
@@ -377,6 +420,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
       formatHeader();
       cleanUtilityMenu();
+      requestAnimationFrame(alignHeaderMenu);
 
       overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]").forEach(card => {
         const record = map.get(String(card.dataset.saOpenId || ""));
@@ -392,6 +436,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
         const meta = card.querySelector(".sa-offline-file-meta");
         const size = card.querySelector(".sa-offline-file-size");
         const distinctTitle = displayTitleOf(record);
+
+        card.classList.toggle("sa-type-only", !distinctTitle);
 
         if (title) {
           title.textContent = distinctTitle;
@@ -443,7 +489,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   function wrapFunctions() {
     if (!openWrapped && typeof window.openOfflineLibrary === "function") {
       const originalOpen = window.openOfflineLibrary;
-      if (!originalOpen.__saEntryFormatV7Wrapped) {
+      if (!originalOpen.__saEntryFormatV8Wrapped) {
         const wrappedOpen = function(...args) {
           expandedSubject = "";
           expandFirstOnNextRefresh = true;
@@ -453,7 +499,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
           scheduleRefresh(220);
           return result;
         };
-        wrappedOpen.__saEntryFormatV7Wrapped = true;
+        wrappedOpen.__saEntryFormatV8Wrapped = true;
         window.openOfflineLibrary = wrappedOpen;
         try { openOfflineLibrary = wrappedOpen; } catch (_) {}
       }
@@ -462,13 +508,13 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
     if (!renderWrapped && typeof window.renderOfflineLibrary === "function") {
       const originalRender = window.renderOfflineLibrary;
-      if (!originalRender.__saEntryFormatV7Wrapped) {
+      if (!originalRender.__saEntryFormatV8Wrapped) {
         const wrappedRender = function(...args) {
           const result = originalRender.apply(this, args);
           Promise.resolve(result).finally(() => scheduleRefresh(0));
           return result;
         };
-        wrappedRender.__saEntryFormatV7Wrapped = true;
+        wrappedRender.__saEntryFormatV8Wrapped = true;
         window.renderOfflineLibrary = wrappedRender;
         try { renderOfflineLibrary = wrappedRender; } catch (_) {}
       }
@@ -522,7 +568,10 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       }
     }, true);
 
-    window.addEventListener("resize", () => scheduleRefresh(80), { passive:true });
+    window.addEventListener("resize", () => {
+      requestAnimationFrame(alignHeaderMenu);
+      scheduleRefresh(80);
+    }, { passive:true });
   }
 
   function install() {
