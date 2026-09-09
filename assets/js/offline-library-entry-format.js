@@ -1,5 +1,5 @@
-/* Stat Archive — Offline Library presentation refinement v8
-   Event-driven only. No MutationObserver. */
+/* Stat Archive — Offline Library stable presentation v9
+   Event-driven only. No MutationObserver and no pin/unpin rerender. */
 (() => {
   "use strict";
 
@@ -7,9 +7,10 @@
   let refreshTimer = 0;
   let refreshing = false;
   let openWrapped = false;
-  let renderWrapped = false;
   let expandedSubject = "";
-  let expandFirstOnNextRefresh = true;
+  let expandFirstOnOpen = true;
+
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   function subjectOf(record) {
     return String(record?.subjectName || record?.subject || "Other").trim() || "Other";
@@ -26,10 +27,7 @@
   function yearOf(record) {
     const direct = String(record?.year || "").trim();
     if (/^(?:19|20)\d{2}$/.test(direct)) return direct;
-
-    const source = [record?.title, record?.filename, record?.name]
-      .filter(Boolean)
-      .join(" ");
+    const source = [record?.title, record?.filename, record?.name].filter(Boolean).join(" ");
     const match = source.match(/\b(?:19|20)\d{2}\b/);
     return match ? match[0] : "";
   }
@@ -52,10 +50,7 @@
       title = title.replace(new RegExp(`^${escaped}\\s*(?:[-–—:|]\\s*)?`, "i"), "").trim();
     }
 
-    title = title
-      .replace(/\s*[:\-–—]?\s*(?:19|20)\d{2}\s*$/i, "")
-      .trim();
-
+    title = title.replace(/\s*[:\-–—]?\s*(?:19|20)\d{2}\s*$/i, "").trim();
     if (!title || normalized(title) === normalized(type)) return "";
     return title;
   }
@@ -71,7 +66,25 @@
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
-/* Header: true measured midpoint between title and close button. */
+#offlineLibraryOverlay{
+  padding:12px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:rgba(2,6,12,.52) !important;
+  -webkit-backdrop-filter:blur(4px) !important;
+  backdrop-filter:blur(4px) !important;
+}
+#offlineLibraryOverlay .offline-library-card.sa-offline-hybrid{
+  width:min(860px,100%) !important;
+  height:min(92dvh,900px) !important;
+  max-height:92dvh !important;
+  border-radius:28px !important;
+  border:1px solid rgba(148,163,184,.22) !important;
+  box-shadow:0 26px 72px rgba(0,0,0,.42) !important;
+  overflow:hidden !important;
+}
+
+/* Header: title + optically centered menu + close. */
 #offlineLibraryOverlay .sa-offline-title-row{
   position:relative !important;
   display:flex !important;
@@ -82,19 +95,19 @@
 #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
   display:block !important;
   min-width:0 !important;
-  padding-right:86px !important;
+  padding-right:82px !important;
 }
 #offlineLibraryOverlay .sa-offline-title{
-  box-sizing:border-box !important;
-  padding-right:0 !important;
-  min-width:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  white-space:nowrap !important;
 }
 #offlineLibraryOverlay .sa-offline-head-actions{
   position:absolute !important;
   inset:0 !important;
-  display:block !important;
   width:100% !important;
   height:100% !important;
+  display:block !important;
   padding:0 !important;
   margin:0 !important;
   pointer-events:none !important;
@@ -107,7 +120,7 @@
   pointer-events:auto !important;
 }
 #offlineLibraryOverlay #saOfflineMenuBtn{
-  left:var(--sa-offline-menu-left, calc(100% - 58px)) !important;
+  left:var(--sa-offline-menu-left, calc(100% - 62px)) !important;
   right:auto !important;
   transform:translate(-50%,-50%) !important;
 }
@@ -116,18 +129,23 @@
   left:auto !important;
   transform:translateY(-50%) !important;
 }
-#offlineLibraryOverlay .sa-offline-subtitle{
+
+#offlineLibraryOverlay .sa-offline-subtitle,
+#offlineLibraryOverlay .sa-offline-tabs,
+#offlineLibraryOverlay #saOfflineContinueLabel,
+#offlineLibraryOverlay #saOfflineStorageBtn{
   display:none !important;
 }
-#offlineLibraryOverlay .sa-offline-tabs{
-  display:none !important;
-}
-#offlineLibraryOverlay .sa-offline-head{
-  padding-bottom:7px !important;
-}
+#offlineLibraryOverlay .sa-offline-head{padding-bottom:6px !important;}
+
+/* Compact filters and remove browser focus box. */
 #offlineLibraryOverlay .sa-offline-filterbar{
+  grid-template-columns:1fr !important;
   gap:7px !important;
-  margin-top:9px !important;
+  margin-top:8px !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
 }
 #offlineLibraryOverlay .sa-offline-search,
 #offlineLibraryOverlay #offlineSubjectSelect{
@@ -136,6 +154,25 @@
 }
 #offlineLibraryOverlay .sa-offline-search{
   padding:0 13px !important;
+  outline:0 !important;
+  box-shadow:none !important;
+}
+#offlineLibraryOverlay .sa-offline-search:focus,
+#offlineLibraryOverlay .sa-offline-search:focus-within,
+#offlineLibraryOverlay #offlineSearchInput,
+#offlineLibraryOverlay #offlineSearchInput:focus,
+#offlineLibraryOverlay #offlineSearchInput:focus-visible,
+#offlineLibraryOverlay #offlineSearchInput:active{
+  outline:0 !important;
+  box-shadow:none !important;
+  border:0 !important;
+  background:transparent !important;
+}
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-decoration,
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-cancel-button,
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-results-button,
+#offlineLibraryOverlay #offlineSearchInput::-webkit-search-results-decoration{
+  -webkit-appearance:none !important;
 }
 #offlineLibraryOverlay #offlineSubjectSelect{
   -webkit-appearance:none !important;
@@ -147,12 +184,10 @@
   background-size:14px 14px !important;
 }
 
-/* Three-dot menu: only Clear + Cancel. */
-#offlineLibraryOverlay #saOfflineStorageBtn{
-  display:none !important;
-}
+#offlineLibraryOverlay .sa-offline-scroll{padding-top:0 !important;}
+#offlineLibraryOverlay .sa-offline-section{margin-top:15px !important;}
 
-/* Continue studying: natural compact cards, equalized to tallest content. */
+/* Continue studying cards. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
   align-items:flex-start !important;
@@ -192,20 +227,15 @@
   color:#d6dee8;
   font:650 9px/1.2 Inter,sans-serif;
 }
-#offlineLibraryOverlay .sa-recent-title.is-empty{
-  display:none !important;
-}
+#offlineLibraryOverlay .sa-recent-title.is-empty{display:none !important;}
 #offlineLibraryOverlay .sa-recent-year{
-  display:block;
   margin-top:4px;
   color:#7f8da1;
   font:600 8.9px/1.15 'JetBrains Mono',monospace;
 }
-#offlineLibraryOverlay .sa-recent-year:empty{
-  display:none !important;
-}
+#offlineLibraryOverlay .sa-recent-year:empty{display:none !important;}
 
-/* Subject entries: distinct title only, then Type · Year once. */
+/* Subject entries. */
 #offlineLibraryOverlay .sa-offline-file-main{
   grid-template-columns:28px minmax(0,1fr) !important;
   gap:9px !important;
@@ -214,17 +244,12 @@
 #offlineLibraryOverlay .sa-offline-file-title{
   font:800 11.5px/1.34 Inter,sans-serif !important;
 }
-#offlineLibraryOverlay .sa-offline-file-title:empty{
-  display:none !important;
-}
+#offlineLibraryOverlay .sa-offline-file-title:empty{display:none !important;}
 #offlineLibraryOverlay .sa-offline-file-meta{
   margin-top:4px !important;
   font:500 10px/1.32 Inter,sans-serif !important;
 }
-#offlineLibraryOverlay .sa-offline-file-size{
-  display:none !important;
-}
-/* When there is no distinct title, put the star and Type · Year on one centered row. */
+#offlineLibraryOverlay .sa-offline-file-size{display:none !important;}
 #offlineLibraryOverlay .sa-offline-file.sa-type-only .sa-offline-file-main{
   align-items:center !important;
 }
@@ -240,60 +265,20 @@
 }
 
 body[data-theme="light"] #offlineLibraryOverlay .sa-recent-subject,
-body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{
-  color:#27302d !important;
-}
-body[data-theme="light"] #offlineLibraryOverlay .sa-recent-title{
-  color:#4b514e !important;
-}
+body[data-theme="light"] #offlineLibraryOverlay .sa-offline-file-title{color:#27302d !important;}
+body[data-theme="light"] #offlineLibraryOverlay .sa-recent-title{color:#4b514e !important;}
 body[data-theme="light"] #offlineLibraryOverlay .sa-recent-type,
-body[data-theme="light"] #offlineLibraryOverlay .sa-recent-year{
-  color:#817d77 !important;
-}
-body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
-  background-color:#fff !important;
-}
+body[data-theme="light"] #offlineLibraryOverlay .sa-recent-year{color:#817d77 !important;}
+body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{background-color:#fff !important;}
 
 @media(max-width:700px){
-  #offlineLibraryOverlay{
-    padding:12px !important;
-    align-items:center !important;
-    justify-content:center !important;
-    background:rgba(2,6,12,.52) !important;
-    -webkit-backdrop-filter:blur(4px) !important;
-    backdrop-filter:blur(4px) !important;
-  }
   #offlineLibraryOverlay .offline-library-card.sa-offline-hybrid{
     width:100% !important;
     height:calc(100dvh - 24px) !important;
     max-height:calc(100dvh - 24px) !important;
-    border-radius:28px !important;
-    border:1px solid rgba(148,163,184,.22) !important;
-    box-shadow:0 26px 72px rgba(0,0,0,.42) !important;
-    overflow:hidden !important;
   }
-  #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
-    padding-right:76px !important;
-  }
-  #offlineLibraryOverlay .sa-offline-title{
-    padding-right:0 !important;
-  }
-  #offlineLibraryOverlay .sa-offline-head{
-    padding-bottom:5px !important;
-  }
-  #offlineLibraryOverlay .sa-offline-filterbar{
-    gap:7px !important;
-    margin-top:7px !important;
-  }
-  #offlineLibraryOverlay #offlineSubjectSelect{
-    background-position:right 15px center !important;
-  }
-  #offlineLibraryOverlay .sa-offline-scroll{
-    padding-top:0 !important;
-  }
-  #offlineLibraryOverlay .sa-offline-section{
-    margin-top:15px !important;
-  }
+  #offlineLibraryOverlay .sa-offline-title-row > div:first-child{padding-right:76px !important;}
+  #offlineLibraryOverlay #offlineSubjectSelect{background-position:right 15px center !important;}
   #offlineLibraryOverlay .sa-offline-shelf-card{
     flex-basis:128px !important;
     width:128px !important;
@@ -315,6 +300,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       subtitle.textContent = "";
       subtitle.hidden = true;
     }
+    document.getElementById("saOfflineStorageBtn")?.remove();
   }
 
   function alignHeaderMenu() {
@@ -322,22 +308,22 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     if (!overlay) return;
     const row = overlay.querySelector(".sa-offline-title-row");
     const title = overlay.querySelector(".sa-offline-title");
-    const menu = document.getElementById("saOfflineMenuBtn");
     const close = document.getElementById("closeOfflineLibraryBtn");
-    if (!row || !title || !menu || !close) return;
+    if (!row || !title || !close) return;
 
     const rowRect = row.getBoundingClientRect();
     const titleRect = title.getBoundingClientRect();
     const closeRect = close.getBoundingClientRect();
     if (!rowRect.width || !titleRect.width || !closeRect.width) return;
 
-    const leftEdge = titleRect.right;
-    const rightEdge = closeRect.left;
-    if (rightEdge <= leftEdge) return;
+    const gap = closeRect.left - titleRect.right;
+    if (gap <= 0) return;
 
-    const targetCenter = (leftEdge + rightEdge) / 2;
-    const localLeft = targetCenter - rowRect.left;
-    row.style.setProperty("--sa-offline-menu-left", `${localLeft}px`);
+    /* A small optical bias toward the close button makes the vertical ellipsis
+       look centered between the wordmark and X, not crowded against the title. */
+    const bias = window.innerWidth <= 700 ? Math.min(11, gap * 0.16) : Math.min(7, gap * 0.12);
+    const targetCenter = titleRect.right + gap / 2 + bias;
+    row.style.setProperty("--sa-offline-menu-left", `${targetCenter - rowRect.left}px`);
   }
 
   function formatShelfCard(card, record) {
@@ -352,10 +338,9 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       <span class="sa-recent-type"></span>
       <span class="sa-recent-title${title ? "" : " is-empty"}"></span>
       <span class="sa-recent-year"></span>`;
-
     card.querySelector(".sa-recent-subject").textContent = subject;
     card.querySelector(".sa-recent-type").textContent = type;
-    card.querySelector(".sa-recent-title").textContent = title || "";
+    card.querySelector(".sa-recent-title").textContent = title;
     card.querySelector(".sa-recent-year").textContent = year;
   }
 
@@ -370,7 +355,6 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       card.style.setProperty("min-height", "0", "important");
       card.style.setProperty("max-height", "none", "important");
     });
-
     const tallest = Math.max(...cards.map(card => Math.ceil(card.scrollHeight)));
     cards.forEach(card => {
       card.style.setProperty("height", `${tallest}px`, "important");
@@ -387,10 +371,9 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
     const available = new Set(groups.map(group => group.dataset.saSubject || ""));
     if (expandedSubject && !available.has(expandedSubject)) expandedSubject = "";
-
-    if (expandFirstOnNextRefresh && !expandedSubject) {
+    if (expandFirstOnOpen && !expandedSubject) {
       expandedSubject = groups[0].dataset.saSubject || "";
-      expandFirstOnNextRefresh = false;
+      expandFirstOnOpen = false;
     }
 
     groups.forEach(group => {
@@ -402,16 +385,10 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     });
   }
 
-  function cleanUtilityMenu() {
-    const storageBtn = document.getElementById("saOfflineStorageBtn");
-    if (storageBtn) storageBtn.remove();
-  }
-
   async function refreshPresentation() {
     if (refreshing) return;
     const overlay = document.getElementById("offlineLibraryOverlay");
-    if (!overlay || overlay.style.display === "none") return;
-    if (typeof getOfflineFiles !== "function") return;
+    if (!overlay || overlay.style.display === "none" || typeof getOfflineFiles !== "function") return;
 
     refreshing = true;
     try {
@@ -419,26 +396,20 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       const map = new Map((records || []).map(record => [String(record.id), record]));
 
       formatHeader();
-      cleanUtilityMenu();
-      requestAnimationFrame(alignHeaderMenu);
-
       overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]").forEach(card => {
         const record = map.get(String(card.dataset.saOpenId || ""));
         if (record) formatShelfCard(card, record);
       });
-      requestAnimationFrame(equalizeShelfCards);
 
       overlay.querySelectorAll(".sa-offline-file[data-offline-id]").forEach(card => {
         const record = map.get(String(card.dataset.offlineId || ""));
         if (!record) return;
-
+        const distinctTitle = displayTitleOf(record);
         const title = card.querySelector(".sa-offline-file-title");
         const meta = card.querySelector(".sa-offline-file-meta");
         const size = card.querySelector(".sa-offline-file-size");
-        const distinctTitle = displayTitleOf(record);
 
         card.classList.toggle("sa-type-only", !distinctTitle);
-
         if (title) {
           title.textContent = distinctTitle;
           title.style.display = distinctTitle ? "" : "none";
@@ -448,8 +419,12 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       });
 
       applyAccordionState();
+      requestAnimationFrame(() => {
+        alignHeaderMenu();
+        equalizeShelfCards();
+      });
     } catch (_) {
-      /* Presentation must never block the Offline Library. */
+      /* Presentation must never block Offline Library. */
     } finally {
       refreshing = false;
     }
@@ -457,9 +432,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
   function scheduleRefresh(delay = 0) {
     window.clearTimeout(refreshTimer);
-    refreshTimer = window.setTimeout(() => {
-      requestAnimationFrame(() => void refreshPresentation());
-    }, delay);
+    refreshTimer = window.setTimeout(() => void refreshPresentation(), delay);
   }
 
   function rememberRecentWithoutRerender(id) {
@@ -467,9 +440,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       const map = JSON.parse(localStorage.getItem(RECENT_KEY) || "{}");
       map[String(id)] = Date.now();
       const trimmed = Object.fromEntries(
-        Object.entries(map)
-          .sort((a, b) => Number(b[1]) - Number(a[1]))
-          .slice(0, 30)
+        Object.entries(map).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 30)
       );
       localStorage.setItem(RECENT_KEY, JSON.stringify(trimmed));
     } catch (_) {}
@@ -480,46 +451,84 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     try {
       if (typeof openOfflineFile === "function") await openOfflineFile(id);
     } catch (err) {
-      try {
-        if (typeof showError === "function") showError(err?.message || "Could not open that offline file.");
-      } catch (_) {}
+      try { if (typeof showError === "function") showError(err?.message || "Could not open that offline file."); } catch (_) {}
     }
   }
 
-  function wrapFunctions() {
-    if (!openWrapped && typeof window.openOfflineLibrary === "function") {
-      const originalOpen = window.openOfflineLibrary;
-      if (!originalOpen.__saEntryFormatV8Wrapped) {
-        const wrappedOpen = function(...args) {
-          expandedSubject = "";
-          expandFirstOnNextRefresh = true;
-          const result = originalOpen.apply(this, args);
-          scheduleRefresh(0);
-          scheduleRefresh(60);
-          scheduleRefresh(220);
-          return result;
-        };
-        wrappedOpen.__saEntryFormatV8Wrapped = true;
-        window.openOfflineLibrary = wrappedOpen;
-        try { openOfflineLibrary = wrappedOpen; } catch (_) {}
-      }
-      openWrapped = true;
+  async function togglePinWithoutRerender(id) {
+    try {
+      if (typeof getOfflineFile !== "function" || typeof putOfflineFile !== "function") return;
+      const record = await getOfflineFile(id);
+      if (!record) return;
+
+      let pinned = record.pinned === true;
+      try { if (typeof offlinePinned === "function") pinned = !!offlinePinned(record); } catch (_) {}
+      const next = !pinned;
+      record.pinned = next;
+      await putOfflineFile(record);
+
+      document.querySelectorAll(`#offlineLibraryOverlay [data-sa-pin-id="${CSS.escape(String(id))}"]`).forEach(button => {
+        button.classList.toggle("is-pinned", next);
+        button.textContent = next ? "★" : "☆";
+        button.setAttribute("aria-label", next ? "Unpin" : "Pin");
+        button.closest(".sa-offline-file")?.classList.toggle("is-pinned", next);
+      });
+    } catch (err) {
+      try { if (typeof showError === "function") showError(err?.message || "Could not update that offline file."); } catch (_) {}
+    }
+  }
+
+  async function revealAfterStableRender() {
+    const overlay = document.getElementById("offlineLibraryOverlay");
+    const card = overlay?.querySelector(".offline-library-card.sa-offline-hybrid");
+    const list = document.getElementById("offlineLibraryList");
+    if (!overlay || !card) return;
+
+    for (let i = 0; i < 25; i += 1) {
+      if (list && list.children.length) break;
+      await sleep(20);
     }
 
-    if (!renderWrapped && typeof window.renderOfflineLibrary === "function") {
-      const originalRender = window.renderOfflineLibrary;
-      if (!originalRender.__saEntryFormatV8Wrapped) {
-        const wrappedRender = function(...args) {
-          const result = originalRender.apply(this, args);
-          Promise.resolve(result).finally(() => scheduleRefresh(0));
-          return result;
-        };
-        wrappedRender.__saEntryFormatV8Wrapped = true;
-        window.renderOfflineLibrary = wrappedRender;
-        try { renderOfflineLibrary = wrappedRender; } catch (_) {}
-      }
-      renderWrapped = true;
+    await refreshPresentation();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    alignHeaderMenu();
+    card.style.opacity = "1";
+    card.style.visibility = "visible";
+  }
+
+  function wrapOpenFunction() {
+    if (openWrapped || typeof window.openOfflineLibrary !== "function") return;
+    const originalOpen = window.openOfflineLibrary;
+    if (originalOpen.__saStableV9Wrapped) {
+      openWrapped = true;
+      return;
     }
+
+    const wrappedOpen = function(...args) {
+      const overlay = document.getElementById("offlineLibraryOverlay");
+      const card = overlay?.querySelector(".offline-library-card.sa-offline-hybrid");
+      const list = document.getElementById("offlineLibraryList");
+      const shelf = document.getElementById("saOfflineShelf");
+
+      expandedSubject = "";
+      expandFirstOnOpen = true;
+      if (card) {
+        card.style.transition = "none";
+        card.style.opacity = "0";
+        card.style.visibility = "hidden";
+      }
+      if (list) list.innerHTML = "";
+      if (shelf) shelf.innerHTML = "";
+
+      const result = originalOpen.apply(this, args);
+      void revealAfterStableRender();
+      return result;
+    };
+
+    wrappedOpen.__saStableV9Wrapped = true;
+    window.openOfflineLibrary = wrappedOpen;
+    try { openOfflineLibrary = wrappedOpen; } catch (_) {}
+    openWrapped = true;
   }
 
   function bindEvents() {
@@ -531,10 +540,18 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
       if (toggle) {
         event.preventDefault();
         event.stopPropagation();
-        expandFirstOnNextRefresh = false;
         const subject = toggle.dataset.saToggleSubject || "";
+        expandFirstOnOpen = false;
         expandedSubject = expandedSubject === subject ? "" : subject;
         applyAccordionState();
+        return;
+      }
+
+      const pin = target.closest("#offlineLibraryOverlay [data-sa-pin-id]");
+      if (pin) {
+        event.preventDefault();
+        event.stopPropagation();
+        void togglePinWithoutRerender(pin.dataset.saPinId || "");
         return;
       }
 
@@ -546,44 +563,38 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
         return;
       }
 
-      if (target.closest("#offlineLibraryOverlay [data-sa-pin-id], #offlineLibraryOverlay [data-sa-delete-id]")) {
-        scheduleRefresh(80);
-        scheduleRefresh(240);
-      }
+      if (target.closest("#offlineLibraryOverlay [data-sa-delete-id]")) scheduleRefresh(120);
     }, true);
 
     document.addEventListener("input", event => {
       if (event.target?.id === "offlineSearchInput") {
         expandedSubject = "";
-        expandFirstOnNextRefresh = true;
-        scheduleRefresh(45);
+        expandFirstOnOpen = false;
+        scheduleRefresh(55);
       }
     }, true);
 
     document.addEventListener("change", event => {
       if (event.target?.id === "offlineSubjectSelect") {
         expandedSubject = "";
-        expandFirstOnNextRefresh = true;
-        scheduleRefresh(45);
+        expandFirstOnOpen = false;
+        scheduleRefresh(55);
       }
     }, true);
 
-    window.addEventListener("resize", () => {
-      requestAnimationFrame(alignHeaderMenu);
-      scheduleRefresh(80);
-    }, { passive:true });
+    window.addEventListener("resize", () => requestAnimationFrame(alignHeaderMenu), { passive:true });
   }
 
   function install() {
     installStyle();
     bindEvents();
-    wrapFunctions();
+    wrapOpenFunction();
 
     let tries = 0;
     const timer = window.setInterval(() => {
       tries += 1;
-      wrapFunctions();
-      if ((openWrapped && renderWrapped) || tries >= 20) window.clearInterval(timer);
+      wrapOpenFunction();
+      if (openWrapped || tries >= 30) window.clearInterval(timer);
     }, 100);
 
     scheduleRefresh(120);
