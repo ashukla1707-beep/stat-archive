@@ -52,7 +52,12 @@ jobs:
           refs.update(re.findall(r'''["']\./([^"']+)["']''', sw))
 
           missing = []
-          for ref in sorted(refs):
+          checked = set()
+          for raw_ref in sorted(refs):
+              ref = raw_ref.split('?', 1)[0].split('#', 1)[0].strip()
+              if not ref or ref in checked:
+                  continue
+              checked.add(ref)
               if ref.startswith(('http://', 'https://', 'data:', 'mailto:', 'tel:')):
                   continue
               path = root / ref.lstrip('/')
@@ -62,5 +67,5 @@ jobs:
           if missing:
               raise SystemExit('Missing local runtime references:\n' + '\n'.join(missing))
 
-          print(f'Validated {len(refs)} local/runtime references.')
+          print(f'Validated {len(checked)} local/runtime references.')
           PY
