@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-mobile-actions-reference-v1";
+const CACHE = "stat-archive-shell-v20260910-offline-unlock-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -11,7 +11,8 @@ const APP_SHELL = [
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
   "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",
   "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/menu-alignment-fix.js",
-  "./assets/js/offline-library-hybrid.js","./manuals/reader.html","./manuals/contributor.html",
+  "./assets/js/offline-library-hybrid.js","./assets/js/offline-scroll-unlock.js",
+  "./manuals/reader.html","./manuals/contributor.html",
   "./manifest.json","./icons/icon-192.png","./icons/icon-512.png"
 ];
 
@@ -33,6 +34,7 @@ const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-webs
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-1"></script>';
+const OFFLINE_SCROLL_UNLOCK_TAG = '<script src="./assets/js/offline-scroll-unlock.js?v=20260910-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -68,7 +70,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
 
-  out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n</body>`);
+  out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n${OFFLINE_SCROLL_UNLOCK_TAG}\n</body>`);
 
   if (!out.includes('assets/js/preview-state-guard.js')) out = out.replace('</body>', `${PREVIEW_STATE_GUARD_TAG}\n</body>`);
   return out;
@@ -267,6 +269,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/service-worker-register.js') ||
     url.pathname.endsWith('/assets/js/menu-polish.js') ||
     url.pathname.endsWith('/assets/js/menu-alignment-fix.js') ||
+    url.pathname.endsWith('/assets/js/offline-scroll-unlock.js') ||
     url.pathname.endsWith('/assets/js/offline-library-hybrid.js');
 
   if (isLiveRuntime) {
