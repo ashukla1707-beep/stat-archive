@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-preview-state-v1";
+const CACHE = "stat-archive-shell-v20260909-offline-hybrid-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -30,6 +30,7 @@ const APP_SHELL = [
   "./assets/js/entry-method-fix.js",
   "./assets/js/menu-polish.js",
   "./assets/js/menu-alignment-fix.js",
+  "./assets/js/offline-library-hybrid.js",
   "./manuals/reader.html",
   "./manuals/contributor.html",
   "./manifest.json",
