@@ -118,21 +118,48 @@
     box-shadow:none !important;
   }
 
+  /* Contributor/admin cards: keep every action on ONE line.
+     Management controls make the five-pill row compact enough for phones,
+     while ordinary viewer cards retain the larger three-button proportions. */
   html body .card .card-actions:has(.edit-btn),
   html body .card .card-actions:has(.del-btn){
-    flex-wrap:wrap !important;
-    justify-content:flex-start !important;
-    row-gap:7px !important;
+    flex-wrap:nowrap !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    gap:4px !important;
+    overflow:visible !important;
   }
 
-  html body .card .card-actions .edit-btn,
-  html body .card .card-actions .del-btn{
-    height:30px !important;
-    min-height:30px !important;
-    min-width:72px !important;
-    padding:0 10px !important;
-    border-radius:9px !important;
-    font-size:11px !important;
+  html body .card .card-actions:has(.edit-btn) .action-btn,
+  html body .card .card-actions:has(.del-btn) .action-btn{
+    flex:0 1 auto !important;
+    width:auto !important;
+    min-width:0 !important;
+    height:28px !important;
+    min-height:28px !important;
+    padding:0 5px !important;
+    gap:3px !important;
+    border-radius:8px !important;
+    font-size:9.5px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .pv-btn,
+  html body .card .card-actions:has(.del-btn) .pv-btn,
+  html body .card .card-actions:has(.edit-btn) .dl-btn,
+  html body .card .card-actions:has(.del-btn) .dl-btn,
+  html body .card .card-actions:has(.edit-btn) .download-btn,
+  html body .card .card-actions:has(.del-btn) .download-btn,
+  html body .card .card-actions:has(.edit-btn) .offline-btn,
+  html body .card .card-actions:has(.del-btn) .offline-btn,
+  html body .card .card-actions:has(.edit-btn) .edit-btn,
+  html body .card .card-actions:has(.del-btn) .edit-btn,
+  html body .card .card-actions:has(.edit-btn) .del-btn,
+  html body .card .card-actions:has(.del-btn) .del-btn{
+    min-width:0 !important;
+    padding-left:5px !important;
+    padding-right:5px !important;
   }
 }
 
@@ -160,6 +187,42 @@
     min-width:102px !important;
     padding-left:10px !important;
     padding-right:10px !important;
+  }
+
+  /* Re-assert contributor/admin one-row compact sizing after the general
+     narrow-phone rules above. */
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    flex-wrap:nowrap !important;
+    gap:3px !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .action-btn,
+  html body .card .card-actions:has(.del-btn) .action-btn{
+    min-width:0 !important;
+    height:27px !important;
+    min-height:27px !important;
+    padding:0 4px !important;
+    gap:2px !important;
+    border-radius:7px !important;
+    font-size:8.8px !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .pv-btn,
+  html body .card .card-actions:has(.del-btn) .pv-btn,
+  html body .card .card-actions:has(.edit-btn) .dl-btn,
+  html body .card .card-actions:has(.del-btn) .dl-btn,
+  html body .card .card-actions:has(.edit-btn) .download-btn,
+  html body .card .card-actions:has(.del-btn) .download-btn,
+  html body .card .card-actions:has(.edit-btn) .offline-btn,
+  html body .card .card-actions:has(.del-btn) .offline-btn,
+  html body .card .card-actions:has(.edit-btn) .edit-btn,
+  html body .card .card-actions:has(.del-btn) .edit-btn,
+  html body .card .card-actions:has(.edit-btn) .del-btn,
+  html body .card .card-actions:has(.del-btn) .del-btn{
+    min-width:0 !important;
+    padding-left:4px !important;
+    padding-right:4px !important;
   }
 }
 `;
