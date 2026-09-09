@@ -68,11 +68,51 @@ html body .archive-entries-divider::after{
   box-shadow:none !important;
 }
 
+/* Archive cards: keep every action compact, single-line and truly centered. */
+html body .card .card-actions{
+  align-items:stretch !important;
+}
+html body .card .card-actions .action-btn,
+html body .card .card-actions > button,
+html body .card .card-actions > a{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow-wrap:normal !important;
+  line-height:1 !important;
+  font-size:14px !important;
+  min-height:40px !important;
+  height:40px !important;
+  padding:0 8px !important;
+  margin:0 !important;
+  box-sizing:border-box !important;
+  vertical-align:middle !important;
+}
+html body .card .card-actions .action-btn > *,
+html body .card .card-actions > button > *,
+html body .card .card-actions > a > *{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+  line-height:1 !important;
+  align-self:center !important;
+}
+
 @media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
     padding-top:18px !important;
     margin-bottom:12px !important;
+  }
+  html body .card .card-actions .action-btn,
+  html body .card .card-actions > button,
+  html body .card .card-actions > a{
+    font-size:13px !important;
+    min-height:38px !important;
+    height:38px !important;
+    padding:0 6px !important;
   }
 }
 `;
