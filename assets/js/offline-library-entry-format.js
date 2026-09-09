@@ -5,6 +5,7 @@
 
   const STUDY_LINE_1 = "Your study vault. Saved files stay on this device";
   const STUDY_LINE_2 = "and can be opened without internet.";
+  const RECENT_KEY = "statArchiveOfflineRecentlyOpened";
 
   let refreshTimer = 0;
   let refreshing = false;
@@ -366,6 +367,32 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     }, delay);
   }
 
+  function rememberRecentWithoutRerender(id) {
+    try {
+      const map = JSON.parse(localStorage.getItem(RECENT_KEY) || "{}");
+      map[String(id)] = Date.now();
+      const trimmed = Object.fromEntries(
+        Object.entries(map)
+          .sort((a, b) => Number(b[1]) - Number(a[1]))
+          .slice(0, 30)
+      );
+      localStorage.setItem(RECENT_KEY, JSON.stringify(trimmed));
+    } catch (_) {}
+  }
+
+  async function openWithoutBackgroundRefresh(id) {
+    rememberRecentWithoutRerender(id);
+    try {
+      if (typeof openOfflineFile === "function") {
+        await openOfflineFile(id);
+      }
+    } catch (err) {
+      try {
+        if (typeof showError === "function") showError(err?.message || "Could not open that offline file.");
+      } catch (_) {}
+    }
+  }
+
   function wrapFunctions() {
     if (!openWrapped && typeof window.openOfflineLibrary === "function") {
       const originalOpen = window.openOfflineLibrary;
@@ -417,7 +444,17 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
         return;
       }
 
-      if (target.closest("#offlineLibraryOverlay [data-sa-pin-id], #offlineLibraryOverlay [data-sa-delete-id], #offlineLibraryOverlay [data-sa-open-id]")) {
+      /* Opening a file must not rebuild/reorder the library underneath the
+         Android chooser. Record the recent timestamp, then open directly. */
+      const open = target.closest("#offlineLibraryOverlay [data-sa-open-id]");
+      if (open) {
+        event.preventDefault();
+        event.stopPropagation();
+        void openWithoutBackgroundRefresh(open.dataset.saOpenId || "");
+        return;
+      }
+
+      if (target.closest("#offlineLibraryOverlay [data-sa-pin-id], #offlineLibraryOverlay [data-sa-delete-id]")) {
         scheduleRefresh(80);
         scheduleRefresh(240);
       }
