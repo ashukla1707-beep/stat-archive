@@ -105,7 +105,7 @@ html.stat-archive-pwa body .card .card-actions .offline-btn{
   pointer-events:auto !important;
 }
 
-/* Card action row: compact content-width controls, never equal-width grid cells. */
+/* Desktop card actions stay compact. */
 html body .card .card-actions{
   display:flex !important;
   flex-direction:row !important;
@@ -139,7 +139,6 @@ html body .card .card-actions .action-btn{
   box-sizing:border-box !important;
 }
 
-/* Contributor/admin cards may have more controls; let those wrap cleanly. */
 html body .card .card-actions:has(.edit-btn),
 html body .card .card-actions:has(.del-btn){
   flex-wrap:wrap !important;
@@ -151,64 +150,141 @@ html body .card .card-actions .del-btn{
   min-width:28px !important;
 }
 
-/* Mobile: tighten the whole card and keep the three primary actions balanced. */
+/* =========================================================
+   MOBILE CARD ACTIONS — reference-style large touch pills
+   ========================================================= */
 @media(max-width:700px){
   html body .subject-track .card{
-    padding:14px 14px 12px !important;
-    border-radius:13px !important;
+    padding:16px 16px 14px !important;
+    border-radius:16px !important;
   }
 
   html body .card .card-meta-row{
-    margin-bottom:8px !important;
+    margin-bottom:10px !important;
   }
 
   html body .card.card-no-title .card-meta-row{
-    min-height:46px !important;
+    min-height:50px !important;
   }
 
-  html body .card .card-actions{
-    justify-content:center !important;
-    gap:5px !important;
-    padding-top:8px !important;
+  html body .card .card-actions,
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    gap:10px !important;
+    padding-top:12px !important;
+    flex-wrap:unset !important;
   }
 
   html body .card .card-actions .action-btn{
-    height:26px !important;
-    min-height:26px !important;
-    padding:0 5px !important;
-    border-radius:6px !important;
-    font-size:10.5px !important;
-    line-height:1 !important;
-  }
-
-  html body .card .card-actions:has(.edit-btn),
-  html body .card .card-actions:has(.del-btn){
+    display:flex !important;
+    flex:1 1 auto !important;
+    flex-direction:row !important;
+    align-items:center !important;
     justify-content:center !important;
-    row-gap:5px !important;
+    gap:6px !important;
+    width:100% !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:48px !important;
+    min-height:48px !important;
+    padding:0 8px !important;
+    margin:0 !important;
+    border-radius:14px !important;
+    white-space:nowrap !important;
+    word-break:keep-all !important;
+    overflow-wrap:normal !important;
+    text-align:center !important;
+    line-height:1 !important;
+    font-size:14px !important;
+    font-weight:700 !important;
+    box-sizing:border-box !important;
   }
 
+  html body .card .card-actions .action-btn br{
+    display:none !important;
+  }
+
+  /* Dark theme — matches the supplied reference. */
+  body:not([data-theme="light"]) .card .card-actions .pv-btn,
+  body:not([data-theme="light"]) .card .card-actions .offline-btn{
+    color:#63efff !important;
+    background:rgba(21,56,68,.78) !important;
+    border:1px solid rgba(99,239,255,.34) !important;
+    box-shadow:
+      inset 0 0 0 1px rgba(99,239,255,.08),
+      0 0 18px rgba(56,210,235,.08) !important;
+  }
+
+  body:not([data-theme="light"]) .card .card-actions .dl-btn{
+    color:#eef2f8 !important;
+    background:rgba(17,24,36,.92) !important;
+    border:1px solid rgba(255,255,255,.045) !important;
+    box-shadow:0 8px 18px rgba(0,0,0,.12) !important;
+  }
+
+  /* Light theme — same geometry, existing Stat Archive palette. */
+  body[data-theme="light"] .card .card-actions .pv-btn,
+  body[data-theme="light"] .card .card-actions .offline-btn{
+    color:#4b365f !important;
+    background:#f1ebf6 !important;
+    border:1px solid #d8cce2 !important;
+    box-shadow:0 5px 14px rgba(75,54,95,.07) !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .offline-btn.is-saved,
+  body[data-theme="light"] .card .card-actions .pv-btn.is-previewed{
+    color:#fff !important;
+    background:#4b365f !important;
+    border-color:#4b365f !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .dl-btn{
+    color:#27302d !important;
+    background:#eee9f4 !important;
+    border:1px solid #ddd4e4 !important;
+    box-shadow:none !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .dl-btn.is-downloaded{
+    color:#fff !important;
+    background:#4b365f !important;
+    border-color:#4b365f !important;
+  }
+
+  /* Contributor controls continue on a clean second row when present. */
   html body .card .card-actions .edit-btn,
   html body .card .card-actions .del-btn{
-    min-width:26px !important;
+    height:42px !important;
+    min-height:42px !important;
+    border-radius:12px !important;
+    font-size:12.5px !important;
   }
 }
 
-/* Extra-narrow phones: shave a little more space without wrapping labels. */
+/* Very narrow phones: retain the 3-column layout while trimming typography. */
 @media(max-width:380px){
   html body .subject-track .card{
-    padding-left:12px !important;
-    padding-right:12px !important;
+    padding-left:13px !important;
+    padding-right:13px !important;
   }
 
-  html body .card .card-actions{
-    gap:3px !important;
+  html body .card .card-actions,
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    gap:6px !important;
   }
 
   html body .card .card-actions .action-btn{
-    height:25px !important;
-    min-height:25px !important;
-    padding:0 4px !important;
-    font-size:10px !important;
+    height:44px !important;
+    min-height:44px !important;
+    padding:0 5px !important;
+    border-radius:12px !important;
+    font-size:12px !important;
+    gap:4px !important;
   }
 }
 `;
