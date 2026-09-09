@@ -114,3 +114,124 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{
     installMenuAlignmentFix();
   }
 })();
+
+/* =========================================================
+   Reliable side-menu Back stack.
+   This file is served network-first by the Stat Archive service worker,
+   so this navigation fix does not get stuck behind an older cached script.
+
+   Required flow:
+   Home -> Menu -> Manual -> Back -> Menu -> Back -> Home
+   ========================================================= */
+(() => {
+  const NAV_KEY = 'statArchiveNav';
+  const MENU_PARAM = 'menu';
+
+  const menu = document.getElementById('mainSideMenu');
+  const menuBtn = document.getElementById('mainMenuBtn');
+  const backdrop = document.getElementById('mainMenuBackdrop');
+  if (!menu || !menuBtn) return;
+
+  const readState = () => history.state?.[NAV_KEY] || 'home';
+  const withState = value => ({ ...(history.state || {}), [NAV_KEY]: value });
+
+  function urlWithMenuMarker() {
+    const url = new URL(location.href);
+    url.searchParams.set(MENU_PARAM, '1');
+    return url.href;
+  }
+
+  function urlWithoutMenuMarker() {
+    const url = new URL(location.href);
+    url.searchParams.delete(MENU_PARAM);
+    return url.href;
+  }
+
+  function openMenu() {
+    try { window.statArchiveOpenMenu?.(); } catch (_) {}
+    menu.classList.add('is-open');
+    backdrop?.classList.add('is-open');
+    menu.setAttribute('aria-hidden', 'false');
+    backdrop?.setAttribute('aria-hidden', 'false');
+    menuBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMenu() {
+    try { window.statArchiveCloseMenu?.(); } catch (_) {}
+    menu.classList.remove('is-open');
+    backdrop?.classList.remove('is-open');
+    menu.setAttribute('aria-hidden', 'true');
+    backdrop?.setAttribute('aria-hidden', 'true');
+    menuBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  const initialUrl = new URL(location.href);
+  const returningToMenu = initialUrl.searchParams.get(MENU_PARAM) === '1';
+
+  if (returningToMenu) {
+    history.replaceState(withState('menu'), '', location.href);
+    requestAnimationFrame(openMenu);
+  } else if (!history.state?.[NAV_KEY]) {
+    history.replaceState(withState('home'), '', location.href);
+  }
+
+  document.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    if (target.closest('#mainMenuBtn')) {
+      if (menu.classList.contains('is-open') && readState() === 'menu') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        history.back();
+        return;
+      }
+
+      if (!menu.classList.contains('is-open') && readState() === 'home') {
+        history.pushState(withState('menu'), '', urlWithMenuMarker());
+      }
+      return;
+    }
+
+    if ((target.closest('#mainMenuCloseBtn') || target.closest('#mainMenuBackdrop')) &&
+        menu.classList.contains('is-open') && readState() === 'menu') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      history.back();
+      return;
+    }
+
+    const manual = target.closest('#menuManualsBtn');
+    if (manual && menu.classList.contains('is-open')) {
+      // Make the current homepage history entry an explicit Menu destination
+      // before the existing Manual click handler navigates away. Therefore
+      // Android/browser Back and the Manual's own history.back() both restore
+      // the menu first, while the previous entry remains the plain homepage.
+      if (readState() !== 'menu') {
+        history.pushState(withState('menu'), '', urlWithMenuMarker());
+      } else {
+        history.replaceState(withState('menu'), '', urlWithMenuMarker());
+      }
+      return;
+    }
+  }, true);
+
+  window.addEventListener('popstate', () => {
+    const url = new URL(location.href);
+    const state = history.state?.[NAV_KEY] ||
+      (url.searchParams.get(MENU_PARAM) === '1' ? 'menu' : 'home');
+
+    if (state === 'menu') {
+      openMenu();
+    } else {
+      closeMenu();
+    }
+  });
+
+  window.addEventListener('pageshow', () => {
+    const url = new URL(location.href);
+    if (history.state?.[NAV_KEY] === 'menu' || url.searchParams.get(MENU_PARAM) === '1') {
+      openMenu();
+    }
+  });
+})();
