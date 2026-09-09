@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library stable loader v9
+/* Stat Archive — Offline Library stable loader v10
    No MutationObserver. Keeps stable CSS, search copy and formatter loader. */
 (() => {
   "use strict";
@@ -63,10 +63,10 @@
     padding-right:12px !important;
   }
 
-  /* Mobile header: large title + fixed action area. */
+  /* Mobile header: large title + compact action group beside X. */
   #offlineLibraryOverlay .sa-offline-title-row{
     display:grid !important;
-    grid-template-columns:minmax(0,1fr) 68px !important;
+    grid-template-columns:minmax(0,1fr) 56px !important;
     column-gap:6px !important;
     align-items:center !important;
     position:relative !important;
@@ -99,13 +99,14 @@
   #offlineLibraryOverlay .sa-offline-head-actions{
     position:static !important;
     inset:auto !important;
-    width:68px !important;
+    width:56px !important;
     height:auto !important;
     display:grid !important;
-    grid-template-columns:30px 30px !important;
-    gap:4px !important;
+    grid-template-columns:27px 27px !important;
+    gap:2px !important;
     align-items:center !important;
     justify-content:end !important;
+    justify-self:end !important;
     padding:0 !important;
     margin:0 !important;
     pointer-events:auto !important;
@@ -119,8 +120,8 @@
     left:auto !important;
     right:auto !important;
     transform:none !important;
-    width:30px !important;
-    min-width:30px !important;
+    width:27px !important;
+    min-width:27px !important;
     height:34px !important;
     margin:0 !important;
     padding:0 !important;
@@ -133,12 +134,8 @@
     pointer-events:auto !important;
     z-index:6 !important;
   }
-  #offlineLibraryOverlay #saOfflineMenuBtn{
-    grid-column:1 !important;
-  }
-  #offlineLibraryOverlay #closeOfflineLibraryBtn{
-    grid-column:2 !important;
-  }
+  #offlineLibraryOverlay #saOfflineMenuBtn{grid-column:1 !important;}
+  #offlineLibraryOverlay #closeOfflineLibraryBtn{grid-column:2 !important;}
 
   #offlineLibraryOverlay .sa-offline-search{
     grid-template-columns:21px minmax(0,1fr) !important;
@@ -149,9 +146,7 @@
     width:21px !important;
     min-width:21px !important;
   }
-  #offlineLibraryOverlay #offlineSearchInput{
-    font-size:13.5px !important;
-  }
+  #offlineLibraryOverlay #offlineSearchInput{font-size:13.5px !important;}
 }
 `;
     document.head.appendChild(style);
@@ -165,19 +160,70 @@
     return true;
   }
 
+  function installOpenGate() {
+    const current = window.openOfflineLibrary;
+    if (typeof current !== "function") return false;
+    if (current.__saFinalRenderGateV10) return true;
+
+    const wrapped = function(...args) {
+      const overlay = document.getElementById("offlineLibraryOverlay");
+      if (overlay) {
+        overlay.style.transition = "none";
+        overlay.style.opacity = "0";
+        overlay.style.visibility = "hidden";
+      }
+
+      const result = current.apply(this, args);
+
+      void (async () => {
+        const start = performance.now();
+        while (performance.now() - start < 1200) {
+          const liveOverlay = document.getElementById("offlineLibraryOverlay");
+          const list = document.getElementById("offlineLibraryList");
+          const card = liveOverlay?.querySelector(".offline-library-card.sa-offline-hybrid");
+          const populated = !!list && list.children.length > 0;
+          const formatterDone = !card || (card.style.visibility !== "hidden" && card.style.opacity !== "0");
+          if (populated && formatterDone) break;
+          await new Promise(resolve => setTimeout(resolve, 16));
+        }
+
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const liveOverlay = document.getElementById("offlineLibraryOverlay");
+        if (liveOverlay) {
+          liveOverlay.style.transition = "none";
+          liveOverlay.style.visibility = "visible";
+          liveOverlay.style.opacity = "1";
+        }
+      })();
+
+      return result;
+    };
+
+    wrapped.__saFinalRenderGateV10 = true;
+    window.openOfflineLibrary = wrapped;
+    try { openOfflineLibrary = wrapped; } catch (_) {}
+    return true;
+  }
+
   function loadStableFormatter() {
     const existing = document.querySelector('script[data-sa-offline-entry-format="1"]');
     if (existing) {
-      requestAnimationFrame(() => requestAnimationFrame(installStableOverrides));
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        installStableOverrides();
+        installOpenGate();
+      }));
       return;
     }
 
     const script = document.createElement("script");
-    script.src = "./assets/js/offline-library-entry-format.js?v=20260909-5";
+    script.src = "./assets/js/offline-library-entry-format.js?v=20260909-6";
     script.async = false;
     script.dataset.saOfflineEntryFormat = "1";
     script.addEventListener("load", () => {
-      requestAnimationFrame(() => installStableOverrides());
+      requestAnimationFrame(() => {
+        installStableOverrides();
+        installOpenGate();
+      });
     }, { once:true });
     document.body.appendChild(script);
   }
@@ -185,12 +231,16 @@
   function install() {
     installStableOverrides();
     loadStableFormatter();
+
     let tries = 0;
     const timer = window.setInterval(() => {
       tries += 1;
       const found = syncSearchCopy();
       if (found) installStableOverrides();
-      if (found || tries >= 30) window.clearInterval(timer);
+      installOpenGate();
+      if ((found && window.openOfflineLibrary?.__saFinalRenderGateV10) || tries >= 30) {
+        window.clearInterval(timer);
+      }
     }, 100);
   }
 
