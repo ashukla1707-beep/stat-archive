@@ -1,4 +1,4 @@
-/* Stat Archive — Offline Library presentation refinement v4
+/* Stat Archive — Offline Library presentation refinement v5
    Event-driven only. No MutationObserver. */
 (() => {
   "use strict";
@@ -43,9 +43,6 @@
       .trim();
   }
 
-  /* Remove a repeated subject prefix and trailing year from the archive title.
-     If what remains is only the file type (e.g. “Advanced ML — Notes”), it is
-     intentionally omitted so the subject/type are not shown twice. */
   function displayTitleOf(record) {
     let title = titleOf(record);
     const subject = subjectOf(record);
@@ -70,7 +67,6 @@
     const style = document.createElement("style");
     style.id = "saOfflineEntryFormatStyle";
     style.textContent = `
-/* Subtitle: full available width; on phones it is deliberately two lines. */
 #offlineLibraryOverlay .sa-offline-title-row > div:first-child{
   padding-right:0 !important;
   width:100% !important;
@@ -90,7 +86,6 @@
 #offlineLibraryOverlay .sa-study-line{display:inline;}
 #offlineLibraryOverlay .sa-study-line + .sa-study-line::before{content:" ";}
 
-/* Compact search + subject controls. */
 #offlineLibraryOverlay .sa-offline-filterbar{
   gap:7px !important;
   margin-top:13px !important;
@@ -113,19 +108,19 @@
   background-size:14px 14px !important;
 }
 
-/* Continue studying: every card has the same compact dimensions and hierarchy:
-   Subject -> Type -> distinct title -> Year. Empty title/year rows consume no space. */
+/* Continue studying cards: equal width, natural content height.
+   JS equalizes all visible cards to only the tallest content. */
 #offlineLibraryOverlay .sa-offline-shelf{
   gap:8px !important;
-  align-items:stretch !important;
+  align-items:flex-start !important;
 }
 #offlineLibraryOverlay .sa-offline-shelf-card{
   flex:0 0 134px !important;
   width:134px !important;
-  height:126px !important;
-  min-height:126px !important;
-  max-height:126px !important;
-  padding:10px !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  padding:9px 10px !important;
   border-radius:15px !important;
   display:flex !important;
   flex-direction:column !important;
@@ -138,38 +133,35 @@
   -webkit-line-clamp:2;
   overflow:hidden;
   color:#f4f7fb;
-  font:800 10.5px/1.24 Inter,sans-serif;
+  font:800 10.4px/1.22 Inter,sans-serif;
 }
 #offlineLibraryOverlay .sa-recent-type{
-  margin-top:6px;
+  margin-top:5px;
   color:#8d99aa;
-  font:600 9.3px/1.2 Inter,sans-serif;
+  font:600 9.1px/1.18 Inter,sans-serif;
 }
 #offlineLibraryOverlay .sa-recent-title{
   display:-webkit-box;
   -webkit-box-orient:vertical;
   -webkit-line-clamp:2;
   overflow:hidden;
-  min-height:0;
-  margin-top:4px;
+  margin-top:3px;
   color:#d6dee8;
-  font:650 9.2px/1.22 Inter,sans-serif;
+  font:650 9px/1.2 Inter,sans-serif;
 }
 #offlineLibraryOverlay .sa-recent-title.is-empty{
   display:none !important;
 }
 #offlineLibraryOverlay .sa-recent-year{
   display:block;
-  margin-top:5px;
-  min-height:0;
+  margin-top:4px;
   color:#7f8da1;
-  font:600 9px/1.15 'JetBrains Mono',monospace;
+  font:600 8.9px/1.15 'JetBrains Mono',monospace;
 }
 #offlineLibraryOverlay .sa-recent-year:empty{
   display:none !important;
 }
 
-/* Expanded subject entries: actual file title, then Type · Year; no size/date. */
 #offlineLibraryOverlay .sa-offline-file-main{
   grid-template-columns:28px minmax(0,1fr) !important;
   gap:9px !important;
@@ -201,7 +193,6 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 }
 
 @media(max-width:700px){
-  /* Inset rounded panel like the main menu. */
   #offlineLibraryOverlay{
     padding:12px !important;
     align-items:center !important;
@@ -220,12 +211,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     overflow:hidden !important;
   }
 
-  #offlineLibraryOverlay .sa-offline-head{
-    padding-bottom:7px !important;
-  }
-  #offlineLibraryOverlay .sa-offline-title{
-    padding-right:78px !important;
-  }
+  #offlineLibraryOverlay .sa-offline-head{padding-bottom:7px !important;}
+  #offlineLibraryOverlay .sa-offline-title{padding-right:78px !important;}
   #offlineLibraryOverlay .sa-offline-subtitle{
     margin-top:9px !important;
     font-size:10.8px !important;
@@ -235,9 +222,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     display:block !important;
     white-space:nowrap !important;
   }
-  #offlineLibraryOverlay .sa-study-line + .sa-study-line::before{
-    content:"" !important;
-  }
+  #offlineLibraryOverlay .sa-study-line + .sa-study-line::before{content:"" !important;}
 
   #offlineLibraryOverlay .sa-offline-filterbar{
     gap:7px !important;
@@ -251,24 +236,17 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     background-position:right 15px center !important;
   }
 
-  #offlineLibraryOverlay .sa-offline-scroll{
-    padding-top:0 !important;
-  }
-  #offlineLibraryOverlay .sa-offline-section{
-    margin-top:17px !important;
-  }
+  #offlineLibraryOverlay .sa-offline-scroll{padding-top:0 !important;}
+  #offlineLibraryOverlay .sa-offline-section{margin-top:17px !important;}
   #offlineLibraryOverlay .sa-offline-shelf-card{
     flex-basis:128px !important;
     width:128px !important;
-    height:120px !important;
-    min-height:120px !important;
-    max-height:120px !important;
-    padding:9px !important;
+    padding:8px 9px !important;
   }
   #offlineLibraryOverlay .sa-recent-subject{font-size:10px !important;}
-  #offlineLibraryOverlay .sa-recent-type{font-size:9px !important;}
-  #offlineLibraryOverlay .sa-recent-title{font-size:8.9px !important;}
-  #offlineLibraryOverlay .sa-recent-year{font-size:8.8px !important;}
+  #offlineLibraryOverlay .sa-recent-type{font-size:8.9px !important;}
+  #offlineLibraryOverlay .sa-recent-title{font-size:8.8px !important;}
+  #offlineLibraryOverlay .sa-recent-year{font-size:8.7px !important;}
   #offlineLibraryOverlay .sa-offline-file-title{font-size:11px !important;}
 }
 `;
@@ -306,6 +284,26 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
     card.querySelector(".sa-recent-year").textContent = year;
   }
 
+  function equalizeShelfCards() {
+    const overlay = document.getElementById("offlineLibraryOverlay");
+    if (!overlay) return;
+    const cards = [...overlay.querySelectorAll(".sa-offline-shelf-card[data-sa-open-id]")];
+    if (!cards.length) return;
+
+    cards.forEach(card => {
+      card.style.setProperty("height", "auto", "important");
+      card.style.setProperty("min-height", "0", "important");
+      card.style.setProperty("max-height", "none", "important");
+    });
+
+    const tallest = Math.max(...cards.map(card => Math.ceil(card.scrollHeight)));
+    cards.forEach(card => {
+      card.style.setProperty("height", `${tallest}px`, "important");
+      card.style.setProperty("min-height", `${tallest}px`, "important");
+      card.style.setProperty("max-height", `${tallest}px`, "important");
+    });
+  }
+
   function applyAccordionState() {
     const overlay = document.getElementById("offlineLibraryOverlay");
     if (!overlay) return;
@@ -340,6 +338,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
         if (record) formatShelfCard(card, record);
       });
 
+      requestAnimationFrame(equalizeShelfCards);
+
       overlay.querySelectorAll(".sa-offline-file[data-offline-id]").forEach(card => {
         const record = map.get(String(card.dataset.offlineId || ""));
         if (!record) return;
@@ -369,7 +369,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   function wrapFunctions() {
     if (!openWrapped && typeof window.openOfflineLibrary === "function") {
       const originalOpen = window.openOfflineLibrary;
-      if (!originalOpen.__saEntryFormatV4Wrapped) {
+      if (!originalOpen.__saEntryFormatV5Wrapped) {
         const wrappedOpen = function(...args) {
           expandedSubject = "";
           const result = originalOpen.apply(this, args);
@@ -378,7 +378,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
           scheduleRefresh(220);
           return result;
         };
-        wrappedOpen.__saEntryFormatV4Wrapped = true;
+        wrappedOpen.__saEntryFormatV5Wrapped = true;
         window.openOfflineLibrary = wrappedOpen;
         try { openOfflineLibrary = wrappedOpen; } catch (_) {}
       }
@@ -387,13 +387,13 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
 
     if (!renderWrapped && typeof window.renderOfflineLibrary === "function") {
       const originalRender = window.renderOfflineLibrary;
-      if (!originalRender.__saEntryFormatV4Wrapped) {
+      if (!originalRender.__saEntryFormatV5Wrapped) {
         const wrappedRender = function(...args) {
           const result = originalRender.apply(this, args);
           Promise.resolve(result).finally(() => scheduleRefresh(0));
           return result;
         };
-        wrappedRender.__saEntryFormatV4Wrapped = true;
+        wrappedRender.__saEntryFormatV5Wrapped = true;
         window.renderOfflineLibrary = wrappedRender;
         try { renderOfflineLibrary = wrappedRender; } catch (_) {}
       }
@@ -402,8 +402,6 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   }
 
   function bindEvents() {
-    /* Own the accordion interaction in capture phase so the hybrid renderer's
-       forced first-subject state never opens one automatically. */
     document.addEventListener("click", event => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -438,6 +436,8 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
         scheduleRefresh(45);
       }
     }, true);
+
+    window.addEventListener("resize", () => scheduleRefresh(80), { passive:true });
   }
 
   function install() {
