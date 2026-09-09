@@ -40,6 +40,7 @@ jobs:
       - name: Verify local runtime references exist
         run: |
           python3 - <<'PY'
+          from collections import defaultdict
           from pathlib import Path
           import re
 
@@ -48,48 +49,51 @@ jobs:
           source_files += sorted(Path('assets/js').glob('*.js'))
           source_files += sorted(Path('assets').glob('*.css'))
 
-          refs = set()
+          refs = defaultdict(set)
           asset_ext = r'(?:js|css|json|png|jpe?g|webp|svg|gif|ico|pdf|apk|woff2?|ttf)'
+
+          def add_ref(raw_ref, source):
+              ref = raw_ref.split('?', 1)[0].split('#', 1)[0].strip()
+              if ref:
+                  refs[ref].add(source.as_posix())
 
           for source in source_files:
               text = source.read_text(encoding='utf-8')
 
-              # HTML/script-style src/href references.
-              refs.update(re.findall(
+              for ref in re.findall(
                   rf'''(?:src|href)\s*=\s*["'](?:\./)?([^"'#?]+\.{asset_ext})(?:[?#][^"']*)?["']''',
                   text,
                   flags=re.I,
-              ))
+              ):
+                  add_ref(ref, source)
 
-              # Dynamic JS strings such as script.src = 'assets/js/foo.js?v=1'.
-              refs.update(re.findall(
+              for ref in re.findall(
                   rf'''["']((?:\./)?(?:assets|icons|downloads|manuals)/[^"'?#]+\.{asset_ext})(?:[?#][^"']*)?["']''',
                   text,
                   flags=re.I,
-              ))
+              ):
+                  add_ref(ref, source)
 
-              # Relative CSS imports such as @import "./scanner-base.css".
               if source.suffix == '.css':
                   for ref in re.findall(r'''@import\s+(?:url\()?\s*["']?([^"')\s;]+)''', text, flags=re.I):
                       if ref.startswith(('http://', 'https://', 'data:')):
                           continue
-                      refs.add(str((source.parent / ref.split('?', 1)[0].split('#', 1)[0]).as_posix()))
+                      local_ref = source.parent / ref.split('?', 1)[0].split('#', 1)[0]
+                      add_ref(local_ref.as_posix(), source)
 
           missing = []
-          checked = set()
-          for raw_ref in sorted(refs):
-              ref = raw_ref.split('?', 1)[0].split('#', 1)[0].strip()
-              if not ref or ref in checked:
-                  continue
-              checked.add(ref)
+          for ref, sources in sorted(refs.items()):
               if ref.startswith(('http://', 'https://', 'data:', 'mailto:', 'tel:')):
                   continue
               path = root / ref.lstrip('/')
               if not path.exists():
-                  missing.append(ref)
+                  missing.append((ref, sorted(sources)))
 
           if missing:
-              raise SystemExit('Missing local runtime references:\n' + '\n'.join(missing))
+              lines = ['Missing local runtime references:']
+              for ref, sources in missing:
+                  lines.append(f'- {ref} <- {", ".join(sources)}')
+              raise SystemExit('\n'.join(lines))
 
-          print(f'Validated {len(checked)} local/runtime references across HTML, SW, JS, and CSS.')
+          print(f'Validated {len(refs)} local/runtime references across HTML, SW, JS, and CSS.')
           PY
