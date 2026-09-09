@@ -282,7 +282,7 @@ body[data-theme="light"] #offlineLibraryOverlay #offlineSubjectSelect{
   function loadEntryFormatter() {
     if (document.querySelector('script[data-sa-offline-entry-format="1"]')) return;
     const script = document.createElement('script');
-    script.src = './assets/js/offline-library-entry-format.js?v=20260909-1';
+    script.src = './assets/js/offline-library-entry-format.js?v=20260909-2';
     script.async = false;
     script.dataset.saOfflineEntryFormat = '1';
     document.body.appendChild(script);
