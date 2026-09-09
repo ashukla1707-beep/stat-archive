@@ -4,6 +4,61 @@
   const style = document.createElement('style');
   style.id = 'statArchiveMobileCardActionsFinal';
   style.textContent = `
+/* Contributor/admin cards: keep all actions on ONE line on desktop web too. */
+@media (min-width:701px){
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    display:flex !important;
+    flex-direction:row !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:7px !important;
+    overflow:visible !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .action-btn,
+  html body .card .card-actions:has(.del-btn) .action-btn{
+    display:inline-flex !important;
+    flex:0 0 auto !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:29px !important;
+    min-height:29px !important;
+    padding:0 8px !important;
+    gap:4px !important;
+    border-radius:8px !important;
+    font-size:10.5px !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+    word-break:keep-all !important;
+    overflow-wrap:normal !important;
+    text-align:center !important;
+    box-sizing:border-box !important;
+  }
+
+  html body .card .card-actions:has(.edit-btn) .pv-btn,
+  html body .card .card-actions:has(.del-btn) .pv-btn,
+  html body .card .card-actions:has(.edit-btn) .dl-btn,
+  html body .card .card-actions:has(.del-btn) .dl-btn,
+  html body .card .card-actions:has(.edit-btn) .download-btn,
+  html body .card .card-actions:has(.del-btn) .download-btn,
+  html body .card .card-actions:has(.edit-btn) .offline-btn,
+  html body .card .card-actions:has(.del-btn) .offline-btn,
+  html body .card .card-actions:has(.edit-btn) .edit-btn,
+  html body .card .card-actions:has(.del-btn) .edit-btn,
+  html body .card .card-actions:has(.edit-btn) .del-btn,
+  html body .card .card-actions:has(.del-btn) .del-btn{
+    min-width:0 !important;
+    padding-left:8px !important;
+    padding-right:8px !important;
+  }
+}
+
 @media (max-width:700px){
   html body .subject-track .card .card-actions,
   html body .subject-row .card .card-actions,
