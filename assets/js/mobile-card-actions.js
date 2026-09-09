@@ -4,39 +4,41 @@
   const style = document.createElement('style');
   style.id = 'statArchiveMobileCardActionsFinal';
   style.textContent = `
-/* Contributor/admin cards: keep all actions on ONE line on desktop web too. */
+/* Contributor/admin cards: show ALL five actions inside desktop web cards. */
 @media (min-width:701px){
   html body .card .card-actions:has(.edit-btn),
   html body .card .card-actions:has(.del-btn){
-    display:flex !important;
-    flex-direction:row !important;
-    flex-wrap:nowrap !important;
-    align-items:center !important;
-    justify-content:flex-start !important;
-    gap:7px !important;
-    overflow:visible !important;
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    gap:6px !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow:hidden !important;
   }
 
   html body .card .card-actions:has(.edit-btn) .action-btn,
   html body .card .card-actions:has(.del-btn) .action-btn{
-    display:inline-flex !important;
-    flex:0 0 auto !important;
+    display:flex !important;
     flex-direction:row !important;
     align-items:center !important;
     justify-content:center !important;
-    width:auto !important;
+    width:100% !important;
     min-width:0 !important;
-    max-width:none !important;
-    height:29px !important;
-    min-height:29px !important;
-    padding:0 8px !important;
-    gap:4px !important;
+    max-width:100% !important;
+    height:30px !important;
+    min-height:30px !important;
+    padding:0 4px !important;
+    margin:0 !important;
+    gap:3px !important;
     border-radius:8px !important;
-    font-size:10.5px !important;
+    font-size:10px !important;
     line-height:1 !important;
     white-space:nowrap !important;
     word-break:keep-all !important;
-    overflow-wrap:normal !important;
+    overflow:hidden !important;
+    text-overflow:clip !important;
     text-align:center !important;
     box-sizing:border-box !important;
   }
@@ -54,8 +56,9 @@
   html body .card .card-actions:has(.edit-btn) .del-btn,
   html body .card .card-actions:has(.del-btn) .del-btn{
     min-width:0 !important;
-    padding-left:8px !important;
-    padding-right:8px !important;
+    width:100% !important;
+    padding-left:4px !important;
+    padding-right:4px !important;
   }
 }
 
