@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-offline-handoff-v1";
+const CACHE = "stat-archive-shell-v20260910-menu-header-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -11,7 +11,7 @@ const APP_SHELL = [
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
   "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",
   "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/menu-alignment-fix.js",
-  "./assets/js/offline-library-hybrid.js","./assets/js/scroll-lock-coordinator.js",
+  "./assets/js/menu-header-reference.js","./assets/js/offline-library-hybrid.js","./assets/js/scroll-lock-coordinator.js",
   "./assets/js/offline-library-handoff.js","./manuals/reader.html","./manuals/contributor.html",
   "./manifest.json","./icons/icon-192.png","./icons/icon-512.png"
 ];
@@ -32,6 +32,7 @@ const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=2
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
+const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-1"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-15"></script>';
 const SCROLL_LOCK_COORDINATOR_TAG = '<script src="./assets/js/scroll-lock-coordinator.js?v=20260910-2"></script>';
@@ -50,6 +51,7 @@ function decorateNavigationHtml(html) {
      tags from network/cached HTML before injecting the current versions. */
   out = out.replace(/<script[^>]+assets\/js\/offline-library-(?:hybrid|heading-search-fix|entry-format|handoff)\.js[^>]*><\/script>/gi, '');
   out = out.replace(/<script[^>]+assets\/js\/scroll-lock-coordinator\.js[^>]*><\/script>/gi, '');
+  out = out.replace(/<script[^>]+assets\/js\/menu-header-reference\.js[^>]*><\/script>/gi, '');
 
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
 
@@ -73,6 +75,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/entry-method-fix.js')) out = out.replace('</body>', `${ENTRY_METHOD_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
+  out = out.replace('</body>', `${MENU_HEADER_REFERENCE_TAG}\n</body>`);
 
   out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n${SCROLL_LOCK_COORDINATOR_TAG}\n${OFFLINE_HANDOFF_TAG}\n</body>`);
 
@@ -273,6 +276,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/service-worker-register.js') ||
     url.pathname.endsWith('/assets/js/menu-polish.js') ||
     url.pathname.endsWith('/assets/js/menu-alignment-fix.js') ||
+    url.pathname.endsWith('/assets/js/menu-header-reference.js') ||
     url.pathname.endsWith('/assets/js/offline-library-hybrid.js') ||
     url.pathname.endsWith('/assets/js/scroll-lock-coordinator.js') ||
     url.pathname.endsWith('/assets/js/offline-library-handoff.js');
