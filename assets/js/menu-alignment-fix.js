@@ -194,3 +194,124 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
     suppressUntil = performance.now() + 150;
   });
 })();
+
+/* =========================================================
+   MOBILE ENTRY ACTION PILLS — reference match
+   Loads after tooltips.js, so these mobile-only rules are authoritative.
+   Desktop remains unchanged.
+   ========================================================= */
+(() => {
+  if (document.getElementById('statArchiveMobileReferenceActions')) return;
+
+  const style = document.createElement('style');
+  style.id = 'statArchiveMobileReferenceActions';
+  style.textContent = `
+@media(max-width:700px){
+  html body .card .card-actions,
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    display:grid !important;
+    grid-template-columns:1fr 1.12fr .95fr !important;
+    align-items:center !important;
+    gap:10px !important;
+    padding-top:10px !important;
+    flex-wrap:unset !important;
+  }
+
+  html body .card .card-actions .action-btn{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    flex-direction:row !important;
+    gap:6px !important;
+    width:100% !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:42px !important;
+    min-height:42px !important;
+    padding:0 10px !important;
+    margin:0 !important;
+    border-radius:12px !important;
+    white-space:nowrap !important;
+    word-break:keep-all !important;
+    overflow-wrap:normal !important;
+    text-align:center !important;
+    line-height:1 !important;
+    font-size:14px !important;
+    font-weight:700 !important;
+    letter-spacing:0 !important;
+    box-sizing:border-box !important;
+  }
+
+  html body .card .card-actions .action-btn br{
+    display:none !important;
+  }
+
+  body:not([data-theme="light"]) .card .card-actions .pv-btn,
+  body:not([data-theme="light"]) .card .card-actions .offline-btn{
+    color:#63efff !important;
+    background:rgba(18,52,64,.82) !important;
+    border:1px solid rgba(99,239,255,.38) !important;
+    box-shadow:
+      inset 0 0 0 1px rgba(99,239,255,.08),
+      0 0 12px rgba(56,210,235,.06) !important;
+  }
+
+  body:not([data-theme="light"]) .card .card-actions .dl-btn{
+    color:#eef2f8 !important;
+    background:rgba(16,22,33,.96) !important;
+    border:1px solid rgba(255,255,255,.045) !important;
+    box-shadow:none !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .pv-btn,
+  body[data-theme="light"] .card .card-actions .offline-btn{
+    color:#4b365f !important;
+    background:#f1ebf6 !important;
+    border:1px solid #d8cce2 !important;
+    box-shadow:none !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .dl-btn{
+    color:#27302d !important;
+    background:#eee9f4 !important;
+    border:1px solid #ddd4e4 !important;
+    box-shadow:none !important;
+  }
+
+  body[data-theme="light"] .card .card-actions .offline-btn.is-saved,
+  body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,
+  body[data-theme="light"] .card .card-actions .dl-btn.is-downloaded{
+    color:#fff !important;
+    background:#4b365f !important;
+    border-color:#4b365f !important;
+  }
+
+  html body .card .card-actions .edit-btn,
+  html body .card .card-actions .del-btn{
+    height:38px !important;
+    min-height:38px !important;
+    font-size:12px !important;
+    border-radius:11px !important;
+  }
+}
+
+@media(max-width:380px){
+  html body .card .card-actions,
+  html body .card .card-actions:has(.edit-btn),
+  html body .card .card-actions:has(.del-btn){
+    gap:7px !important;
+  }
+
+  html body .card .card-actions .action-btn{
+    height:39px !important;
+    min-height:39px !important;
+    padding:0 7px !important;
+    border-radius:11px !important;
+    font-size:12.5px !important;
+    gap:4px !important;
+  }
+}
+`;
+  document.head.appendChild(style);
+})();
