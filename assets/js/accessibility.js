@@ -200,3 +200,71 @@
     return originalOpenPdfInNewTab(pdfUrl, entryFilename);
   };
 })();
+
+/* =========================================================
+   OFFLINE LIBRARY — WEB + PWA ENABLEMENT
+   The IndexedDB implementation already works in normal browsers/PWAs.
+   This connects the visible side-menu option to it and keeps its count live.
+   ========================================================= */
+(() => {
+  const menuButton = document.getElementById("menuOfflineLibraryBtn");
+  const menuCount = document.getElementById("menuOfflineLibraryCount");
+  const legacyCount = document.getElementById("offlineLibraryCount");
+
+  if (!menuButton) return;
+
+  const supported = "indexedDB" in window;
+  menuButton.disabled = !supported;
+  menuButton.setAttribute("aria-disabled", supported ? "false" : "true");
+  menuButton.title = supported
+    ? "Open files saved on this device for offline use"
+    : "Offline Library is not supported by this browser";
+
+  function mirrorCount() {
+    if (!menuCount) return;
+    const value = legacyCount?.textContent?.trim();
+    if (value != null && value !== "") menuCount.textContent = value;
+  }
+
+  mirrorCount();
+
+  if (legacyCount) {
+    new MutationObserver(mirrorCount).observe(legacyCount, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+  }
+
+  if (supported && typeof window.getOfflineFiles === "function") {
+    window.getOfflineFiles()
+      .then(records => {
+        const count = Array.isArray(records) ? records.length : 0;
+        if (menuCount) menuCount.textContent = String(count);
+        try { window.updateOfflineLibraryCount?.(count); } catch (_) {}
+      })
+      .catch(() => {});
+  }
+
+  menuButton.addEventListener("click", event => {
+    event.preventDefault();
+    if (!supported) return;
+
+    try { window.statArchiveCloseMenu?.(); } catch (_) {}
+    document.getElementById("mainSideMenu")?.classList.remove("is-open");
+    document.getElementById("mainMenuBackdrop")?.classList.remove("is-open");
+    document.getElementById("mainMenuBtn")?.setAttribute("aria-expanded", "false");
+
+    // Allow the menu close animation to finish before opening the library.
+    window.setTimeout(() => {
+      if (typeof window.openOfflineLibrary === "function") {
+        window.openOfflineLibrary();
+      } else if (typeof openOfflineLibrary === "function") {
+        openOfflineLibrary();
+      }
+    }, 120);
+
+    // Ask the browser to make saved study files less likely to be evicted.
+    try { navigator.storage?.persist?.(); } catch (_) {}
+  });
+})();
