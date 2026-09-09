@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260909-menu-polish-v1";
+const CACHE = "stat-archive-shell-v20260909-menu-polish-v2";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -49,7 +49,7 @@ const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
-const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-1"></script>';
+const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
