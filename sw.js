@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-web-apk-menu-v1";
+const CACHE = "stat-archive-shell-v20260910-audit-bugfix-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -21,13 +21,13 @@ const MENU_FLASH_GUARD = `
 .main-menu-backdrop:not(.is-open){display:none !important;}
 `;
 
-const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260905-7"></script>';
+const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260910-bugfix-2"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260909-5"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260910-mobile-reference-1"></script>';
-const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
+const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
 const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260905-1"></script>';
-const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260905-4"></script>';
+const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260910-bugfix-1"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
@@ -270,6 +270,9 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/preview.js') ||
     url.pathname.endsWith('/assets/js/pdf.js') ||
     url.pathname.endsWith('/assets/js/preview-state-guard.js') ||
+    url.pathname.endsWith('/assets/js/speed-boost.js') ||
+    url.pathname.endsWith('/assets/js/search-suggestions.js') ||
+    url.pathname.endsWith('/assets/js/feature-polish.js') ||
     url.pathname.endsWith('/assets/js/startup-polish.js') ||
     url.pathname.endsWith('/assets/js/hero-animation.js') ||
     url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||
