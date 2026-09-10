@@ -278,6 +278,17 @@ body[data-theme="light"] button.entry-subject-more-btn:focus-visible{
       if (!closePressed && !backdropPressed) return;
 
       const nav = window.__statArchiveNavigation;
+
+      /* restoreForCurrentState() closes About with a synthetic button.click()
+         after history has already moved back to Menu. Stop that synthetic click
+         before any legacy close handler can issue another history.back(); the
+         navigation core hides the overlay directly immediately afterwards. */
+      if (closePressed && event.isTrusted === false && nav?.state?.() === "menu") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+
       if (nav?.state?.() !== "child" || nav?.child?.() !== "about") return;
 
       event.preventDefault();
