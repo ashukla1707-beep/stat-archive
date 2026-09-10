@@ -37,6 +37,37 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('version.json','utf8'))"
           node -e "JSON.parse(require('fs').readFileSync('.well-known/assetlinks.json','utf8'))"
 
+      - name: Verify runtime safety invariants
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          speed = Path('assets/js/speed-boost.js').read_text(encoding='utf-8')
+          feature = Path('assets/js/feature-polish.js').read_text(encoding='utf-8')
+          accessibility = Path('assets/js/accessibility.js').read_text(encoding='utf-8')
+          sw = Path('sw.js').read_text(encoding='utf-8')
+
+          checks = {
+              'legacy PDF fetch interception removed': 'window.fetch = fastFetch' not in speed,
+              'subject snapshot wrapper removed': 'loadSubjectsFromWorker = wrapped' not in speed,
+              'legacy PDF cache is purged': "caches.delete(LEGACY_PDF_CACHE)" in speed,
+              'entry refresh is level-scoped': 'currentLevelKey() === requestLevel' in speed,
+              'single autocomplete owner': 'installSearchSuggestions' not in feature,
+              'feature polish execution guard present': '__statArchiveFeaturePolishLoadedV2' in feature,
+              'modal keyboard ownership is split': 'runtimeHandledIds' in accessibility,
+              'history state merge guard present': '__saStateMergeWrapped' in accessibility,
+              'reduced-motion override present': 'statArchiveReducedMotionFix' in accessibility,
+              'preview blob cleanup present': 'saBlobCleanup' in accessibility,
+              'deleted mobile action asset not precached': 'mobile-card-actions.js' not in sw,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          if failed:
+              raise SystemExit('Runtime safety regression(s):\n- ' + '\n- '.join(failed))
+
+          print(f'Validated {len(checks)} runtime safety invariants.')
+          PY
+
       - name: Verify local runtime references exist
         run: |
           python3 - <<'PY'
