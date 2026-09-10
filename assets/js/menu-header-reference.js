@@ -179,15 +179,27 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
   color:#726c67 !important;
 }
 
-/* Web / desktop-site mode: fit the Menu panel to its real content instead of
-   stretching it to the bottom of the viewport. The fixed header remains fixed
-   and the body becomes scrollable only if the content exceeds the safe height. */
+/* Web / desktop-site mode: keep the same Menu card and functionality, but
+   center the panel in the visible viewport. It still fits its real content and
+   scrolls internally only when the available screen height is smaller. */
 @media(min-width:701px){
   html body #mainSideMenu.main-side-menu,
   html body #mainSideMenu.main-side-menu.stat-menu-polished{
+    position:fixed !important;
+    top:50% !important;
+    left:50% !important;
+    right:auto !important;
     bottom:auto !important;
+    width:min(390px,calc(100vw - 36px)) !important;
     height:auto !important;
     max-height:calc(100dvh - 36px) !important;
+    transform:translate(-50%,-50%) scale(.997) !important;
+    transform-origin:center center !important;
+  }
+
+  html body #mainSideMenu.main-side-menu.is-open,
+  html body #mainSideMenu.main-side-menu.stat-menu-polished.is-open{
+    transform:translate(-50%,-50%) scale(1) !important;
   }
 
   html body #mainSideMenu > .stat-menu-scroll-body{
