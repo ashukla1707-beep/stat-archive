@@ -29,7 +29,7 @@
   let frameId = 0;
 
   const HERO_DURATION = 8000;
-  const DOT_DURATION = 6000;
+  const DOT_DURATION = 4000;
   const FALL_WINDOW = 0.18;
   const CURVE_X_MIN = 18;
   const CURVE_X_MAX = 502;
