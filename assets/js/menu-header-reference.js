@@ -179,6 +179,25 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
   color:#726c67 !important;
 }
 
+/* Web / desktop-site mode: fit the Menu panel to its real content instead of
+   stretching it to the bottom of the viewport. The fixed header remains fixed
+   and the body becomes scrollable only if the content exceeds the safe height. */
+@media(min-width:701px){
+  html body #mainSideMenu.main-side-menu,
+  html body #mainSideMenu.main-side-menu.stat-menu-polished{
+    bottom:auto !important;
+    height:auto !important;
+    max-height:calc(100dvh - 36px) !important;
+  }
+
+  html body #mainSideMenu > .stat-menu-scroll-body{
+    flex:0 1 auto !important;
+    min-height:0 !important;
+    max-height:calc(100dvh - 108px) !important;
+    overflow-y:auto !important;
+  }
+}
+
 @media(max-width:700px){
   #mainSideMenu > .stat-menu-reference-head{
     min-height:68px !important;
