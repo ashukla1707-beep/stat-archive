@@ -37,6 +37,7 @@ jobs:
           feature = Path('assets/js/feature-polish.js').read_text(encoding='utf-8')
           accessibility = Path('assets/js/accessibility.js').read_text(encoding='utf-8')
           runtime = Path('assets/js/runtime.js').read_text(encoding='utf-8')
+          hero = Path('assets/js/hero-animation.js').read_text(encoding='utf-8')
 
           checks = {
               'legacy archive-file fetch wrapper removed': 'window.fetch = fastFetch' not in speed,
@@ -54,6 +55,8 @@ jobs:
               'silent refresh captures initiating level': 'const refreshLevel = currentLevel' in runtime,
               'silent refresh drops stale course response': 'currentLevel !== refreshLevel' in runtime,
               'silent refresh does not mutate subjects in background': 'await loadSubjectsFromWorker()' not in runtime.split('async function refreshArchiveSilently()',1)[1].split('// Hard-refresh when connectivity returns.',1)[0],
+              'hero duration remains 8 seconds': 'const HERO_DURATION = 8000;' in hero,
+              'hero honors reduced motion in JS': 'prefers-reduced-motion: reduce' in hero and 'finishHeroAnimation(state)' in hero,
           }
 
           failed = [name for name, ok in checks.items() if not ok]
