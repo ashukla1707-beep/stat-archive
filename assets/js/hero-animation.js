@@ -8,6 +8,7 @@
 
   let started = false;
   let prepared = null;
+  let startQueued = false;
 
   function prepareHeroAnimation() {
     if (prepared) return prepared;
@@ -140,16 +141,40 @@
     }, 2700);
   }
 
-  function scheduleStart() {
-    window.setTimeout(startHeroAnimation, 100);
+  /* Android/PWA owns the splash outside this document, so there is no direct
+     JavaScript "splash hidden" event here. Keep the graph frozen through DOM
+     setup, then start only after the document is visible and has produced two
+     paint frames. The short settle window lets the native splash finish its
+     handoff while the rest of Stat Archive continues rendering in parallel. */
+  function scheduleAfterSplash() {
+    if (started || startQueued || document.visibilityState === "hidden") return;
+    startQueued = true;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          startQueued = false;
+          if (document.visibilityState === "hidden") return;
+          startHeroAnimation();
+        }, 160);
+      });
+    });
   }
 
-  /* Do not wait for window.load: network/font work should never delay the hero. */
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scheduleStart, { once: true });
-  } else {
-    scheduleStart();
+  function armAfterDomReady() {
+    scheduleAfterSplash();
   }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", armAfterDomReady, { once: true });
+  } else {
+    armAfterDomReady();
+  }
+
+  window.addEventListener("pageshow", scheduleAfterSplash, { once: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleAfterSplash();
+  });
 
   /* =========================================================
      SINGLE AUTHORITATIVE HERO COPY/LAYOUT
