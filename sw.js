@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-hero-manual-home-v1";
+const CACHE = "stat-archive-shell-v20260910-startup-polish-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -7,7 +7,7 @@ const APP_SHELL = [
   "./assets/js/preview.js","./assets/js/preview-state-guard.js","./assets/js/offline.js",
   "./assets/js/management.js","./assets/js/speed-boost.js","./assets/js/download-fix.js",
   "./assets/js/search-suggestions.js","./assets/js/search-filter-fix.js","./assets/js/runtime.js",
-  "./assets/js/tooltips.js","./assets/js/service-worker-register.js","./assets/js/hero-animation.js",
+  "./assets/js/tooltips.js","./assets/js/startup-polish.js","./assets/js/service-worker-register.js","./assets/js/hero-animation.js",
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
   "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",
   "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/menu-alignment-fix.js",
@@ -37,6 +37,7 @@ const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js
 const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-15"></script>';
 const SCROLL_LOCK_COORDINATOR_TAG = '<script src="./assets/js/scroll-lock-coordinator.js?v=20260910-2"></script>';
 const OFFLINE_HANDOFF_TAG = '<script src="./assets/js/offline-library-handoff.js?v=20260910-1"></script>';
+const STARTUP_POLISH_TAG = '<script data-stat-startup-polish="1" src="./assets/js/startup-polish.js?v=20260910-1"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -67,6 +68,7 @@ function decorateNavigationHtml(html) {
   out = out.replace(/<script[^>]+assets\/js\/offline-library-(?:hybrid|heading-search-fix|entry-format|handoff)\.js[^>]*><\/script>/gi, '');
   out = out.replace(/<script[^>]+assets\/js\/scroll-lock-coordinator\.js[^>]*><\/script>/gi, '');
   out = out.replace(/<script[^>]+assets\/js\/menu-header-reference\.js[^>]*><\/script>/gi, '');
+  out = out.replace(/<script[^>]+assets\/js\/startup-polish\.js[^>]*><\/script>/gi, '');
 
   out = out.replace('<script src="assets/js/runtime.js"></script>', '');
 
@@ -79,6 +81,13 @@ function decorateNavigationHtml(html) {
 
   out = out.replace('<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>', '<script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>');
   out = out.replace('<script src="assets/js/scanner.js"></script>', '<script defer src="assets/js/scanner.js"></script>');
+
+  /* In the installed shell, register startup coordination before the service
+     worker registration code so takeover cannot cause a second visible page load. */
+  out = out.replace(
+    '<script src="assets/js/service-worker-register.js"></script>',
+    `${STARTUP_POLISH_TAG}\n<script src="assets/js/service-worker-register.js"></script>`
+  );
 
   if (!out.includes('assets/js/feature-polish.js')) out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
   if (!out.includes('assets/js/hero-layout-fix.js')) out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\n</body>`);
@@ -261,6 +270,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/preview.js') ||
     url.pathname.endsWith('/assets/js/pdf.js') ||
     url.pathname.endsWith('/assets/js/preview-state-guard.js') ||
+    url.pathname.endsWith('/assets/js/startup-polish.js') ||
     url.pathname.endsWith('/assets/js/hero-animation.js') ||
     url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||
     url.pathname.endsWith('/assets/js/action-spacing-fix.js') ||
