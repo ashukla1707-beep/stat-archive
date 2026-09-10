@@ -29,17 +29,24 @@
     });
     revealRect?.setAttribute("width", "520");
 
+    /* Use the real path length so the curve visibly draws from left to right. */
+    let pathLength = 1000;
+    try {
+      const measured = curve.getTotalLength();
+      if (Number.isFinite(measured) && measured > 1) pathLength = Math.ceil(measured);
+    } catch (_) {}
+
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", "1", "important");
-    curve.style.setProperty("stroke-dashoffset", "1", "important");
+    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
+    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
     curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
       dot.style.setProperty("animation", "none", "important");
     });
 
-    prepared = { curve, dots, revealRect };
+    prepared = { curve, dots, revealRect, pathLength };
     return prepared;
   }
 
@@ -54,7 +61,7 @@
     const state = prepareHeroAnimation();
     if (!state) return;
 
-    const { curve, dots, revealRect } = state;
+    const { curve, dots, revealRect, pathLength } = state;
     started = true;
 
     revealRect?.setAttribute("width", "520");
@@ -62,8 +69,8 @@
 
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", "1", "important");
-    curve.style.setProperty("stroke-dashoffset", "1", "important");
+    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
+    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
     curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
