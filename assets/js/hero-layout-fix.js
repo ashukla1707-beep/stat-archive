@@ -288,3 +288,25 @@ html body .card .card-actions .action-btn{
     settleTimer = window.setTimeout(settle, 0);
   });
 })();
+
+/* =========================================================
+   HERO OLD-CACHE LAG FALLBACK
+
+   hero-layout-fix.js is network-first. If an installed app still serves the
+   previous cached hero-animation.js for one launch, override only its legacy
+   multi-second dot stagger. The new v3 animation keeps animation:none inline,
+   so this compatibility rule becomes inert as soon as v3 is loaded.
+   ========================================================= */
+(() => {
+  "use strict";
+  if (document.getElementById("statArchiveHeroLagFallback")) return;
+
+  const style = document.createElement("style");
+  style.id = "statArchiveHeroLagFallback";
+  style.textContent = `
+html body .hero-probability .data-dot{
+  animation:dotFallOnce .34s cubic-bezier(.22,.61,.36,1) .10s forwards !important;
+}
+`;
+  document.head.appendChild(style);
+})();
