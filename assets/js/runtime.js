@@ -39,6 +39,13 @@ async function refreshArchiveSilently() {
   if (archiveRefreshInFlight || document.visibilityState !== "visible" || isLoadingArchive) return;
   const uploadOverlay = document.getElementById("overlay");
   if (uploadOverlay && getComputedStyle(uploadOverlay).display !== "none") return;
+
+  /* A resume refresh can overlap a user-triggered M.Sc/B.Sc switch. Capture
+     the initiating level and never let the old response replace the newly
+     selected course. Subjects are intentionally not refreshed here because
+     loadSubjectsFromWorker() mutates global state internally; subject changes
+     are picked up by the canonical full-load/sign-in/course-switch paths. */
+  const refreshLevel = currentLevel;
   archiveRefreshInFlight = true;
   try {
     const entrySignature = list => list.map(e => [
@@ -53,46 +60,25 @@ async function refreshArchiveSilently() {
       e.driveUrl || ""
     ].join(":")).join("|");
 
-    const subjectSignature = list => list.map(s => [
-      s.id || "",
-      s.code || "",
-      s.name || "",
-      s.created_by || ""
-    ].join(":")).join("|");
-
     const oldEntrySignature = entrySignature(entries);
-    const oldSubjectSignature = subjectSignature(subjects);
-
     const freshEntries = await loadEntries();
-    await loadSubjectsFromWorker();
+
+    // The user changed level while the request was in flight. Ignore it.
+    if (currentLevel !== refreshLevel || isLoadingArchive) return;
 
     const newEntrySignature = entrySignature(freshEntries);
-    const newSubjectSignature = subjectSignature(subjects);
-    const entriesChanged = oldEntrySignature !== newEntrySignature;
-    const subjectsChanged = oldSubjectSignature !== newSubjectSignature;
+    if (oldEntrySignature === newEntrySignature) return;
 
     entries = freshEntries;
     totalStorageBytes = entries.reduce((sum, entry) => sum + (Number.isFinite(Number(entry.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0);
 
-    // If subjects changed while the mobile "More" panel is open, that panel
-    // contains a snapshot of the old subject DOM. Remove it before rebuilding.
-    if (subjectsChanged) {
-      mobileSubjectListOpen = false;
-      document.getElementById("subjectFilterExpanded")?.remove();
-    }
+    // Background sync must never throw the reader back to the top.
+    const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    render();
 
-    renderSubjectFilters();
-    renderSubjectOptions();
-
-    if (entriesChanged || subjectsChanged) {
-      // Background sync must never throw the reader back to the top.
-      const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      render();
-
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
-      });
-    }
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: savedScrollY, left: 0, behavior: "auto" });
+    });
   } catch (err) {
     console.warn("Background archive refresh failed:", err);
   } finally {
