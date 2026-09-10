@@ -141,33 +141,6 @@
     sub.innerHTML = '<span class="hero-sub-lead">A focused academic archive of notes and books, curated specifically for University of Lucknow</span>' + '<span class="hero-sub-tail"> — organized by subject and kept useful for everyone.</span>';
   }
 
-  function installMeanSymbol() {
-    const svg = document.querySelector(".hero-probability .probability-svg");
-    if (!svg) return;
-
-    const oldAxis = document.querySelector(".hero-probability .axis-mid");
-    oldAxis?.style.setProperty("display", "none", "important");
-
-    let symbol = svg.querySelector("#statArchiveMeanSymbol");
-    if (!symbol) {
-      symbol = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      symbol.id = "statArchiveMeanSymbol";
-      symbol.textContent = "μ";
-      symbol.setAttribute("x", "260");
-      symbol.setAttribute("y", "281");
-      symbol.setAttribute("text-anchor", "middle");
-      symbol.setAttribute("aria-hidden", "true");
-      svg.appendChild(symbol);
-    }
-
-    const isLight = document.body?.dataset.theme === "light";
-    symbol.setAttribute("fill", isLight ? "#2f8f5b" : "#5ee7f7");
-    symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
-    symbol.setAttribute("font-size", "22");
-    symbol.setAttribute("font-style", "normal");
-    symbol.setAttribute("font-weight", "500");
-  }
-
   function installHeroLayout() {
     document.getElementById("statArchiveDirectHeroFix")?.remove();
     const style = document.createElement("style");
@@ -189,21 +162,12 @@ body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,
   function applyHeroFix() {
     repairHeroCopy();
     installHeroLayout();
-    installMeanSymbol();
     document.querySelector(".curve-note.note-one")?.remove();
     document.getElementById("permissionHint")?.remove();
   }
   applyHeroFix();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyHeroFix, { once:true });
   window.addEventListener("pageshow", applyHeroFix);
-  document.addEventListener("statarchive:theme-change", installMeanSymbol);
-
-  const meanThemeObserver = new MutationObserver(installMeanSymbol);
-  function observeMeanTheme() {
-    if (document.body) meanThemeObserver.observe(document.body, { attributes:true, attributeFilter:["data-theme"] });
-  }
-  if (document.body) observeMeanTheme();
-  else document.addEventListener("DOMContentLoaded", observeMeanTheme, { once:true });
 })();
 
 (() => {
