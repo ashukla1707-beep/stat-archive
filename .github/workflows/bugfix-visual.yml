@@ -163,6 +163,101 @@ jobs:
             await context.close();
           }
 
+          async function menuLevelSubjectSwitchCheck(browser) {
+            const context = await browser.newContext({
+              viewport:{width:390,height:844},
+              reducedMotion:'reduce'
+            });
+            const page = await context.newPage();
+
+            await page.route('https://stat-archive-api.lustats.workers.dev/**', async route => {
+              const url = new URL(route.request().url());
+              const level = url.searchParams.get('level');
+
+              if (url.pathname.endsWith('/entries')) {
+                await route.fulfill({
+                  status:200,
+                  contentType:'application/json',
+                  body:JSON.stringify({entries:[]})
+                });
+                return;
+              }
+
+              if (url.pathname.endsWith('/subjects')) {
+                if (level === 'bsc') {
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+                const subjects = level === 'bsc'
+                  ? [{id:'bsc-regression',code:'BSC_TEST',name:'BSc Regression Subject'}]
+                  : [{id:'msc-regression',code:'MSC_TEST',name:'MSc Regression Subject'}];
+
+                await route.fulfill({
+                  status:200,
+                  contentType:'application/json',
+                  body:JSON.stringify({subjects})
+                });
+                return;
+              }
+
+              await route.fulfill({
+                status:200,
+                contentType:'application/json',
+                body:'{}'
+              });
+            });
+
+            await page.goto('http://127.0.0.1:4173/index.html',{
+              waitUntil:'domcontentloaded',
+              timeout:30000
+            });
+            await page.waitForFunction(() => !!window.__statArchiveNavigation);
+            await page.waitForFunction(() =>
+              document.querySelector('#subjectFilterRow')?.textContent?.includes('MSc Regression Subject'),
+              null,
+              {timeout:10000}
+            );
+
+            await openMenu(page);
+            await page.click('#menuBscLevelBtn');
+
+            await page.waitForFunction(() =>
+              new URL(location.href).searchParams.get('level') === 'bsc',
+              null,
+              {timeout:3000}
+            );
+
+            // The B.Sc request is deliberately delayed. The placeholder
+            // subject set must still replace the previous M.Sc controls now.
+            await page.waitForFunction(() =>
+              document.querySelector('#subjectFilterRow')?.textContent?.includes('Descriptive Statistics'),
+              null,
+              {timeout:1200}
+            );
+
+            await page.waitForFunction(() =>
+              document.querySelector('#subjectFilterRow')?.textContent?.includes('BSc Regression Subject'),
+              null,
+              {timeout:5000}
+            );
+
+            const state = await page.evaluate(() => ({
+              level:new URL(location.href).searchParams.get('level'),
+              text:document.querySelector('#subjectFilterRow')?.textContent || '',
+              mscPressed:document.getElementById('menuMscLevelBtn')?.getAttribute('aria-pressed'),
+              bscPressed:document.getElementById('menuBscLevelBtn')?.getAttribute('aria-pressed')
+            }));
+
+            if (state.level !== 'bsc'
+                || !state.text.includes('BSc Regression Subject')
+                || state.text.includes('MSc Regression Subject')
+                || state.mscPressed !== 'false'
+                || state.bscPressed !== 'true') {
+              throw new Error(`Menu level switch did not refresh subjects: ${JSON.stringify(state)}`);
+            }
+
+            await context.close();
+          }
+
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try {
@@ -188,6 +283,7 @@ jobs:
               }
 
               await candidateBehaviorChecks(browser);
+              await menuLevelSubjectSwitchCheck(browser);
             } finally {
               await browser.close();
             }
