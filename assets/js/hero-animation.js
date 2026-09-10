@@ -11,8 +11,8 @@
 (function () {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V4__) return;
-  window.__STAT_ARCHIVE_HERO_ANIMATION_V4__ = true;
+  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V3__) return;
+  window.__STAT_ARCHIVE_HERO_ANIMATION_V3__ = true;
 
   let started = false;
   let prepared = null;
@@ -20,6 +20,9 @@
   let frameId = 0;
 
   const HERO_DURATION = 8000;
+  const FALL_WINDOW = 0.18;
+  const CURVE_X_MIN = 18;
+  const CURVE_X_MAX = 502;
 
   function clamp01(value) { return Math.max(0, Math.min(1, value)); }
   function easeOutCubic(t) { const u = 1 - clamp01(t); return 1 - (u * u * u); }
@@ -49,7 +52,8 @@
       dot.style.setProperty("transition", "none", "important");
       dot.style.setProperty("transform", "translateY(0px)", "important");
       dot.style.setProperty("opacity", "0", "important");
-      return { dot, fall: readFallPx(dot) };
+      const cx = parseFloat(dot.getAttribute("cx") || "0");
+      return { dot, fall: readFallPx(dot), xProgress: clamp01((cx - CURVE_X_MIN) / (CURVE_X_MAX - CURVE_X_MIN)) };
     });
     prepared = { curve, revealRect, pathLength, dotStates };
     return prepared;
@@ -59,23 +63,19 @@
 
   function renderHeroFrame(state, rawProgress) {
     const { curve, pathLength, dotStates } = state;
-    const sharedProgress = easeOutCubic(rawProgress);
-
-    /* Curve draw and falling point use the exact same progress value.
-       Therefore both reach their final state on the same animation frame. */
-    curve.style.setProperty(
-      "stroke-dashoffset",
-      String(pathLength * (1 - sharedProgress)),
-      "important"
-    );
-
-    dotStates.forEach(({ dot, fall }) => {
-      dot.style.setProperty("opacity", String(Math.min(0.95, sharedProgress * 4)), "important");
-      dot.style.setProperty(
-        "transform",
-        `translateY(${fall * sharedProgress}px)`,
-        "important"
-      );
+    const curveProgress = easeOutCubic(rawProgress);
+    curve.style.setProperty("stroke-dashoffset", String(pathLength * (1 - curveProgress)), "important");
+    dotStates.forEach(({ dot, fall, xProgress }) => {
+      const fallStart = Math.max(0, xProgress - FALL_WINDOW);
+      const local = clamp01((curveProgress - fallStart) / Math.max(0.0001, xProgress - fallStart));
+      const fallProgress = easeOutCubic(local);
+      if (curveProgress < fallStart) {
+        dot.style.setProperty("opacity", "0", "important");
+        dot.style.setProperty("transform", "translateY(0px)", "important");
+        return;
+      }
+      dot.style.setProperty("opacity", String(Math.min(0.95, local * 4)), "important");
+      dot.style.setProperty("transform", `translateY(${fall * fallProgress}px)`, "important");
     });
   }
 
