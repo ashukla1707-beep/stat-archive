@@ -1,0 +1,186 @@
+name: Bugfix Visual and Behavior
+
+on:
+  push:
+    branches:
+      - bugfix/audit-2026-09-10
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout bug-fix branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create current-main baseline
+        run: git worktree add /tmp/stat-archive-main origin/main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save playwright pixelmatch pngjs
+          npx playwright install --with-deps chromium
+
+      - name: Start local sites
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$GITHUB_WORKSPACE" >/tmp/candidate-server.log 2>&1 &
+          python3 -m http.server 4174 --bind 127.0.0.1 --directory /tmp/stat-archive-main >/tmp/baseline-server.log 2>&1 &
+          sleep 1
+
+      - name: Compare visuals and targeted behavior
+        run: |
+          cat > bugfix-check.cjs <<'NODE'
+          const { chromium } = require('playwright');
+          const pixelmatchModule = require('pixelmatch');
+          const pixelmatch = pixelmatchModule.default || pixelmatchModule;
+          const { PNG } = require('pngjs');
+          const fs = require('fs');
+
+          const cases = [
+            { name: 'desktop', width: 1440, height: 900 },
+            { name: 'mobile', width: 390, height: 844 },
+            { name: 'narrow-desktop', width: 980, height: 720 }
+          ];
+
+          const stableCss = `
+            *,*::before,*::after{
+              animation-duration:0s!important;
+              animation-delay:0s!important;
+              transition-duration:0s!important;
+              caret-color:transparent!important;
+            }
+          `;
+
+          async function prepare(browser, port, viewport) {
+            const context = await browser.newContext({ viewport });
+            const page = await context.newPage();
+            const pageErrors = [];
+            page.on('pageerror', error => pageErrors.push(String(error)));
+
+            await page.goto(`http://127.0.0.1:${port}/index.html`, {
+              waitUntil: 'domcontentloaded', timeout: 30000
+            });
+            await page.waitForFunction(() => !!window.__statArchiveNavigation, null, { timeout: 15000 });
+            await page.waitForTimeout(900);
+            await page.addStyleTag({ content: stableCss });
+            await page.waitForTimeout(150);
+            return { context, page, pageErrors };
+          }
+
+          async function noOverflow(page, label) {
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+            if (overflow > 2) throw new Error(`${label}: horizontal overflow ${overflow}px`);
+          }
+
+          function compare(aPath, bPath, label) {
+            const a = PNG.sync.read(fs.readFileSync(aPath));
+            const b = PNG.sync.read(fs.readFileSync(bPath));
+            if (a.width !== b.width || a.height !== b.height) throw new Error(`${label}: dimensions differ`);
+            const diff = new PNG({ width:a.width, height:a.height });
+            const mismatched = pixelmatch(a.data,b.data,diff.data,a.width,a.height,{threshold:.12,includeAA:false});
+            const ratio = mismatched / (a.width * a.height);
+            console.log(`${label}: ${(ratio*100).toFixed(4)}% pixels differ`);
+            if (ratio > .005) throw new Error(`${label}: visual difference ${(ratio*100).toFixed(4)}% exceeds 0.5%`);
+          }
+
+          async function compareState(base, candidate, testName, stateName) {
+            const a = `/tmp/${testName}-main-${stateName}.png`;
+            const b = `/tmp/${testName}-candidate-${stateName}.png`;
+            await base.screenshot({path:a,fullPage:false,animations:'disabled'});
+            await candidate.screenshot({path:b,fullPage:false,animations:'disabled'});
+            compare(a,b,`${testName}-${stateName}`);
+            await noOverflow(candidate,`${testName}-${stateName}`);
+          }
+
+          async function openMenu(page) {
+            await page.click('#mainMenuBtn');
+            await page.waitForSelector('#mainSideMenu.is-open');
+          }
+
+          async function openOffline(page) {
+            await page.click('#menuOfflineLibraryBtn');
+            await page.waitForFunction(() => {
+              const el=document.getElementById('offlineLibraryOverlay');
+              return el && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden';
+            });
+          }
+
+          async function candidateBehaviorChecks(browser) {
+            const context = await browser.newContext({viewport:{width:390,height:844}, reducedMotion:'reduce'});
+            const page = await context.newPage();
+            await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(() => !!window.__statArchiveNavigation);
+            await page.waitForTimeout(900);
+
+            const motion = await page.evaluate(() => ({
+              curve: getComputedStyle(document.querySelector('.gaussian-curve')).animationName,
+              dot: getComputedStyle(document.querySelector('.data-dot')).animationName
+            }));
+            if (motion.curve !== 'none' || motion.dot !== 'none') {
+              throw new Error(`reduced-motion not honored: ${JSON.stringify(motion)}`);
+            }
+
+            const stateMerge = await page.evaluate(() => {
+              history.replaceState({...history.state, regressionMarker:'keep-me'},'',location.href);
+              window.setLevelUI?.(window.currentLevel || 'msc');
+              return history.state?.regressionMarker;
+            });
+            if (stateMerge !== 'keep-me') throw new Error('setLevelUI erased unrelated history.state');
+
+            const searchPanels = await page.evaluate(async () => {
+              const input=document.getElementById('searchInput');
+              if (!input) return -1;
+              input.value='a';
+              input.dispatchEvent(new Event('input',{bubbles:true}));
+              await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+              return [...document.querySelectorAll('.stat-search-suggestions,.archive-search-suggestions-v2')]
+                .filter(el=>!el.hidden && getComputedStyle(el).display!=='none').length;
+            });
+            if (searchPanels > 1) throw new Error(`duplicate visible autocomplete panels: ${searchPanels}`);
+
+            await context.close();
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try {
+              for (const test of cases) {
+                const viewport={width:test.width,height:test.height};
+                const base=await prepare(browser,4174,viewport);
+                const candidate=await prepare(browser,4173,viewport);
+
+                await compareState(base.page,candidate.page,test.name,'home');
+
+                await openMenu(base.page); await openMenu(candidate.page);
+                const menuState=await candidate.page.evaluate(()=>({nav:history.state?.statArchiveNav,open:document.getElementById('mainSideMenu')?.classList.contains('is-open')}));
+                if(menuState.nav!=='menu'||!menuState.open) throw new Error(`${test.name}: invalid Menu state ${JSON.stringify(menuState)}`);
+                await compareState(base.page,candidate.page,test.name,'menu');
+
+                await openOffline(base.page); await openOffline(candidate.page);
+                const offlineState=await candidate.page.evaluate(()=>({nav:history.state?.statArchiveNav,child:history.state?.statArchiveChild}));
+                if(offlineState.nav!=='child'||offlineState.child!=='offline-library') throw new Error(`${test.name}: invalid Offline state ${JSON.stringify(offlineState)}`);
+                await compareState(base.page,candidate.page,test.name,'offline-library');
+
+                if(candidate.pageErrors.length) console.log(`${test.name}: non-fatal page errors`,candidate.pageErrors);
+                await base.context.close(); await candidate.context.close();
+              }
+
+              await candidateBehaviorChecks(browser);
+            } finally {
+              await browser.close();
+            }
+          })().catch(err=>{console.error(err);process.exit(1);});
+          NODE
+          node bugfix-check.cjs
+          rm -f bugfix-check.cjs
