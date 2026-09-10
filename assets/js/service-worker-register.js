@@ -465,8 +465,9 @@
 
     button.addEventListener("click", event => {
       event.preventDefault();
-      window.setTimeout(openManualChooser, 120);
-    });
+      event.stopImmediatePropagation();
+      openManualChooser();
+    }, true);
   }
 
   window.addEventListener("popstate", () => {
