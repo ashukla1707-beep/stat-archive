@@ -1,16 +1,13 @@
-/* Stat Archive — seamless Menu -> Offline Library handoff v4
-   Makes the first Offline Library tap respond immediately, keeps Menu/Offline
-   navigation on one history level, resets Offline Library scroll on fresh
-   opens, hands nested subject scrolling back to the main library at subject
-   boundaries, returns Menu sign-out directly to Home, and keeps the desktop
-   Menu only as tall as its content. */
+/* Stat Archive — seamless Menu -> Offline Library handoff v3
+   Keeps Menu visible while Offline Library finishes rendering, then swaps the
+   two UIs in one paint. Resets Offline Library scroll on fresh opens, hands
+   nested subject scrolling back to the main library at top/bottom boundaries,
+   and returns Menu sign-out directly to Home. */
 (() => {
   "use strict";
 
-  /* Keep the v3 guard name so an older cached copy and this v4 copy cannot
-     both own the same click/navigation listeners in one page instance. */
   if (window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V3__) return;
-  window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V3__ = "4";
+  window.__STAT_ARCHIVE_OFFLINE_HANDOFF_V3__ = "3";
 
   let opening = false;
   let activeTouchBody = null;
@@ -26,19 +23,6 @@
     overlay.querySelectorAll(".sa-offline-group-body").forEach(body => {
       body.scrollTop = 0;
     });
-  }
-
-  function setImmediateOfflineOpening(active) {
-    const overlay = document.getElementById("offlineLibraryOverlay");
-    if (!overlay) return;
-
-    overlay.classList.toggle("sa-offline-opening-immediate", !!active);
-    if (active) {
-      overlay.setAttribute("aria-busy", "true");
-      overlay.setAttribute("aria-hidden", "false");
-    } else {
-      overlay.removeAttribute("aria-busy");
-    }
   }
 
   function closeMenuAfterLibraryIsReady() {
@@ -112,16 +96,10 @@
 
     const rawMenuClose = window.statArchiveCloseMenu;
 
-    /* Show the already-built canonical shell in the same click frame. The
-       canonical opener briefly assigns visibility:hidden while it refreshes
-       IndexedDB; the class below intentionally overrides only that temporary
-       hiding. This removes the Home flash / apparent failed first click. */
-    setImmediateOfflineOpening(true);
-
     try {
       /* offline-library-hybrid.js normally closes Menu before its async render.
          Temporarily neutralize only that one close call so Menu remains the
-         background while IndexedDB/files are refreshed. */
+         visible background while IndexedDB/files are rendered invisibly. */
       if (typeof rawMenuClose === "function") {
         window.statArchiveCloseMenu = function() {};
       }
@@ -131,16 +109,11 @@
 
       await Promise.resolve(opener());
 
-      /* The canonical renderer is now complete. Reset old outer/inner scroll
-         positions before the browser paints the refreshed content. */
+      /* The canonical renderer is now complete and the overlay has been made
+         visible. Reset old outer/inner scroll positions before the browser can
+         paint the new screen, then remove Menu underneath it. */
       resetOfflineScrollPosition();
     } catch (error) {
-      setImmediateOfflineOpening(false);
-      const overlay = document.getElementById("offlineLibraryOverlay");
-      if (overlay) {
-        overlay.style.display = "none";
-        overlay.setAttribute("aria-hidden", "true");
-      }
       try { window.showError?.(error?.message || "Could not open Offline Library."); } catch (_) {}
       return;
     } finally {
@@ -150,7 +123,6 @@
       opening = false;
     }
 
-    setImmediateOfflineOpening(false);
     closeMenuAfterLibraryIsReady();
     requestAnimationFrame(resetOfflineScrollPosition);
     setTimeout(resetOfflineScrollPosition, 60);
@@ -194,33 +166,8 @@
     const style = document.createElement("style");
     style.id = "saOfflineBoundaryHandoffStyle";
     style.textContent = `
-/* First Offline Library click must produce visible feedback immediately, even
-   while the canonical renderer is refreshing IndexedDB in the background. */
-#offlineLibraryOverlay.sa-offline-opening-immediate{
-  display:flex!important;
-  visibility:visible!important;
-  pointer-events:auto!important;
-}
-
 #offlineLibraryOverlay .sa-offline-group.open .sa-offline-group-body{
   overscroll-behavior-y:auto!important;
-}
-
-/* Desktop/web: do not stretch the Menu to the bottom of the viewport. Its
-   header stays fixed inside the panel and its body scrolls only when the
-   content genuinely exceeds the available height. Phone layout is untouched. */
-@media (min-width:701px){
-  html body #mainSideMenu.main-side-menu,
-  html body #mainSideMenu.main-side-menu.stat-menu-polished{
-    bottom:auto!important;
-    height:auto!important;
-    max-height:calc(100dvh - 36px)!important;
-  }
-  html body #mainSideMenu > .stat-menu-scroll-body{
-    flex:0 1 auto!important;
-    max-height:calc(100dvh - 108px)!important;
-    overflow-y:auto!important;
-  }
 }
 `;
     document.head.appendChild(style);
