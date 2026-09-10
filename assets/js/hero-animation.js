@@ -8,6 +8,15 @@
   document.head.appendChild(script);
 })();
 
+/* Keep floating data points completely hidden while the hero waits to start. */
+(() => {
+  if (document.getElementById('statHeroDotPreStartGuard')) return;
+  const style = document.createElement('style');
+  style.id = 'statHeroDotPreStartGuard';
+  style.textContent = '.data-dot{opacity:0!important;animation:none!important}';
+  document.head.appendChild(style);
+})();
+
 (function () {
   "use strict";
 
@@ -84,7 +93,7 @@
     state.curve.style.setProperty("stroke-dashoffset", "0", "important");
     state.dotStates.forEach(({ dot, fall }) => {
       dot.style.setProperty("transform", `translateY(${fall}px)`, "important");
-      dot.style.setProperty("opacity", "0", "important");
+      dot.style.setProperty("opacity", ".95", "important");
     });
   }
 
