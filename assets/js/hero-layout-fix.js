@@ -57,22 +57,98 @@ html body .card .card-actions .action-btn{
 })();
 
 /* =========================================================
-   MANUAL CHOICE NAVIGATION RACE FIX
+   MANUAL -> HOME HISTORY FLOW
 
-   The Manual chooser's older bubble handler hides the chooser before calling
-   location.replace(). menu-alignment-fix.js watches child overlays and can
-   interpret that hide as a Back action before the manual page navigation
-   commits. Intercept the actual Reader/Contributor choice in capture phase,
-   leave the chooser visible during navigation, and replace only the current
-   child history entry. The Menu entry underneath remains intact for Back.
+   A Manual is opened from inside Menu -> chooser, but the user-facing Back
+   destination is Home. Before navigating to the standalone Manual page, walk
+   the app history back to its Home entry. Navigating to the Manual from there
+   discards the forward Menu/chooser rows, producing a clean Home -> Manual
+   stack. Both the Manual's visible Back button and Android/system Back then
+   return directly to Home.
    ========================================================= */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V1__) return;
-  window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V1__ = true;
+  if (window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V2__) return;
+  window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V2__ = true;
+
+  let pendingHref = "";
+  let movingToHome = false;
+  let attempts = 0;
+  let fallbackTimer = 0;
+
+  function homeUrl() {
+    const url = new URL(location.href);
+    url.searchParams.delete("menu");
+    return url.href;
+  }
+
+  function isHomeState() {
+    try {
+      const url = new URL(location.href);
+      const state = history.state?.statArchiveNav;
+      return url.searchParams.get("menu") !== "1" && (state === "home" || !state);
+    } catch (_) {
+      return history.state?.statArchiveNav === "home";
+    }
+  }
+
+  function normalizeHomeState() {
+    try {
+      const next = { ...(history.state || {}), statArchiveNav:"home" };
+      delete next.statArchiveChild;
+      delete next.statArchiveMenuOpen;
+      history.replaceState(next, "", homeUrl());
+    } catch (_) {}
+
+    try { window.__statArchiveNavigation?.closeChildren?.(); } catch (_) {}
+    try { window.__statArchiveNavigation?.closeMenu?.(); } catch (_) {}
+    try { window.__statArchiveNavigation?.releaseMenuScrollLock?.(); } catch (_) {}
+  }
+
+  function finishAtHomeAndOpenManual() {
+    if (!movingToHome) return;
+
+    const href = pendingHref;
+    pendingHref = "";
+    movingToHome = false;
+    attempts = 0;
+    clearTimeout(fallbackTimer);
+
+    normalizeHomeState();
+    if (href) window.location.assign(href);
+  }
+
+  function continueToHome() {
+    if (!movingToHome) return;
+
+    if (isHomeState()) {
+      finishAtHomeAndOpenManual();
+      return;
+    }
+
+    if (attempts >= 5) {
+      /* Safety fallback for an old WebView history stack that has lost its
+         state object. Make the current app entry Home, then open Manual. */
+      normalizeHomeState();
+      finishAtHomeAndOpenManual();
+      return;
+    }
+
+    attempts += 1;
+    history.back();
+
+    clearTimeout(fallbackTimer);
+    fallbackTimer = window.setTimeout(() => {
+      if (!movingToHome) return;
+      if (isHomeState()) finishAtHomeAndOpenManual();
+      else continueToHome();
+    }, 350);
+  }
 
   document.addEventListener("click", event => {
+    if (movingToHome) return;
+
     const target = event.target instanceof Element ? event.target : null;
     const choice = target?.closest?.("#manualChooserOverlay [data-manual-href]");
     if (!choice) return;
@@ -83,10 +159,20 @@ html body .card .card-actions .action-btn{
     event.preventDefault();
     event.stopImmediatePropagation();
 
-    /* Do not hide the chooser first. Keeping the child visibly open prevents
-       the child-close synchronizer from issuing a competing history.back(). */
-    window.location.replace(href);
+    pendingHref = new URL(href, location.href).href;
+    movingToHome = true;
+    attempts = 0;
+
+    /* Keep the chooser visually present until Back starts. Its existing child
+       observer therefore cannot misread a manual selection as a closed child. */
+    continueToHome();
   }, true);
+
+  window.addEventListener("popstate", () => {
+    if (!movingToHome) return;
+    clearTimeout(fallbackTimer);
+    window.setTimeout(continueToHome, 0);
+  });
 })();
 
 /* =========================================================
