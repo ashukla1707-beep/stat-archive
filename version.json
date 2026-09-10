@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "1.5.14",
+  "versionCode": 22,
+  "versionName": "1.5.15",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.14 rebuilds the Android app after the navigation fix so Back follows Home → Menu → Manual → Menu → Home correctly with the latest deployed website code."
+  "message": "Stat Archive 1.5.15 includes the finalized Android stability and runtime improvements."
 }
