@@ -55,3 +55,36 @@ html body .card .card-actions .action-btn{
     install();
   }
 })();
+
+/* =========================================================
+   MANUAL CHOICE NAVIGATION RACE FIX
+
+   The Manual chooser's older bubble handler hides the chooser before calling
+   location.replace(). menu-alignment-fix.js watches child overlays and can
+   interpret that hide as a Back action before the manual page navigation
+   commits. Intercept the actual Reader/Contributor choice in capture phase,
+   leave the chooser visible during navigation, and replace only the current
+   child history entry. The Menu entry underneath remains intact for Back.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V1__) return;
+  window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V1__ = true;
+
+  document.addEventListener("click", event => {
+    const target = event.target instanceof Element ? event.target : null;
+    const choice = target?.closest?.("#manualChooserOverlay [data-manual-href]");
+    if (!choice) return;
+
+    const href = choice.getAttribute("data-manual-href");
+    if (!href) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    /* Do not hide the chooser first. Keeping the child visibly open prevents
+       the child-close synchronizer from issuing a competing history.back(). */
+    window.location.replace(href);
+  }, true);
+})();
