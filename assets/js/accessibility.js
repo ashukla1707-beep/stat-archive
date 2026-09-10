@@ -164,14 +164,67 @@
   syncModalFocus();
 })();
 
-/* Load feature polish last, after archive data/filter/menu scripts exist. */
+/*
+ * Normal web and installed APK/PWA must use the same final Menu stack.
+ *
+ * The installed shell already contains these scripts because sw.js injects
+ * them. A direct web load of index.html historically did not, which left web
+ * on the legacy Menu markup and the old delayed Offline Library click path.
+ * Wait for DOMContentLoaded, then load only the pieces that are genuinely
+ * absent. On the installed shell every matching <script> already exists, so
+ * this becomes a no-op and cannot create duplicate listeners.
+ */
 (() => {
-  if (document.querySelector('script[data-stat-feature-polish]')) return;
-  const script = document.createElement('script');
-  script.src = 'assets/js/feature-polish.js?v=20260901-3';
-  script.dataset.statFeaturePolish = '1';
-  script.async = false;
-  document.body.appendChild(script);
+  const runtime = [
+    "assets/js/startup-polish.js?v=20260910-2",
+    "assets/js/feature-polish.js?v=20260905-7",
+    "assets/js/menu-polish.js?v=20260909-websync-1",
+    "assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2",
+    "assets/js/menu-header-reference.js?v=20260910-5",
+    "assets/js/offline-library-hybrid.js?v=20260910-canonical-15",
+    "assets/js/scroll-lock-coordinator.js?v=20260910-2",
+    "assets/js/offline-library-handoff.js?v=20260910-3"
+  ];
+
+  function baseName(src) {
+    return src.split("?")[0].split("/").pop();
+  }
+
+  function alreadyPresent(src) {
+    const name = baseName(src);
+    return [...document.scripts].some(script => {
+      const value = script.getAttribute("src") || "";
+      return value.split("?")[0].endsWith(`/assets/js/${name}`) ||
+        value.split("?")[0].endsWith(`assets/js/${name}`);
+    });
+  }
+
+  function load(src) {
+    return new Promise(resolve => {
+      if (alreadyPresent(src)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.dataset.statWebApkMenuRuntime = "1";
+      script.addEventListener("load", resolve, { once:true });
+      script.addEventListener("error", resolve, { once:true });
+      document.body.appendChild(script);
+    });
+  }
+
+  async function syncWebMenuRuntime() {
+    for (const src of runtime) await load(src);
+    document.documentElement.dataset.statMenuRuntime = "apk";
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", syncWebMenuRuntime, { once:true });
+  } else {
+    void syncWebMenuRuntime();
+  }
 })();
 
 /*
@@ -202,10 +255,11 @@
 /* =========================================================
    OFFLINE LIBRARY — WEB + PWA ENABLEMENT
    The IndexedDB implementation already works in normal browsers/PWAs.
-   This connects the visible side-menu option to it and keeps its count live.
+   This block now owns only capability + count synchronization.
 
-   Navigation history is intentionally NOT handled here. The single canonical
-   owner is service-worker-register.js.
+   Opening is intentionally NOT handled here anymore. The canonical
+   offline-library-handoff.js is shared by web and APK/PWA, so both surfaces
+   use exactly the same click, history and Menu-to-Library transition path.
    ========================================================= */
 (() => {
   const menuButton = document.getElementById("menuOfflineLibraryBtn");
@@ -246,28 +300,4 @@
       })
       .catch(() => {});
   }
-
-  menuButton.addEventListener("click", event => {
-    event.preventDefault();
-    if (!supported) return;
-
-    /* The canonical navigation core has already changed the logical state to
-       child/offline-library. This code only performs the visual transition. */
-    try { window.__statArchiveNavigation?.closeMenu?.(); } catch (_) {}
-    document.getElementById("mainSideMenu")?.classList.remove("is-open");
-    document.getElementById("mainMenuBackdrop")?.classList.remove("is-open");
-    document.getElementById("mainSideMenu")?.setAttribute("aria-hidden", "true");
-    document.getElementById("mainMenuBackdrop")?.setAttribute("aria-hidden", "true");
-    document.getElementById("mainMenuBtn")?.setAttribute("aria-expanded", "false");
-
-    window.setTimeout(() => {
-      if (typeof window.openOfflineLibrary === "function") {
-        window.openOfflineLibrary();
-      } else if (typeof openOfflineLibrary === "function") {
-        openOfflineLibrary();
-      }
-    }, 120);
-
-    try { navigator.storage?.persist?.(); } catch (_) {}
-  });
 })();
