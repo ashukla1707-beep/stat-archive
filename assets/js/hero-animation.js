@@ -28,7 +28,7 @@
   let startupFallbackTimer = 0;
   let frameId = 0;
 
-  const HERO_DURATION = 8000;
+  const HERO_DURATION = 6000;
   const FALL_WINDOW = 0.18;
   const CURVE_X_MIN = 18;
   const CURVE_X_MAX = 502;
@@ -106,6 +106,7 @@
     cancelAnimationFrame(frameId);
     state.revealRect?.setAttribute("width", "520");
     document.getElementById("statHeroPreloadGuard")?.remove();
+    document.getElementById("statHeroDotPreStartGuard")?.remove();
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       renderHeroFrame(state, 1);
       finishHeroAnimation(state);
