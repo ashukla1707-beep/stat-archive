@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260911-floating-points-v3";
+const CACHE = "stat-archive-shell-v20260911-floating-points-v4";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -56,7 +56,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('id="statHeroPreloadGuard"')) {
     out = out.replace(
       '</head>',
-      '<style id="statHeroPreloadGuard">.gaussian-curve{opacity:0!important}.data-dot{animation:none!important}</style>\n</head>'
+      '<style id="statHeroPreloadGuard">.gaussian-curve{opacity:0!important}.data-dot{opacity:0!important;animation:none!important}</style>\n</head>'
     );
   }
 
