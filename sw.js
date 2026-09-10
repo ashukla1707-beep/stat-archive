@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-optimized-v2";
+const CACHE = "stat-archive-shell-v20260910-bugfix-v3";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -22,7 +22,6 @@ const APP_SHELL = [
   "./assets/js/tooltips.js",
   "./assets/js/service-worker-register.js",
   "./assets/js/hero-animation.js",
-  "./assets/js/mobile-card-actions.js",
   "./assets/js/hero-selection-guard.js",
   "./assets/js/subject-panel.js",
   "./assets/js/accessibility.js",
@@ -50,12 +49,10 @@ const MENU_FLASH_GUARD = `
 `;
 
 const SPEED_SCRIPT_TAG =
-  '<script src="./assets/js/speed-boost.js?v=20260905-2"></script>';
+  '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-1"></script>';
 const RUNTIME_SCRIPT_TAG = '<script src="assets/js/runtime.js"></script>';
 
 const CONDITIONAL_SCRIPT_INJECTIONS = [
-  ["assets/js/feature-polish.js",
-    '<script src="./assets/js/feature-polish.js?v=20260905-7"></script>'],
   ["assets/js/hero-layout-fix.js",
     '<script src="./assets/js/hero-layout-fix.js?v=20260909-5"></script>'],
   ["assets/js/hero-selection-guard.js",
@@ -86,10 +83,17 @@ const ALWAYS_SCRIPT_TAGS = [
 const PREVIEW_STATE_GUARD_TAG =
   '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 
+/* Correctness-sensitive runtime files use network-first with cached fallback.
+   This avoids a one-launch delay after a deploy for fixes involving Preview,
+   navigation, search, cache policy, or accessibility. */
 const LIVE_RUNTIME_SUFFIXES = [
   "/assets/js/preview.js",
   "/assets/js/pdf.js",
   "/assets/js/preview-state-guard.js",
+  "/assets/js/speed-boost.js",
+  "/assets/js/search-suggestions.js",
+  "/assets/js/feature-polish.js",
+  "/assets/js/accessibility.js",
   "/assets/js/hero-layout-fix.js",
   "/assets/js/action-spacing-fix.js",
   "/assets/js/tooltips.js",
@@ -156,6 +160,9 @@ function decorateNavigationHtml(html) {
     '<script defer src="assets/js/scanner.js"></script>'
   );
 
+  /* feature-polish.js is intentionally NOT injected here. accessibility.js
+     loads it on both first-load and service-worker-controlled navigations,
+     which gives it one canonical execution path instead of two. */
   for (const [needle, tag] of CONDITIONAL_SCRIPT_INJECTIONS) {
     out = ensureInjected(out, needle, tag);
   }
