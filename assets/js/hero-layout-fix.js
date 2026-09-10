@@ -228,3 +228,49 @@ html body .card .card-actions .action-btn{
     settleTimer = window.setTimeout(settle, 0);
   });
 })();
+
+/* =========================================================
+   MEAN SYMBOL — reference-style mu attached to the dotted line
+   ========================================================= */
+(() => {
+  "use strict";
+
+  function installMeanSymbol() {
+    const svg = document.querySelector(".hero-probability .probability-svg");
+    if (!svg) return;
+
+    document.querySelector(".hero-probability .axis-mid")?.style.setProperty("display", "none", "important");
+
+    let symbol = svg.querySelector("#statArchiveMeanSymbol");
+    if (!symbol) {
+      symbol = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      symbol.id = "statArchiveMeanSymbol";
+      symbol.textContent = "μ";
+      symbol.setAttribute("x", "260");
+      symbol.setAttribute("y", "281");
+      symbol.setAttribute("text-anchor", "middle");
+      symbol.setAttribute("aria-hidden", "true");
+      svg.appendChild(symbol);
+    }
+
+    symbol.setAttribute("fill", getComputedStyle(document.body).getPropertyValue("--cyan").trim() || "#5ee7f7");
+    symbol.setAttribute("font-family", "Georgia, 'Times New Roman', serif");
+    symbol.setAttribute("font-size", "28");
+    symbol.setAttribute("font-style", "normal");
+    symbol.setAttribute("font-weight", "600");
+  }
+
+  function run() {
+    installMeanSymbol();
+    requestAnimationFrame(installMeanSymbol);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run, { once:true });
+  } else {
+    run();
+  }
+
+  window.addEventListener("pageshow", run);
+  document.addEventListener("statarchive:theme-change", run);
+})();
