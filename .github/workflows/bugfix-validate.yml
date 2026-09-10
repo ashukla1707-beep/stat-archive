@@ -40,6 +40,8 @@ jobs:
           hero = Path('assets/js/hero-animation.js').read_text(encoding='utf-8')
           offline = Path('assets/js/offline.js').read_text(encoding='utf-8')
           offline_hybrid = Path('assets/js/offline-library-hybrid.js').read_text(encoding='utf-8')
+          core = Path('assets/js/core.js').read_text(encoding='utf-8')
+          subject_panel = Path('assets/js/subject-panel.js').read_text(encoding='utf-8')
 
           checks = {
               'legacy archive-file fetch wrapper removed': 'window.fetch = fastFetch' not in speed,
@@ -61,6 +63,8 @@ jobs:
               'hero honors reduced motion in JS': 'prefers-reduced-motion: reduce' in hero and 'finishHeroAnimation(state)' in hero,
               'offline type filter has one implementation': offline.count('function renderOfflineTypeFilters(') == 1,
               'offline recent mark follows successful open': offline_hybrid.index('await openOfflineFile(id);') < offline_hybrid.index('markRecent(id);'),
+              'menu level buttons call canonical switch directly': 'typeof window.switchLevel === "function"' in subject_panel and 'void chooseLevel("bsc", bscSourceBtn)' in subject_panel and 'void chooseLevel("msc", mscSourceBtn)' in subject_panel,
+              'level switch rebuilds subject UI before network': core.index('renderSubjectFilters();', core.index('async function switchLevel')) < core.index('const [loadedEntries] = await Promise.all([', core.index('async function switchLevel')) and core.index('renderSubjectOptions();', core.index('async function switchLevel')) < core.index('const [loadedEntries] = await Promise.all([', core.index('async function switchLevel')),
           }
 
           failed = [name for name, ok in checks.items() if not ok]
