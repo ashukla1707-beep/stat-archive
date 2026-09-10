@@ -35,7 +35,7 @@ html body .card .card-actions .action-btn{
 
 /* Access card value only. */
 html body #summaryAccess{
-  font-size:22px !important;
+  font-size:16px !important;
   line-height:1.08 !important;
 }
 
@@ -50,7 +50,7 @@ html body #summaryAccess{
     font-size:10px !important;
   }
   html body #summaryAccess{
-    font-size:20px !important;
+    font-size:16px !important;
   }
 }
 `;
