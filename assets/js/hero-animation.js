@@ -19,7 +19,7 @@
   let startupFallbackTimer = 0;
   let frameId = 0;
 
-  const HERO_DURATION = 5200;
+  const HERO_DURATION = 8000;
   const FALL_WINDOW = 0.18;
   const CURVE_X_MIN = 18;
   const CURVE_X_MAX = 502;
@@ -176,10 +176,6 @@
   } else {
     armStart();
   }
-
-  /* =========================================================
-     SINGLE AUTHORITATIVE HERO COPY/LAYOUT
-     ========================================================= */
 
   function repairHeroCopy() {
     const sub = document.querySelector(".hero-line .sub");
