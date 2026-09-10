@@ -36,6 +36,7 @@ jobs:
           speed = Path('assets/js/speed-boost.js').read_text(encoding='utf-8')
           feature = Path('assets/js/feature-polish.js').read_text(encoding='utf-8')
           accessibility = Path('assets/js/accessibility.js').read_text(encoding='utf-8')
+          runtime = Path('assets/js/runtime.js').read_text(encoding='utf-8')
 
           checks = {
               'legacy archive-file fetch wrapper removed': 'window.fetch = fastFetch' not in speed,
@@ -44,11 +45,15 @@ jobs:
               'entry refresh scoped to initiating level': 'currentLevelKey() === requestLevel' in speed,
               'feature polish execution guard present': '__statArchiveFeaturePolishLoadedV2' in feature,
               'feature polish defers to canonical autocomplete': '__statArchiveSearchSuggestionsLoadedV4' in feature,
+              'feature polish has no legacy Offline Library click binding': 'webOfflineBound' not in feature,
               'modal keyboard ownership split': 'runtimeHandledIds' in accessibility,
               'history state merge present': '__saStateMergeWrapped' in accessibility,
               'reduced-motion fix present': 'statArchiveReducedMotionFix' in accessibility,
               'preview image Blob URL cleanup present': 'saBlobCleanup' in accessibility,
               'canonical search loaded before feature fallback': accessibility.index('search-suggestions.js') < accessibility.index('feature-polish.js'),
+              'silent refresh captures initiating level': 'const refreshLevel = currentLevel' in runtime,
+              'silent refresh drops stale course response': 'currentLevel !== refreshLevel' in runtime,
+              'silent refresh does not mutate subjects in background': 'await loadSubjectsFromWorker()' not in runtime.split('async function refreshArchiveSilently()',1)[1].split('// Hard-refresh when connectivity returns.',1)[0],
           }
 
           failed = [name for name, ok in checks.items() if not ok]
