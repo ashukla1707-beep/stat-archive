@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260911-distribution-cleanup-v2";
+const CACHE = "stat-archive-shell-v20260911-floating-points-v3";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -46,11 +46,10 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
 
-  /* Strip obsolete hero annotations and any legacy distribution data dots from
-     cached HTML before Android WebView/PWA parses the app shell. */
+  /* Remove only obsolete visible text. Animated data points must stay in the
+     HTML so hero-animation.js can show them while the curve is drawing. */
   out = out.replace(/\s*<div\s+class=["']curve-note\s+note-one["']\s*>\s*MEAN\s*<\/div>/i, '');
   out = out.replace(/\s*<div\s+id=["']permissionHint["'][^>]*>[\s\S]*?<\/div>/i, '');
-  out = out.replace(/\s*<circle\b[^>]*class=["'][^"']*\bdata-dot\b[^"']*["'][^>]*\/?\s*>/gi, '');
 
   out = out.replace(/<animate\s+attributeName=["']width["'][\s\S]*?\/>/i, '');
 
