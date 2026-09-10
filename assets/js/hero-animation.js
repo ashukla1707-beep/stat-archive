@@ -11,40 +11,53 @@
 (function () {
   "use strict";
 
-  /* The hero file can be present in both the source HTML and a previously
-     decorated PWA shell. Keep one animation owner even if it is encountered
-     twice during a transition between cached versions. */
-  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V2__) return;
-  window.__STAT_ARCHIVE_HERO_ANIMATION_V2__ = true;
+  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V3__) return;
+  window.__STAT_ARCHIVE_HERO_ANIMATION_V3__ = true;
 
   let started = false;
   let prepared = null;
   let startupFallbackTimer = 0;
+  let frameId = 0;
+
+  const HERO_DURATION = 3400;
+  const FALL_WINDOW = 0.18;
+  const CURVE_X_MIN = 18;
+  const CURVE_X_MAX = 502;
+
+  function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  function easeOutCubic(t) {
+    const u = 1 - clamp01(t);
+    return 1 - (u * u * u);
+  }
+
+  function readFallPx(dot) {
+    const raw = getComputedStyle(dot).getPropertyValue("--fall").trim();
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
 
   function prepareHeroAnimation() {
     if (prepared) return prepared;
 
     const curve = document.querySelector(".gaussian-curve");
-    const dots = document.querySelectorAll(".data-dot");
+    const dots = Array.from(document.querySelectorAll(".data-dot"));
     const revealRect = document.getElementById("gaussianRevealRect");
 
     if (!curve) return null;
 
-    /* index.html historically contained a SMIL <animate> on the clip rect.
-       That animation started as soon as the SVG was parsed, then this script
-       reset the same curve and drew it again. End/remove any surviving SMIL
-       animation and fully open the clip before the single JS draw begins. */
     revealRect?.querySelectorAll("animate").forEach(animation => {
       try { animation.endElement?.(); } catch (_) {}
       animation.remove();
     });
     revealRect?.setAttribute("width", "520");
 
-    /* Use the real path length so the curve visibly draws from left to right. */
     let pathLength = 1000;
     try {
       const measured = curve.getTotalLength();
-      if (Number.isFinite(measured) && measured > 1) pathLength = Math.ceil(measured);
+      if (Number.isFinite(measured) && measured > 1) pathLength = measured;
     } catch (_) {}
 
     curve.style.setProperty("animation", "none", "important");
@@ -53,18 +66,57 @@
     curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
     curve.style.setProperty("opacity", "1", "important");
 
-    dots.forEach(dot => {
+    const dotStates = dots.map(dot => {
       dot.style.setProperty("animation", "none", "important");
+      dot.style.setProperty("transition", "none", "important");
+      dot.style.setProperty("transform", "translateY(0px)", "important");
+      dot.style.setProperty("opacity", "0", "important");
+
+      const cx = parseFloat(dot.getAttribute("cx") || "0");
+      const xProgress = clamp01((cx - CURVE_X_MIN) / (CURVE_X_MAX - CURVE_X_MIN));
+
+      return {
+        dot,
+        fall: readFallPx(dot),
+        xProgress
+      };
     });
 
-    prepared = { curve, dots, revealRect, pathLength };
+    prepared = { curve, revealRect, pathLength, dotStates };
     return prepared;
   }
 
-  /* Run immediately when this script is parsed rather than waiting for the
-     load event. The service-worker shell also suppresses the old SMIL reveal
-     before parsing, so there is no first animation to race this preparation. */
   prepareHeroAnimation();
+
+  function renderHeroFrame(state, rawProgress) {
+    const { curve, pathLength, dotStates } = state;
+    const curveProgress = easeOutCubic(rawProgress);
+
+    curve.style.setProperty(
+      "stroke-dashoffset",
+      String(pathLength * (1 - curveProgress)),
+      "important"
+    );
+
+    dotStates.forEach(({ dot, fall, xProgress }) => {
+      const fallStart = Math.max(0, xProgress - FALL_WINDOW);
+      const local = clamp01((curveProgress - fallStart) / Math.max(0.0001, xProgress - fallStart));
+      const fallProgress = easeOutCubic(local);
+
+      if (curveProgress < fallStart) {
+        dot.style.setProperty("opacity", "0", "important");
+        dot.style.setProperty("transform", "translateY(0px)", "important");
+        return;
+      }
+
+      dot.style.setProperty("opacity", String(Math.min(0.95, local * 4)), "important");
+      dot.style.setProperty(
+        "transform",
+        `translateY(${fall * fallProgress}px)`,
+        "important"
+      );
+    });
+  }
 
   function startHeroAnimation() {
     if (started) return;
@@ -72,42 +124,35 @@
     const state = prepareHeroAnimation();
     if (!state) return;
 
-    const { curve, dots, revealRect, pathLength } = state;
     started = true;
     clearTimeout(startupFallbackTimer);
+    cancelAnimationFrame(frameId);
 
-    revealRect?.setAttribute("width", "520");
+    state.revealRect?.setAttribute("width", "520");
     document.getElementById("statHeroPreloadGuard")?.remove();
 
-    curve.style.setProperty("animation", "none", "important");
-    curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
-    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
-    curve.style.setProperty("opacity", "1", "important");
+    renderHeroFrame(state, 0);
 
-    dots.forEach(dot => {
-      dot.style.setProperty("animation", "none", "important");
-    });
+    const startTime = performance.now();
 
-    void curve.getBoundingClientRect();
+    function tick(now) {
+      const rawProgress = clamp01((now - startTime) / HERO_DURATION);
+      renderHeroFrame(state, rawProgress);
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        curve.style.setProperty(
-          "transition",
-          "stroke-dashoffset 3.4s cubic-bezier(.22,.61,.36,1)",
-          "important"
-        );
-        curve.style.setProperty("stroke-dashoffset", "0", "important");
-        dots.forEach(dot => dot.style.removeProperty("animation"));
+      if (rawProgress < 1) {
+        frameId = requestAnimationFrame(tick);
+        return;
+      }
+
+      state.curve.style.setProperty("stroke-dasharray", "none", "important");
+      state.curve.style.setProperty("stroke-dashoffset", "0", "important");
+      state.dotStates.forEach(({ dot, fall }) => {
+        dot.style.setProperty("opacity", ".95", "important");
+        dot.style.setProperty("transform", `translateY(${fall}px)`, "important");
       });
-    });
+    }
 
-    setTimeout(() => {
-      curve.style.setProperty("transition", "none", "important");
-      curve.style.setProperty("stroke-dasharray", "none", "important");
-      curve.style.setProperty("stroke-dashoffset", "0", "important");
-    }, 3800);
+    frameId = requestAnimationFrame(tick);
   }
 
   function queueStart() {
@@ -123,8 +168,6 @@
     }
 
     document.addEventListener("statarchive:startup-ready", queueStart, { once:true });
-
-    /* Never leave the graph frozen if the archive API is unavailable. */
     startupFallbackTimer = window.setTimeout(queueStart, 3500);
   }
 
@@ -154,8 +197,6 @@
     const style = document.createElement("style");
     style.id = "statArchiveDirectHeroFix";
     style.textContent = `
-/* IMPORTANT: the original stylesheet uses .hero-line span for the small
-   decorative line. These subtitle spans must never inherit that rule. */
 html body .header .hero-line .sub .hero-sub-lead,
 html body .header .hero-line .sub .hero-sub-tail{
   background:none !important;
@@ -194,7 +235,6 @@ html body .header .hero-line .sub *::-moz-selection{
   color:inherit !important;
 }
 
-/* FULL DESKTOP */
 @media (min-width:1101px){
   html body .header .hero-copy{
     width:58% !important;
@@ -260,7 +300,6 @@ html body .header .hero-line .sub *::-moz-selection{
   }
 }
 
-/* TABLET / MOBILE BROWSER DESKTOP MODE */
 @media (min-width:701px) and (max-width:1100px){
   html body .header .hero-copy{
     transform:none !important;
@@ -283,7 +322,6 @@ html body .header .hero-line .sub *::-moz-selection{
   }
 }
 
-/* PHONE / APK */
 @media (max-width:700px){
   html body .header .hero-copy{
     transform:none !important;
@@ -336,8 +374,6 @@ html body .header .hero-line .sub *::-moz-selection{
   window.addEventListener("pageshow", applyHeroFix);
 })();
 
-/* Dedicated mobile action layout. Loaded directly from a script that index.html
-   already includes, so this no longer depends on service-worker HTML injection. */
 (() => {
   if (document.querySelector('script[data-stat-mobile-card-actions]')) return;
   const script = document.createElement('script');
