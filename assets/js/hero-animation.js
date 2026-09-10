@@ -1,180 +1,105 @@
 (function () {
   "use strict";
 
-  /* One animation owner. V3 keeps the sequence smooth while using a balanced
-     pace: long enough to read visually, but short enough to avoid lag. */
-  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V3__) return;
-  window.__STAT_ARCHIVE_HERO_ANIMATION_V3__ = true;
+  /* The hero file can be present in both the source HTML and a previously
+     decorated PWA shell. Keep one animation owner even if it is encountered
+     twice during a transition between cached versions. */
+  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V2__) return;
+  window.__STAT_ARCHIVE_HERO_ANIMATION_V2__ = true;
 
   let started = false;
   let prepared = null;
-  let startQueued = false;
 
   function prepareHeroAnimation() {
     if (prepared) return prepared;
 
     const curve = document.querySelector(".gaussian-curve");
-    const dots = [...document.querySelectorAll(".data-dot")];
+    const dots = document.querySelectorAll(".data-dot");
     const revealRect = document.getElementById("gaussianRevealRect");
 
     if (!curve) return null;
 
-    /* Remove the older SVG reveal so it cannot compete with the JS animation. */
+    /* index.html historically contained a SMIL <animate> on the clip rect.
+       That animation started as soon as the SVG was parsed, then this script
+       reset the same curve and drew it again. End/remove any surviving SMIL
+       animation and fully open the clip before the single JS draw begins. */
     revealRect?.querySelectorAll("animate").forEach(animation => {
       try { animation.endElement?.(); } catch (_) {}
       animation.remove();
     });
     revealRect?.setAttribute("width", "520");
 
-    let pathLength = 1000;
-    try {
-      const measured = curve.getTotalLength();
-      if (Number.isFinite(measured) && measured > 1) pathLength = Math.ceil(measured);
-    } catch (_) {}
-
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
-    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
+    curve.style.setProperty("stroke-dasharray", "1", "important");
+    curve.style.setProperty("stroke-dashoffset", "1", "important");
     curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
       dot.style.setProperty("animation", "none", "important");
-      dot.style.setProperty("transition", "none", "important");
-      dot.style.setProperty("transform", "translateY(0)", "important");
-      dot.style.setProperty("opacity", "0", "important");
     });
 
-    prepared = { curve, dots, revealRect, pathLength };
+    prepared = { curve, dots, revealRect };
     return prepared;
   }
 
-  function finishHeroImmediately(state) {
-    const { curve, dots, revealRect } = state;
-    revealRect?.setAttribute("width", "520");
-    curve.style.setProperty("animation", "none", "important");
-    curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", "none", "important");
-    curve.style.setProperty("stroke-dashoffset", "0", "important");
-    curve.style.setProperty("opacity", "1", "important");
-
-    dots.forEach(dot => {
-      const fall = dot.style.getPropertyValue("--fall").trim() || "0px";
-      dot.style.setProperty("animation", "none", "important");
-      dot.style.setProperty("transition", "none", "important");
-      dot.style.setProperty("transform", `translateY(${fall})`, "important");
-      dot.style.setProperty("opacity", ".95", "important");
-    });
-  }
-
-  /* Prepare as early as possible so the stylesheet's old dot delays never get
-     a chance to become the visible animation. */
+  /* Run immediately when this script is parsed rather than waiting for the
+     load event. The service-worker shell also suppresses the old SMIL reveal
+     before parsing, so there is no first animation to race this preparation. */
   prepareHeroAnimation();
 
   function startHeroAnimation() {
     if (started) return;
 
     const state = prepareHeroAnimation();
-    if (!state) {
-      window.setTimeout(startHeroAnimation, 50);
-      return;
-    }
+    if (!state) return;
 
+    const { curve, dots, revealRect } = state;
     started = true;
-    const { curve, dots, revealRect, pathLength } = state;
 
     revealRect?.setAttribute("width", "520");
     document.getElementById("statHeroPreloadGuard")?.remove();
 
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    if (reduceMotion) {
-      finishHeroImmediately(state);
-      return;
-    }
-
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
-    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
+    curve.style.setProperty("stroke-dasharray", "1", "important");
+    curve.style.setProperty("stroke-dashoffset", "1", "important");
     curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
       dot.style.setProperty("animation", "none", "important");
-      dot.style.setProperty("transition", "none", "important");
-      dot.style.setProperty("transform", "translateY(0)", "important");
-      dot.style.setProperty("opacity", "0", "important");
     });
 
-    /* Force only one initial layout read, then let the compositor handle the
-       whole sequence. */
     void curve.getBoundingClientRect();
 
     requestAnimationFrame(() => {
-      curve.style.setProperty(
-        "transition",
-        "stroke-dashoffset 2.3s cubic-bezier(.22,.61,.36,1)",
-        "important"
-      );
-      curve.style.setProperty("stroke-dashoffset", "0", "important");
-
-      /* Dots settle progressively during the curve draw. This keeps the motion
-         visible without bringing back the old multi-second trailing effect. */
-      dots.forEach((dot, index) => {
-        const fall = dot.style.getPropertyValue("--fall").trim() || "0px";
-        window.setTimeout(() => {
-          dot.style.setProperty(
-            "transition",
-            "transform .50s cubic-bezier(.22,.61,.36,1), opacity .30s ease-out",
-            "important"
-          );
-          dot.style.setProperty("transform", `translateY(${fall})`, "important");
-          dot.style.setProperty("opacity", ".95", "important");
-        }, 480 + index * 70);
+      requestAnimationFrame(() => {
+        curve.style.setProperty(
+          "transition",
+          "stroke-dashoffset 3.4s cubic-bezier(.22,.61,.36,1)",
+          "important"
+        );
+        curve.style.setProperty("stroke-dashoffset", "0", "important");
+        dots.forEach(dot => dot.style.removeProperty("animation"));
       });
     });
 
-    window.setTimeout(() => {
+    setTimeout(() => {
       curve.style.setProperty("transition", "none", "important");
       curve.style.setProperty("stroke-dasharray", "none", "important");
       curve.style.setProperty("stroke-dashoffset", "0", "important");
-      dots.forEach(dot => dot.style.setProperty("transition", "none", "important"));
-    }, 2700);
+    }, 3800);
   }
 
-  /* Android/PWA owns the splash outside this document, so there is no direct
-     JavaScript "splash hidden" event here. Keep the graph frozen through DOM
-     setup, then start only after the document is visible and has produced two
-     paint frames. The short settle window lets the native splash finish its
-     handoff while the rest of Stat Archive continues rendering in parallel. */
-  function scheduleAfterSplash() {
-    if (started || startQueued || document.visibilityState === "hidden") return;
-    startQueued = true;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.setTimeout(() => {
-          startQueued = false;
-          if (document.visibilityState === "hidden") return;
-          startHeroAnimation();
-        }, 160);
-      });
-    });
+  function scheduleStart() {
+    setTimeout(startHeroAnimation, 250);
   }
 
-  function armAfterDomReady() {
-    scheduleAfterSplash();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", armAfterDomReady, { once: true });
+  if (document.readyState === "complete") {
+    scheduleStart();
   } else {
-    armAfterDomReady();
+    window.addEventListener("load", scheduleStart, { once: true });
   }
-
-  window.addEventListener("pageshow", scheduleAfterSplash, { once: true });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") scheduleAfterSplash();
-  });
 
   /* =========================================================
      SINGLE AUTHORITATIVE HERO COPY/LAYOUT
