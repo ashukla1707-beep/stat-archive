@@ -1,16 +1,64 @@
 (function () {
   "use strict";
 
+  /* The hero file can be present in both the source HTML and a previously
+     decorated PWA shell. Keep one animation owner even if it is encountered
+     twice during a transition between cached versions. */
+  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V2__) return;
+  window.__STAT_ARCHIVE_HERO_ANIMATION_V2__ = true;
+
   let started = false;
+  let prepared = null;
+
+  function prepareHeroAnimation() {
+    if (prepared) return prepared;
+
+    const curve = document.querySelector(".gaussian-curve");
+    const dots = document.querySelectorAll(".data-dot");
+    const revealRect = document.getElementById("gaussianRevealRect");
+
+    if (!curve) return null;
+
+    /* index.html historically contained a SMIL <animate> on the clip rect.
+       That animation started as soon as the SVG was parsed, then this script
+       reset the same curve and drew it again. End/remove any surviving SMIL
+       animation and fully open the clip before the single JS draw begins. */
+    revealRect?.querySelectorAll("animate").forEach(animation => {
+      try { animation.endElement?.(); } catch (_) {}
+      animation.remove();
+    });
+    revealRect?.setAttribute("width", "520");
+
+    curve.style.setProperty("animation", "none", "important");
+    curve.style.setProperty("transition", "none", "important");
+    curve.style.setProperty("stroke-dasharray", "1", "important");
+    curve.style.setProperty("stroke-dashoffset", "1", "important");
+    curve.style.setProperty("opacity", "1", "important");
+
+    dots.forEach(dot => {
+      dot.style.setProperty("animation", "none", "important");
+    });
+
+    prepared = { curve, dots, revealRect };
+    return prepared;
+  }
+
+  /* Run immediately when this script is parsed rather than waiting for the
+     load event. The service-worker shell also suppresses the old SMIL reveal
+     before parsing, so there is no first animation to race this preparation. */
+  prepareHeroAnimation();
 
   function startHeroAnimation() {
     if (started) return;
 
-    const curve = document.querySelector(".gaussian-curve");
-    const dots = document.querySelectorAll(".data-dot");
+    const state = prepareHeroAnimation();
+    if (!state) return;
 
-    if (!curve) return;
+    const { curve, dots, revealRect } = state;
     started = true;
+
+    revealRect?.setAttribute("width", "520");
+    document.getElementById("statHeroPreloadGuard")?.remove();
 
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
