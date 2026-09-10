@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260911-apk-cleanup-v1";
+const CACHE = "stat-archive-shell-v20260911-distribution-cleanup-v2";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -46,22 +46,14 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
 
-  /* Remove obsolete visible text at the HTML-shell level so Android WebView/PWA
-     cannot show stale copies even before runtime scripts execute. */
+  /* Strip obsolete hero annotations and any legacy distribution data dots from
+     cached HTML before Android WebView/PWA parses the app shell. */
   out = out.replace(/\s*<div\s+class=["']curve-note\s+note-one["']\s*>\s*MEAN\s*<\/div>/i, '');
   out = out.replace(/\s*<div\s+id=["']permissionHint["'][^>]*>[\s\S]*?<\/div>/i, '');
+  out = out.replace(/\s*<circle\b[^>]*class=["'][^"']*\bdata-dot\b[^"']*["'][^>]*\/?\s*>/gi, '');
 
-  /* The source SVG historically contained its own SMIL clip-width animation,
-     while hero-animation.js also drew the same curve. Remove the inline SMIL
-     before the document is parsed so the graph has exactly one animation owner. */
-  out = out.replace(
-    /<animate\s+attributeName=["']width["'][\s\S]*?\/>/i,
-    ''
-  );
+  out = out.replace(/<animate\s+attributeName=["']width["'][\s\S]*?\/>/i, '');
 
-  /* Hold the hero visual still until hero-animation.js prepares it. This also
-     prevents the data-dot CSS delays from starting before the single curve
-     animation owner is ready. The hero script removes this guard on start. */
   if (!out.includes('id="statHeroPreloadGuard"')) {
     out = out.replace(
       '</head>',
@@ -87,8 +79,6 @@ function decorateNavigationHtml(html) {
   out = out.replace('<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>', '<script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>');
   out = out.replace('<script src="assets/js/scanner.js"></script>', '<script defer src="assets/js/scanner.js"></script>');
 
-  /* In the installed shell, register startup coordination before the service
-     worker registration code so takeover cannot cause a second visible page load. */
   out = out.replace(
     '<script src="assets/js/service-worker-register.js"></script>',
     `${STARTUP_POLISH_TAG}\n<script src="assets/js/service-worker-register.js"></script>`
@@ -105,9 +95,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
   out = out.replace('</body>', `${MENU_HEADER_REFERENCE_TAG}\n</body>`);
-
   out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n${SCROLL_LOCK_COORDINATOR_TAG}\n${OFFLINE_HANDOFF_TAG}\n</body>`);
-
   if (!out.includes('assets/js/preview-state-guard.js')) out = out.replace('</body>', `${PREVIEW_STATE_GUARD_TAG}\n</body>`);
   return out;
 }
@@ -176,12 +164,6 @@ async function updateSameOriginInBackground(request, url, isAppNavigation) {
   } catch (_) {}
 }
 
-/*
- * Cold app launches must paint from the installed shell immediately. The old
- * network-first navigation waited for the network before returning any HTML,
- * which left the Android/PWA window completely black for several seconds.
- * Serve the cached page first and refresh it in the background instead.
- */
 async function serveAppShellFast(request, url, isAppNavigation, event) {
   const cache = await caches.open(CACHE);
   let cached = await cache.match(request);
@@ -263,9 +245,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /* Standalone documents such as manuals must stay standalone. Previously all
-     navigation HTML was passed through decorateNavigationHtml(), which injected
-     the main Stat Archive runtime into reader.html/contributor.html. */
   if (isDocumentNavigation) {
     event.respondWith(serveAppShellFast(request, url, false, event));
     return;
