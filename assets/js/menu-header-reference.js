@@ -1,10 +1,35 @@
-/* Stat Archive — compact fixed Menu header v4
-   Header is fixed inside the Menu panel; only the body below it scrolls. */
+/* Stat Archive — compact fixed Menu header v5
+   Header is fixed inside the Menu panel; only the body below it scrolls.
+   A startup guard prevents the legacy menu markup from flashing on refresh. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_MENU_HEADER_V4__) return;
-  window.__STAT_ARCHIVE_MENU_HEADER_V4__ = "4";
+  /* Install this before any DOM reshaping. Because this script is parsed before
+     the browser gets a chance to show an opened menu in normal startup, direct
+     legacy children stay invisible until they have been wrapped into the final
+     reference header + scroll body. */
+  function installStartupGuard() {
+    if (document.getElementById("statArchiveMenuStartupGuard")) return;
+    const guard = document.createElement("style");
+    guard.id = "statArchiveMenuStartupGuard";
+    guard.textContent = `
+#mainSideMenu > *:not(.stat-menu-reference-head):not(.stat-menu-scroll-body){
+  visibility:hidden !important;
+  opacity:0 !important;
+}
+#mainSideMenu > .stat-menu-reference-head,
+#mainSideMenu > .stat-menu-scroll-body{
+  visibility:visible !important;
+  opacity:1 !important;
+}
+`;
+    document.head.appendChild(guard);
+  }
+
+  installStartupGuard();
+
+  if (window.__STAT_ARCHIVE_MENU_HEADER_V5__) return;
+  window.__STAT_ARCHIVE_MENU_HEADER_V5__ = "5";
 
   function installStyle() {
     document.getElementById("statArchiveReferenceMenuHeaderStyle")?.remove();
@@ -203,6 +228,10 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     return body;
   }
 
+  function markReady() {
+    document.documentElement.classList.add("stat-menu-reference-ready");
+  }
+
   function buildHeader() {
     const menu = document.getElementById("mainSideMenu");
     const close = document.getElementById("mainMenuCloseBtn");
@@ -220,7 +249,7 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     });
 
     head.className = "stat-menu-reference-head";
-    head.dataset.statReferenceHeader = "4";
+    head.dataset.statReferenceHeader = "5";
 
     const brand = document.createElement("div");
     brand.className = "stat-menu-reference-brand";
@@ -233,6 +262,7 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
 
     if (menu.firstElementChild !== head) menu.insertBefore(head, menu.firstElementChild);
     ensureScrollBody(menu, head);
+    markReady();
     return true;
   }
 
