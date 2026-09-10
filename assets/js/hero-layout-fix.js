@@ -33,9 +33,10 @@ html body .card .card-actions .action-btn{
   min-width:0 !important;
 }
 
-/* Make only the Access card's READ ONLY value more prominent. */
-html body .stats-grid .stat-card:last-child .stat-value{
-  font-size:24px !important;
+/* Access card value only. */
+html body #summaryAccess{
+  font-size:28px !important;
+  line-height:1.05 !important;
 }
 
 @media(max-width:700px){
@@ -48,8 +49,8 @@ html body .stats-grid .stat-card:last-child .stat-value{
     padding-right:5px !important;
     font-size:10px !important;
   }
-  html body .stats-grid .stat-card:last-child .stat-value{
-    font-size:20px !important;
+  html body #summaryAccess{
+    font-size:26px !important;
   }
 }
 `;
