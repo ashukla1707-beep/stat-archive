@@ -234,7 +234,7 @@ html body .card .card-actions .action-btn{
     const isLight = document.body?.dataset.theme === "light";
     symbol.setAttribute("fill", isLight ? "#2f8f5b" : "#5ee7f7");
     symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
-    symbol.setAttribute("font-size", "28");
+    symbol.setAttribute("font-size", "22");
     symbol.setAttribute("font-style", "normal");
     symbol.setAttribute("font-weight", "500");
   }
