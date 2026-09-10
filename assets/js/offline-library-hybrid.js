@@ -913,9 +913,12 @@ body[data-theme="light"] #offlineLibraryOverlay .sa-offline-utility-card button{
   }
 
   async function doOpen(id) {
-    markRecent(id);
     try {
-      if (typeof openOfflineFile === "function") await openOfflineFile(id);
+      if (typeof openOfflineFile !== "function") {
+        throw new Error("Offline file opening is unavailable.");
+      }
+      await openOfflineFile(id);
+      markRecent(id);
     } catch (err) {
       try { showError(err?.message || "Could not open that offline file."); } catch (_) {}
     }
