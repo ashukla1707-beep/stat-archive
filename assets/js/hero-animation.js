@@ -28,7 +28,8 @@
   let startupFallbackTimer = 0;
   let frameId = 0;
 
-  const HERO_DURATION = 6000;
+  const HERO_DURATION = 8000;
+  const DOT_DURATION = 6000;
   const FALL_WINDOW = 0.18;
   const CURVE_X_MIN = 18;
   const CURVE_X_MAX = 502;
@@ -70,15 +71,16 @@
 
   prepareHeroAnimation();
 
-  function renderHeroFrame(state, rawProgress) {
+  function renderHeroFrame(state, curveRawProgress, dotRawProgress) {
     const { curve, pathLength, dotStates } = state;
-    const curveProgress = easeOutCubic(rawProgress);
+    const curveProgress = easeOutCubic(curveRawProgress);
+    const dotProgress = easeOutCubic(dotRawProgress);
     curve.style.setProperty("stroke-dashoffset", String(pathLength * (1 - curveProgress)), "important");
     dotStates.forEach(({ dot, fall, xProgress }) => {
       const fallStart = Math.max(0, xProgress - FALL_WINDOW);
-      const local = clamp01((curveProgress - fallStart) / Math.max(0.0001, xProgress - fallStart));
+      const local = clamp01((dotProgress - fallStart) / Math.max(0.0001, xProgress - fallStart));
       const fallProgress = easeOutCubic(local);
-      if (curveProgress < fallStart) {
+      if (dotProgress < fallStart) {
         dot.style.setProperty("opacity", "0", "important");
         dot.style.setProperty("transform", "translateY(0px)", "important");
         return;
@@ -108,16 +110,18 @@
     document.getElementById("statHeroPreloadGuard")?.remove();
     document.getElementById("statHeroDotPreStartGuard")?.remove();
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      renderHeroFrame(state, 1);
+      renderHeroFrame(state, 1, 1);
       finishHeroAnimation(state);
       return;
     }
-    renderHeroFrame(state, 0);
+    renderHeroFrame(state, 0, 0);
     const startTime = performance.now();
     function tick(now) {
-      const rawProgress = clamp01((now - startTime) / HERO_DURATION);
-      renderHeroFrame(state, rawProgress);
-      if (rawProgress < 1) { frameId = requestAnimationFrame(tick); return; }
+      const elapsed = now - startTime;
+      const curveRawProgress = clamp01(elapsed / HERO_DURATION);
+      const dotRawProgress = clamp01(elapsed / DOT_DURATION);
+      renderHeroFrame(state, curveRawProgress, dotRawProgress);
+      if (curveRawProgress < 1) { frameId = requestAnimationFrame(tick); return; }
       finishHeroAnimation(state);
     }
     frameId = requestAnimationFrame(tick);
