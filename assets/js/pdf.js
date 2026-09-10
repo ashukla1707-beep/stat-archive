@@ -1,6 +1,27 @@
 (function(){
   "use strict";
 
+  /* =========================================================
+     SERVICE-WORKER TAKEOVER GUARD
+
+     service-worker-register.js historically reloads the whole page on every
+     controllerchange. During an app update that makes the hero graph begin,
+     then the new worker takes control, the page reloads, and the graph begins
+     again. Keep worker updates enabled but suppress only that forced reload
+     listener so the visible app is not restarted under the user.
+     ========================================================= */
+  try{
+    const sw=navigator.serviceWorker;
+    if(sw && !sw.__statArchiveControllerChangeGuard){
+      sw.__statArchiveControllerChangeGuard=true;
+      const nativeAdd=sw.addEventListener.bind(sw);
+      sw.addEventListener=function(type,listener,options){
+        if(type==="controllerchange") return;
+        return nativeAdd(type,listener,options);
+      };
+    }
+  }catch(e){}
+
   /* Preview highlight is session-only.
      archive-ui.js already keeps previewedEntryIds in memory and applies
      .is-previewed after a preview click. We only prevent that state from
