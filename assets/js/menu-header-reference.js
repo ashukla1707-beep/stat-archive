@@ -314,3 +314,51 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     init();
   }
 })();
+
+/* =========================================================
+   MANUAL CHOICE — WINDOW CAPTURE OWNER
+
+   The Manual chooser can be followed by several legacy document-level
+   navigation listeners. Capture the Reader/Contributor choice at window level
+   so it runs before every document/button handler, normalize the current
+   chooser history entry to Home, and navigate immediately.
+
+   Result: Menu -> Manual -> Reader/Contributor Manual -> Back -> Home.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__STAT_ARCHIVE_MANUAL_WINDOW_NAV_V1__) return;
+  window.__STAT_ARCHIVE_MANUAL_WINDOW_NAV_V1__ = true;
+
+  function homeUrl() {
+    const url = new URL(location.href);
+    url.searchParams.delete("menu");
+    return url.href;
+  }
+
+  window.addEventListener("click", event => {
+    const target = event.target instanceof Element ? event.target : null;
+    const choice = target?.closest?.("#manualChooserOverlay [data-manual-href]");
+    if (!choice) return;
+
+    const href = choice.getAttribute("data-manual-href");
+    if (!href) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const next = { ...(history.state || {}), statArchiveNav:"home" };
+    delete next.statArchiveChild;
+    delete next.statArchiveMenuOpen;
+
+    try {
+      history.replaceState(next, "", homeUrl());
+    } catch (_) {
+      try { history.replaceState(next, "", location.href); } catch (_) {}
+    }
+
+    const destination = new URL(href, location.href).href;
+    window.location.assign(destination);
+  }, true);
+})();
