@@ -253,7 +253,8 @@ html body .card .card-actions .action-btn{
       svg.appendChild(symbol);
     }
 
-    symbol.setAttribute("fill", getComputedStyle(document.body).getPropertyValue("--cyan").trim() || "#5ee7f7");
+    const isLight = document.body?.dataset.theme === "light";
+    symbol.setAttribute("fill", isLight ? "#4b365f" : "#5ee7f7");
     symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
     symbol.setAttribute("font-size", "28");
     symbol.setAttribute("font-style", "normal");
@@ -273,4 +274,11 @@ html body .card .card-actions .action-btn{
 
   window.addEventListener("pageshow", run);
   document.addEventListener("statarchive:theme-change", run);
+
+  const themeObserver = new MutationObserver(run);
+  function observeTheme() {
+    if (document.body) themeObserver.observe(document.body, { attributes:true, attributeFilter:["data-theme"] });
+  }
+  if (document.body) observeTheme();
+  else document.addEventListener("DOMContentLoaded", observeTheme, { once:true });
 })();
