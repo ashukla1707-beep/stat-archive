@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  /* One animation owner. V3 replaces the old long staggered sequence with a
-     short path draw and a compact dot settle so the hero never feels laggy. */
+  /* One animation owner. V3 keeps the sequence smooth while using a balanced
+     pace: long enough to read visually, but short enough to avoid lag. */
   if (window.__STAT_ARCHIVE_HERO_ANIMATION_V3__) return;
   window.__STAT_ARCHIVE_HERO_ANIMATION_V3__ = true;
 
@@ -111,23 +111,24 @@
     requestAnimationFrame(() => {
       curve.style.setProperty(
         "transition",
-        "stroke-dashoffset 1.25s cubic-bezier(.22,.61,.36,1)",
+        "stroke-dashoffset 2.3s cubic-bezier(.22,.61,.36,1)",
         "important"
       );
       curve.style.setProperty("stroke-dashoffset", "0", "important");
 
-      /* Dots finish in well under a second instead of continuing for 3s+. */
+      /* Dots settle progressively during the curve draw. This keeps the motion
+         visible without bringing back the old multi-second trailing effect. */
       dots.forEach((dot, index) => {
         const fall = dot.style.getPropertyValue("--fall").trim() || "0px";
         window.setTimeout(() => {
           dot.style.setProperty(
             "transition",
-            "transform .34s cubic-bezier(.22,.61,.36,1), opacity .20s ease-out",
+            "transform .50s cubic-bezier(.22,.61,.36,1), opacity .30s ease-out",
             "important"
           );
           dot.style.setProperty("transform", `translateY(${fall})`, "important");
           dot.style.setProperty("opacity", ".95", "important");
-        }, 230 + index * 35);
+        }, 480 + index * 70);
       });
     });
 
@@ -136,11 +137,11 @@
       curve.style.setProperty("stroke-dasharray", "none", "important");
       curve.style.setProperty("stroke-dashoffset", "0", "important");
       dots.forEach(dot => dot.style.setProperty("transition", "none", "important"));
-    }, 1450);
+    }, 2700);
   }
 
   function scheduleStart() {
-    window.setTimeout(startHeroAnimation, 60);
+    window.setTimeout(startHeroAnimation, 100);
   }
 
   /* Do not wait for window.load: network/font work should never delay the hero. */
