@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-startup-navigation-fix-v1";
+const CACHE = "stat-archive-shell-v20260910-hero-manual-home-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -44,6 +44,24 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for every batch.',
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
+
+  /* The source SVG historically contained its own SMIL clip-width animation,
+     while hero-animation.js also drew the same curve. Remove the inline SMIL
+     before the document is parsed so the graph has exactly one animation owner. */
+  out = out.replace(
+    /<animate\s+attributeName=["']width["'][\s\S]*?\/>/i,
+    ''
+  );
+
+  /* Hold the hero visual still until hero-animation.js prepares it. This also
+     prevents the data-dot CSS delays from starting before the single curve
+     animation owner is ready. The hero script removes this guard on start. */
+  if (!out.includes('id="statHeroPreloadGuard"')) {
+    out = out.replace(
+      '</head>',
+      '<style id="statHeroPreloadGuard">.gaussian-curve{opacity:0!important}.data-dot{animation:none!important}</style>\n</head>'
+    );
+  }
 
   out = out.replace(/<script[^>]+assets\/js\/(?:pdf-preview-v\d+|pdf-title-fix|pdf-touch-lock|pdf-zoom-fix|pdf-anchor-fix|pdf-drive-zoom)\.js[^>]*><\/script>/gi, '');
   out = out.replace(/<script[^>]+assets\/js\/offline-library-(?:hybrid|heading-search-fix|entry-format|handoff)\.js[^>]*><\/script>/gi, '');
@@ -243,6 +261,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/preview.js') ||
     url.pathname.endsWith('/assets/js/pdf.js') ||
     url.pathname.endsWith('/assets/js/preview-state-guard.js') ||
+    url.pathname.endsWith('/assets/js/hero-animation.js') ||
     url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||
     url.pathname.endsWith('/assets/js/action-spacing-fix.js') ||
     url.pathname.endsWith('/assets/js/tooltips.js') ||
