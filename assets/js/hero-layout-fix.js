@@ -58,15 +58,6 @@ html body .card .card-actions .action-btn{
 
 /* =========================================================
    MANUAL -> HOME HISTORY FLOW v3
-
-   The chooser itself is a Menu child. Older code tried to walk backward
-   through Menu history before opening the standalone Manual. On normal web,
-   other popstate/Menu restorers could win that race and leave the user back
-   at Menu instead of navigating.
-
-   Make the current chooser entry Home in-place, then navigate to Manual.
-   This is synchronous, creates no popstate race, and produces the required
-   Manual -> Back -> Home behavior.
    ========================================================= */
 (() => {
   "use strict";
@@ -91,9 +82,6 @@ html body .card .card-actions .action-btn{
       try { history.replaceState(next, "", location.href); } catch (_) {}
     }
 
-    /* Do not hide the chooser before navigation. Keeping it visible prevents
-       any legacy child-close observer from seeing a disappearing child during
-       this transition. The standalone page navigation removes it naturally. */
     try { window.__statArchiveNavigation?.closeMenu?.(); } catch (_) {}
     try { window.__statArchiveNavigation?.releaseMenuScrollLock?.(); } catch (_) {}
   }
@@ -117,16 +105,6 @@ html body .card .card-actions .action-btn{
 
 /* =========================================================
    DETERMINISTIC MENU CLOSE
-
-   After returning from a standalone Manual page, older Menu history code can
-   leave two adjacent Menu entries. A normal single history.back() therefore
-   closes the panel, lands on another Menu entry and reopens it a moment later.
-
-   Capture the close action at window level (before the document navigation
-   handlers), close the visual panel immediately, then keep stepping Back only
-   while the destination is still logically a Menu entry. Stop as soon as Home
-   is reached. This preserves the normal one-level Home -> Menu -> Home flow and
-   also cleans an already-existing duplicate Menu row without a second tap.
    ========================================================= */
 (() => {
   "use strict";
@@ -254,7 +232,7 @@ html body .card .card-actions .action-btn{
     }
 
     const isLight = document.body?.dataset.theme === "light";
-    symbol.setAttribute("fill", isLight ? "#4b365f" : "#5ee7f7");
+    symbol.setAttribute("fill", isLight ? "#2f8f5b" : "#5ee7f7");
     symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
     symbol.setAttribute("font-size", "28");
     symbol.setAttribute("font-style", "normal");
