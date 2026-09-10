@@ -79,6 +79,15 @@
     });
   }
 
+  function finishHeroAnimation(state) {
+    state.curve.style.setProperty("stroke-dasharray", "none", "important");
+    state.curve.style.setProperty("stroke-dashoffset", "0", "important");
+    state.dotStates.forEach(({ dot, fall }) => {
+      dot.style.setProperty("opacity", ".95", "important");
+      dot.style.setProperty("transform", `translateY(${fall}px)`, "important");
+    });
+  }
+
   function startHeroAnimation() {
     if (started) return;
     const state = prepareHeroAnimation();
@@ -88,18 +97,18 @@
     cancelAnimationFrame(frameId);
     state.revealRect?.setAttribute("width", "520");
     document.getElementById("statHeroPreloadGuard")?.remove();
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      renderHeroFrame(state, 1);
+      finishHeroAnimation(state);
+      return;
+    }
     renderHeroFrame(state, 0);
     const startTime = performance.now();
     function tick(now) {
       const rawProgress = clamp01((now - startTime) / HERO_DURATION);
       renderHeroFrame(state, rawProgress);
       if (rawProgress < 1) { frameId = requestAnimationFrame(tick); return; }
-      state.curve.style.setProperty("stroke-dasharray", "none", "important");
-      state.curve.style.setProperty("stroke-dashoffset", "0", "important");
-      state.dotStates.forEach(({ dot, fall }) => {
-        dot.style.setProperty("opacity", ".95", "important");
-        dot.style.setProperty("transform", `translateY(${fall}px)`, "important");
-      });
+      finishHeroAnimation(state);
     }
     frameId = requestAnimationFrame(tick);
   }

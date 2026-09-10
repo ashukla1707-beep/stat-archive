@@ -1,5 +1,8 @@
 /* Stat Archive feature polish: centered desktop menu, web offline access, compact spacing, search suggestions, and filing-card rounding. */
 (() => {
+  if (window.__statArchiveFeaturePolishLoadedV2) return;
+  window.__statArchiveFeaturePolishLoadedV2 = true;
+
   function installStyles(){
     if (document.getElementById('statArchiveFeaturePolishStyles')) return;
     const style = document.createElement('style');
@@ -66,13 +69,12 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
   }
 
   function enableWebOfflineLibrary(){
-    const legacyBtn = document.getElementById('offlineLibraryBtn');
-    const menuBtn = document.getElementById('menuOfflineLibraryBtn');
-    document.querySelectorAll('.offline-btn').forEach(btn => {btn.style.removeProperty('display');btn.removeAttribute('aria-hidden');});
-    if (menuBtn && legacyBtn && !menuBtn.dataset.webOfflineBound) {
-      menuBtn.dataset.webOfflineBound = '1';
-      menuBtn.addEventListener('click', () => {try { window.statArchiveCloseMenu?.(); } catch (_) {} setTimeout(() => legacyBtn.click(), 70);});
-    }
+    /* offline-library-handoff.js owns Menu -> Offline Library navigation.
+       This layer only exposes the controls and refreshes their saved state. */
+    document.querySelectorAll('.offline-btn').forEach(btn => {
+      btn.style.removeProperty('display');
+      btn.removeAttribute('aria-hidden');
+    });
     try { if (typeof loadOfflineLibraryState === 'function') loadOfflineLibraryState(); } catch (_) {}
   }
 
@@ -125,8 +127,6 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
           const type = String(entry?.type || '').trim().toLowerCase();
           const title = String(entry?.title || entry?.filename || '').trim();
 
-          // Question papers stay searchable in the Archive Entries results,
-          // but are intentionally excluded from the autocomplete dropdown.
           if (isQuestionPaperType(type)) return;
 
           if (type === 'book' || type === 'books') {
@@ -151,6 +151,11 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
   }
 
   function installSearchSuggestions(){
+    /* search-suggestions.js is the canonical autocomplete. Keep this legacy
+       implementation only as a fallback for an old standalone shell that did
+       not load the canonical module. */
+    if (window.__statArchiveSearchSuggestionsLoadedV4) return;
+
     const form = document.getElementById('searchForm');
     const input = document.getElementById('searchInput');
     if (!form || !input) return;

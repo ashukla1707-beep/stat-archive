@@ -212,19 +212,29 @@ document.addEventListener("pointerdown", (e) => {
       bscMenuBtn?.setAttribute("aria-pressed", String(current === "bsc"));
     }
 
+    async function chooseLevel(level, fallbackButton) {
+      try {
+        if (typeof window.switchLevel === "function") {
+          await window.switchLevel(level);
+        } else {
+          fallbackButton?.click();
+        }
+      } finally {
+        syncLevelButtons();
+      }
+    }
+
     if (mscMenuBtn && !mscMenuBtn.dataset.bound) {
       mscMenuBtn.dataset.bound = "1";
       mscMenuBtn.addEventListener("click", () => {
-        mscSourceBtn?.click();
-        setTimeout(syncLevelButtons, 0);
+        void chooseLevel("msc", mscSourceBtn);
       });
     }
 
     if (bscMenuBtn && !bscMenuBtn.dataset.bound) {
       bscMenuBtn.dataset.bound = "1";
       bscMenuBtn.addEventListener("click", () => {
-        bscSourceBtn?.click();
-        setTimeout(syncLevelButtons, 0);
+        void chooseLevel("bsc", bscSourceBtn);
       });
     }
 
