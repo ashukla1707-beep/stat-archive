@@ -724,6 +724,12 @@ async function switchLevel(level) {
   if (searchClear) searchClear.style.display = "none";
   searchQ = "";
 
+  // Rebuild level-dependent subject controls immediately. Waiting until the
+  // network load finishes leaves the previous level's subjects visible in
+  // the Menu/home filters on slow or failed requests.
+  renderSubjectFilters();
+  renderTypeFilters();
+  renderSubjectOptions();
   render();
 
   try {
