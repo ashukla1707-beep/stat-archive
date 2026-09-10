@@ -72,7 +72,12 @@ jobs:
               waitUntil: 'domcontentloaded', timeout: 30000
             });
             await page.waitForFunction(() => !!window.__statArchiveNavigation, null, { timeout: 15000 });
-            await page.waitForTimeout(900);
+            await page.waitForFunction(() => {
+              const curve = document.querySelector('.gaussian-curve');
+              if (!curve) return true;
+              return curve.style.strokeDasharray === 'none'
+                && curve.style.strokeDashoffset === '0';
+            }, null, { timeout: 15000 });
             await page.addStyleTag({ content: stableCss });
             await page.waitForTimeout(150);
             return { context, page, pageErrors };
@@ -121,13 +126,19 @@ jobs:
             const page = await context.newPage();
             await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});
             await page.waitForFunction(() => !!window.__statArchiveNavigation);
-            await page.waitForTimeout(900);
+            await page.waitForFunction(() => {
+              const curve = document.querySelector('.gaussian-curve');
+              if (!curve) return false;
+              return curve.style.strokeDasharray === 'none'
+                && curve.style.strokeDashoffset === '0';
+            }, null, { timeout: 5000 });
 
             const motion = await page.evaluate(() => ({
               curve: getComputedStyle(document.querySelector('.gaussian-curve')).animationName,
-              dot: getComputedStyle(document.querySelector('.data-dot')).animationName
+              dot: getComputedStyle(document.querySelector('.data-dot')).animationName,
+              dash: document.querySelector('.gaussian-curve')?.style.strokeDashoffset
             }));
-            if (motion.curve !== 'none' || motion.dot !== 'none') {
+            if (motion.curve !== 'none' || motion.dot !== 'none' || motion.dash !== '0') {
               throw new Error(`reduced-motion not honored: ${JSON.stringify(motion)}`);
             }
 
