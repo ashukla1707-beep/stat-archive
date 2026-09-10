@@ -230,7 +230,7 @@ html body .card .card-actions .action-btn{
 })();
 
 /* =========================================================
-   MEAN SYMBOL — reference-style mu attached to the dotted line
+   MEAN SYMBOL — upright mu attached to the dotted line
    ========================================================= */
 (() => {
   "use strict";
@@ -254,10 +254,10 @@ html body .card .card-actions .action-btn{
     }
 
     symbol.setAttribute("fill", getComputedStyle(document.body).getPropertyValue("--cyan").trim() || "#5ee7f7");
-    symbol.setAttribute("font-family", "Georgia, 'Times New Roman', serif");
+    symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
     symbol.setAttribute("font-size", "28");
     symbol.setAttribute("font-style", "normal");
-    symbol.setAttribute("font-weight", "600");
+    symbol.setAttribute("font-weight", "500");
   }
 
   function run() {
