@@ -38,6 +38,8 @@ jobs:
           accessibility = Path('assets/js/accessibility.js').read_text(encoding='utf-8')
           runtime = Path('assets/js/runtime.js').read_text(encoding='utf-8')
           hero = Path('assets/js/hero-animation.js').read_text(encoding='utf-8')
+          offline = Path('assets/js/offline.js').read_text(encoding='utf-8')
+          offline_hybrid = Path('assets/js/offline-library-hybrid.js').read_text(encoding='utf-8')
 
           checks = {
               'legacy archive-file fetch wrapper removed': 'window.fetch = fastFetch' not in speed,
@@ -57,6 +59,8 @@ jobs:
               'silent refresh does not mutate subjects in background': 'await loadSubjectsFromWorker()' not in runtime.split('async function refreshArchiveSilently()',1)[1].split('// Hard-refresh when connectivity returns.',1)[0],
               'hero duration remains 8 seconds': 'const HERO_DURATION = 8000;' in hero,
               'hero honors reduced motion in JS': 'prefers-reduced-motion: reduce' in hero and 'finishHeroAnimation(state)' in hero,
+              'offline type filter has one implementation': offline.count('function renderOfflineTypeFilters(') == 1,
+              'offline recent mark follows successful open': offline_hybrid.index('await openOfflineFile(id);') < offline_hybrid.index('markRecent(id);'),
           }
 
           failed = [name for name, ok in checks.items() if not ok]
