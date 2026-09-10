@@ -1,15 +1,19 @@
-/* Stat Archive — startup + interaction polish v1
+/* Stat Archive — startup + interaction polish v2
    Coordinates the first Home paint without owning archive rendering.
    - suppresses the legacy service-worker takeover reload
    - keeps summary metrics visually stable until the first data pass settles
    - signals the hero to start only after that first settled render
-   - smooths Menu motion and promotes the archive More/Show less control
+   - restores the intended right-side Menu on web/desktop layouts
+   - keeps About -> close as one Back level to Menu
+   - standardizes close controls across Stat Archive dialogs
 */
 (() => {
   "use strict";
 
+  /* Keep the v1 guard name so an older cached copy and this v2 copy can never
+     both install listeners/styles in the same page instance. */
   if (window.__STAT_ARCHIVE_STARTUP_POLISH_V1__) return;
-  window.__STAT_ARCHIVE_STARTUP_POLISH_V1__ = true;
+  window.__STAT_ARCHIVE_STARTUP_POLISH_V1__ = "2";
 
   const READY_EVENT = "statarchive:startup-ready";
   const SUMMARY_CACHE_PREFIX = "statArchiveHomeSummaryV1:";
@@ -33,9 +37,12 @@
   }
 
   function installStyles() {
-    if (document.getElementById("statArchiveStartupPolishStyle")) return;
+    const old = document.getElementById("statArchiveStartupPolishStyle");
+    old?.remove();
+
     const style = document.createElement("style");
     style.id = "statArchiveStartupPolishStyle";
+    style.dataset.version = "2";
     style.textContent = `
 html{background:#070a0f;}
 html[data-theme="light"]{background:#f6f2e9;}
@@ -78,6 +85,9 @@ body[data-theme="light"] #archiveSummary.stat-summary-pending .stat-startup-summ
   transition:opacity .14s ease;
 }
 
+/* Menu motion. The older feature-polish.js centered the desktop Menu. The
+   current Menu design is a right-side inset panel, so own that placement here
+   with stronger specificity while leaving the phone layout untouched. */
 html body #mainSideMenu.main-side-menu.stat-menu-polished{
   transform:translateY(5px) scale(.997) !important;
   transition:
@@ -92,11 +102,99 @@ html body #mainSideMenu.main-side-menu.stat-menu-polished.is-open{
     transform .24s cubic-bezier(.22,.61,.36,1),
     visibility 0s linear 0s !important;
 }
+@media (min-width:701px){
+  html body #mainSideMenu.main-side-menu,
+  html body #mainSideMenu.main-side-menu.stat-menu-polished{
+    position:fixed !important;
+    top:18px !important;
+    right:18px !important;
+    bottom:18px !important;
+    left:auto !important;
+    width:min(390px,calc(100vw - 36px)) !important;
+    height:auto !important;
+    max-height:calc(100dvh - 36px) !important;
+    transform:translateY(5px) scale(.997) !important;
+    transform-origin:right top !important;
+  }
+  html body #mainSideMenu.main-side-menu.is-open,
+  html body #mainSideMenu.main-side-menu.stat-menu-polished.is-open{
+    transform:translateY(0) scale(1) !important;
+  }
+}
 html body #mainMenuBackdrop.main-menu-backdrop{
   transition:opacity .22s ease,visibility 0s linear .22s !important;
 }
 html body #mainMenuBackdrop.main-menu-backdrop.is-open{
   transition:opacity .22s ease,visibility 0s linear 0s !important;
+}
+
+/* One close-button language everywhere: same circle, same glyph sizing and
+   same hover/focus treatment. Position is intentionally NOT overridden, so
+   each dialog keeps its own header layout. */
+html body button.close-btn,
+html body #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn,
+html body #manualChooserCloseBtn,
+html body button.stat-feedback-close,
+html body #offlineLibraryOverlay #closeOfflineLibraryBtn{
+  width:34px !important;
+  min-width:34px !important;
+  max-width:34px !important;
+  height:34px !important;
+  min-height:34px !important;
+  max-height:34px !important;
+  padding:0 !important;
+  border:1px solid rgba(148,163,184,.15) !important;
+  border-radius:50% !important;
+  background:rgba(255,255,255,.012) !important;
+  color:#9eabba !important;
+  box-shadow:none !important;
+  display:grid !important;
+  place-items:center !important;
+  flex:0 0 34px !important;
+  font:400 21px/1 Inter,sans-serif !important;
+  text-align:center !important;
+  text-indent:0 !important;
+  cursor:pointer !important;
+  -webkit-tap-highlight-color:transparent !important;
+  transition:background .16s ease,border-color .16s ease,color .16s ease !important;
+}
+html body button.close-btn:hover,
+html body button.close-btn:focus-visible,
+html body #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:hover,
+html body #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:focus-visible,
+html body #manualChooserCloseBtn:hover,
+html body #manualChooserCloseBtn:focus-visible,
+html body button.stat-feedback-close:hover,
+html body button.stat-feedback-close:focus-visible,
+html body #offlineLibraryOverlay #closeOfflineLibraryBtn:hover,
+html body #offlineLibraryOverlay #closeOfflineLibraryBtn:focus-visible{
+  border-color:rgba(94,231,247,.28) !important;
+  background:rgba(94,231,247,.045) !important;
+  color:#eef8fa !important;
+  outline:none !important;
+}
+body[data-theme="light"] button.close-btn,
+body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn,
+body[data-theme="light"] #manualChooserCloseBtn,
+body[data-theme="light"] button.stat-feedback-close,
+body[data-theme="light"] #offlineLibraryOverlay #closeOfflineLibraryBtn{
+  border-color:rgba(75,54,95,.11) !important;
+  background:rgba(255,255,255,.48) !important;
+  color:#726c67 !important;
+}
+body[data-theme="light"] button.close-btn:hover,
+body[data-theme="light"] button.close-btn:focus-visible,
+body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:hover,
+body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseBtn:focus-visible,
+body[data-theme="light"] #manualChooserCloseBtn:hover,
+body[data-theme="light"] #manualChooserCloseBtn:focus-visible,
+body[data-theme="light"] button.stat-feedback-close:hover,
+body[data-theme="light"] button.stat-feedback-close:focus-visible,
+body[data-theme="light"] #offlineLibraryOverlay #closeOfflineLibraryBtn:hover,
+body[data-theme="light"] #offlineLibraryOverlay #closeOfflineLibraryBtn:focus-visible{
+  border-color:rgba(75,54,95,.22) !important;
+  background:rgba(75,54,95,.055) !important;
+  color:#4b365f !important;
 }
 
 html body .entry-subject-more-wrap{
@@ -145,10 +243,47 @@ body[data-theme="light"] button.entry-subject-more-btn:focus-visible{
   html body #mainSideMenu.main-side-menu.stat-menu-polished.is-open,
   html body #mainMenuBackdrop.main-menu-backdrop,
   html body #mainMenuBackdrop.main-menu-backdrop.is-open,
-  html body button.entry-subject-more-btn{transition:none !important;}
+  html body button.entry-subject-more-btn,
+  html body button.close-btn,
+  html body #mainMenuCloseBtn,
+  html body #manualChooserCloseBtn,
+  html body button.stat-feedback-close,
+  html body #offlineLibraryOverlay #closeOfflineLibraryBtn{transition:none !important;}
 }
 `;
     document.head.appendChild(style);
+  }
+
+  function normalizeCloseGlyphs() {
+    document.querySelectorAll(
+      "button.close-btn,#mainMenuCloseBtn,#manualChooserCloseBtn,button.stat-feedback-close,#closeOfflineLibraryBtn"
+    ).forEach(button => {
+      if (!(button instanceof HTMLButtonElement) || button.querySelector("svg")) return;
+      const text = String(button.textContent || "").trim();
+      if (/^[×✕xX]$/.test(text)) button.textContent = "×";
+    });
+  }
+
+  /* About is a Menu child, so its close control must pop only the child history
+     entry. Capturing the click before the legacy handler hides the overlay
+     prevents the old child-close synchronizer from issuing an extra Back. */
+  function installAboutCloseNavigation() {
+    document.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+
+      const overlay = document.getElementById("aboutArchiveOverlay");
+      const closePressed = !!target.closest("#closeAboutArchiveBtn");
+      const backdropPressed = !!overlay && target === overlay;
+      if (!closePressed && !backdropPressed) return;
+
+      const nav = window.__statArchiveNavigation;
+      if (nav?.state?.() !== "child" || nav?.child?.() !== "about") return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      history.back();
+    }, true);
   }
 
   function readCache() {
@@ -271,12 +406,19 @@ body[data-theme="light"] button.entry-subject-more-btn:focus-visible{
 
   function init() {
     installStyles();
+    normalizeCloseGlyphs();
     beginSummaryCoordination();
   }
+
+  /* Install navigation capture immediately; it does not depend on the About
+     element existing yet because it resolves the target at click time. */
+  installAboutCloseNavigation();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init, { once:true });
   } else {
     init();
   }
+
+  window.addEventListener("pageshow", normalizeCloseGlyphs);
 })();
