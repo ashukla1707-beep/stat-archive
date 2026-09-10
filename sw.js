@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-startup-polish-v1";
+const CACHE = "stat-archive-shell-v20260910-web-apk-menu-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -32,12 +32,12 @@ const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=2
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
-const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-3"></script>';
+const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-5"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-15"></script>';
 const SCROLL_LOCK_COORDINATOR_TAG = '<script src="./assets/js/scroll-lock-coordinator.js?v=20260910-2"></script>';
-const OFFLINE_HANDOFF_TAG = '<script src="./assets/js/offline-library-handoff.js?v=20260910-1"></script>';
-const STARTUP_POLISH_TAG = '<script data-stat-startup-polish="1" src="./assets/js/startup-polish.js?v=20260910-1"></script>';
+const OFFLINE_HANDOFF_TAG = '<script src="./assets/js/offline-library-handoff.js?v=20260910-3"></script>';
+const STARTUP_POLISH_TAG = '<script data-stat-startup-polish="1" src="./assets/js/startup-polish.js?v=20260910-2"></script>';
 
 function decorateNavigationHtml(html) {
   let out = html;
@@ -276,6 +276,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/action-spacing-fix.js') ||
     url.pathname.endsWith('/assets/js/tooltips.js') ||
     url.pathname.endsWith('/assets/js/service-worker-register.js') ||
+    url.pathname.endsWith('/assets/js/accessibility.js') ||
     url.pathname.endsWith('/assets/js/menu-polish.js') ||
     url.pathname.endsWith('/assets/js/menu-alignment-fix.js') ||
     url.pathname.endsWith('/assets/js/menu-header-reference.js') ||
