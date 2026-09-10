@@ -88,3 +88,117 @@ html body .card .card-actions .action-btn{
     window.location.replace(href);
   }, true);
 })();
+
+/* =========================================================
+   DETERMINISTIC MENU CLOSE
+
+   After returning from a standalone Manual page, older Menu history code can
+   leave two adjacent Menu entries. A normal single history.back() therefore
+   closes the panel, lands on another Menu entry and reopens it a moment later.
+
+   Capture the close action at window level (before the document navigation
+   handlers), close the visual panel immediately, then keep stepping Back only
+   while the destination is still logically a Menu entry. Stop as soon as Home
+   is reached. This preserves the normal one-level Home -> Menu -> Home flow and
+   also cleans an already-existing duplicate Menu row without a second tap.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__STAT_ARCHIVE_MENU_CLOSE_SETTLER_V1__) return;
+  window.__STAT_ARCHIVE_MENU_CLOSE_SETTLER_V1__ = true;
+
+  let settling = false;
+  let backAttempts = 0;
+  let settleTimer = 0;
+
+  function isMenuState() {
+    try {
+      if (history.state?.statArchiveNav === "menu") return true;
+      return new URL(location.href).searchParams.get("menu") === "1";
+    } catch (_) {
+      return history.state?.statArchiveNav === "menu";
+    }
+  }
+
+  function closeMenuVisuals() {
+    const menu = document.getElementById("mainSideMenu");
+    const backdrop = document.getElementById("mainMenuBackdrop");
+    const button = document.getElementById("mainMenuBtn");
+
+    menu?.classList.remove("is-open");
+    backdrop?.classList.remove("is-open");
+    menu?.setAttribute("aria-hidden", "true");
+    backdrop?.setAttribute("aria-hidden", "true");
+    button?.setAttribute("aria-expanded", "false");
+  }
+
+  function releaseMenuLock() {
+    try { window.__statArchiveNavigation?.releaseMenuScrollLock?.(); } catch (_) {}
+
+    if (!document.body) return;
+    if (history.state?.statArchiveNav === "menu") return;
+
+    delete document.body.dataset.statMenuLocked;
+    document.documentElement.classList.remove("stat-menu-scroll-locked");
+    document.body.classList.remove("stat-menu-scroll-locked");
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+  }
+
+  function settle() {
+    clearTimeout(settleTimer);
+    closeMenuVisuals();
+
+    if (isMenuState() && backAttempts < 3) {
+      backAttempts += 1;
+      history.back();
+      settleTimer = window.setTimeout(settle, 90);
+      return;
+    }
+
+    settling = false;
+    backAttempts = 0;
+    releaseMenuLock();
+    requestAnimationFrame(() => {
+      closeMenuVisuals();
+      releaseMenuLock();
+    });
+  }
+
+  window.addEventListener("click", event => {
+    if (settling) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const menu = document.getElementById("mainSideMenu");
+    if (!menu?.classList.contains("is-open")) return;
+
+    if (!target.closest("#mainMenuCloseBtn") && !target.closest("#mainMenuBackdrop")) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    settling = true;
+    backAttempts = 0;
+    closeMenuVisuals();
+
+    if (isMenuState()) {
+      backAttempts = 1;
+      history.back();
+      settleTimer = window.setTimeout(settle, 90);
+    } else {
+      settle();
+    }
+  }, true);
+
+  window.addEventListener("popstate", () => {
+    if (!settling) return;
+    clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(settle, 0);
+  });
+})();
