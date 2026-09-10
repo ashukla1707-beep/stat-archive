@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-menu-header-v3";
+const CACHE = "stat-archive-shell-v20260910-startup-navigation-fix-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -80,9 +80,14 @@ function decorateNavigationHtml(html) {
   return out;
 }
 
-async function normalizeSameOriginResponse(response, url, isNavigation) {
+function isAppShellNavigation(url) {
+  const path = url.pathname || "/";
+  return path.endsWith("/") || path.endsWith("/index.html");
+}
+
+async function normalizeSameOriginResponse(response, url, isAppNavigation) {
   if (!response || !response.ok) return response;
-  if (isNavigation) {
+  if (isAppNavigation) {
     const html = await response.text();
     return new Response(decorateNavigationHtml(html), {
       status: response.status,
@@ -110,8 +115,8 @@ self.addEventListener('install', event => {
         const response = await fetch(request);
         if (!response || !response.ok) return;
         const url = new URL(request.url);
-        const isNavigation = asset === './' || asset === './index.html';
-        const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
+        const isAppNavigation = asset === './' || asset === './index.html';
+        const finalResponse = await normalizeSameOriginResponse(response, url, isAppNavigation);
         await cache.put(request, finalResponse.clone());
       } catch (_) {}
     }));
@@ -129,52 +134,41 @@ self.addEventListener('activate', event => {
   })());
 });
 
-async function updateSameOriginInBackground(request, url, isNavigation) {
+async function updateSameOriginInBackground(request, url, isAppNavigation) {
   try {
     const response = await fetch(request);
     if (!response || !response.ok) return;
-    const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
+    const finalResponse = await normalizeSameOriginResponse(response, url, isAppNavigation);
     const cache = await caches.open(CACHE);
     await cache.put(request, finalResponse.clone());
   } catch (_) {}
 }
 
-async function serveAppShellFast(request, url, isNavigation, event) {
+/*
+ * Cold app launches must paint from the installed shell immediately. The old
+ * network-first navigation waited for the network before returning any HTML,
+ * which left the Android/PWA window completely black for several seconds.
+ * Serve the cached page first and refresh it in the background instead.
+ */
+async function serveAppShellFast(request, url, isAppNavigation, event) {
   const cache = await caches.open(CACHE);
   let cached = await cache.match(request);
-  if (!cached && isNavigation) {
+  if (!cached && isAppNavigation) {
     cached = (await cache.match('./index.html')) || (await cache.match('./'));
   }
   if (cached) {
-    event.waitUntil(updateSameOriginInBackground(request, url, isNavigation));
+    event.waitUntil(updateSameOriginInBackground(request, url, isAppNavigation));
     return cached;
   }
   try {
     const response = await fetch(request);
     if (!response || !response.ok) return response;
-    const finalResponse = await normalizeSameOriginResponse(response, url, isNavigation);
+    const finalResponse = await normalizeSameOriginResponse(response, url, isAppNavigation);
     cache.put(request, finalResponse.clone()).catch(() => {});
     return finalResponse;
   } catch (_) {
     return Response.error();
   }
-}
-
-async function serveNavigationNetworkFirst(request, url) {
-  const cache = await caches.open(CACHE);
-  try {
-    const freshRequest = new Request(request, { cache: 'no-store' });
-    const response = await fetch(freshRequest);
-    if (response && response.ok) {
-      const finalResponse = await normalizeSameOriginResponse(response, url, true);
-      cache.put(request, finalResponse.clone()).catch(() => {});
-      return finalResponse;
-    }
-  } catch (_) {}
-  return (await cache.match(request)) ||
-    (await cache.match('./index.html')) ||
-    (await cache.match('./')) ||
-    Response.error();
 }
 
 async function serveRuntimeNetworkFirst(request) {
@@ -229,9 +223,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  const isNavigation = request.mode === 'navigate' || url.pathname.endsWith('/index.html');
-  if (isNavigation) {
-    event.respondWith(serveNavigationNetworkFirst(request, url));
+  const isDocumentNavigation = request.mode === 'navigate';
+  const isAppNavigation = isDocumentNavigation && isAppShellNavigation(url);
+
+  if (isAppNavigation) {
+    event.respondWith(serveAppShellFast(request, url, true, event));
+    return;
+  }
+
+  /* Standalone documents such as manuals must stay standalone. Previously all
+     navigation HTML was passed through decorateNavigationHtml(), which injected
+     the main Stat Archive runtime into reader.html/contributor.html. */
+  if (isDocumentNavigation) {
+    event.respondWith(serveAppShellFast(request, url, false, event));
     return;
   }
 
