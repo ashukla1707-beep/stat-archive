@@ -19,7 +19,7 @@
   let startupFallbackTimer = 0;
   let frameId = 0;
 
-  const HERO_DURATION = 3400;
+  const HERO_DURATION = 5200;
   const FALL_WINDOW = 0.18;
   const CURVE_X_MIN = 18;
   const CURVE_X_MAX = 502;
