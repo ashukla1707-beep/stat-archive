@@ -69,13 +69,12 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
   }
 
   function enableWebOfflineLibrary(){
-    const legacyBtn = document.getElementById('offlineLibraryBtn');
-    const menuBtn = document.getElementById('menuOfflineLibraryBtn');
-    document.querySelectorAll('.offline-btn').forEach(btn => {btn.style.removeProperty('display');btn.removeAttribute('aria-hidden');});
-    if (menuBtn && legacyBtn && !menuBtn.dataset.webOfflineBound) {
-      menuBtn.dataset.webOfflineBound = '1';
-      menuBtn.addEventListener('click', () => {try { window.statArchiveCloseMenu?.(); } catch (_) {} setTimeout(() => legacyBtn.click(), 70);});
-    }
+    /* offline-library-handoff.js owns Menu -> Offline Library navigation.
+       This layer only exposes the controls and refreshes their saved state. */
+    document.querySelectorAll('.offline-btn').forEach(btn => {
+      btn.style.removeProperty('display');
+      btn.removeAttribute('aria-hidden');
+    });
     try { if (typeof loadOfflineLibraryState === 'function') loadOfflineLibraryState(); } catch (_) {}
   }
 
