@@ -12,6 +12,17 @@
     "[role='dialog']"
   ];
 
+  /* runtime.js already owns keyboard trapping for these overlays. Keep this
+     accessibility layer responsible for the remaining dialogs only so one
+     key press cannot be processed by two independent close/trap handlers. */
+  const runtimeHandledIds = new Set([
+    "loginOverlay",
+    "contributorDisclaimerOverlay",
+    "overlay",
+    "previewOverlay",
+    "editEntryOverlay"
+  ]);
+
   let lastFocused = null;
   let activeModal = null;
 
@@ -79,7 +90,7 @@
 
   document.addEventListener("keydown", e => {
     const modal = findOpenModal();
-    if (!modal) return;
+    if (!modal || runtimeHandledIds.has(modal.id)) return;
 
     if (e.key === "Tab") {
       const items = focusables(modal);
@@ -93,6 +104,8 @@
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault(); last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      } else if (!modal.contains(document.activeElement)) {
         e.preventDefault(); first.focus();
       }
       return;
@@ -164,11 +177,105 @@
   syncModalFocus();
 })();
 
+/* Respect the platform's reduced-motion preference even though older mobile
+   overrides in styles.css force the probability animation with !important. */
+(() => {
+  if (document.getElementById("statArchiveReducedMotionFix")) return;
+  const style = document.createElement("style");
+  style.id = "statArchiveReducedMotionFix";
+  style.textContent = `
+@media (prefers-reduced-motion: reduce){
+  .gaussian-curve{
+    animation:none !important;
+    transition:none !important;
+    stroke-dasharray:none !important;
+    stroke-dashoffset:0 !important;
+    opacity:1 !important;
+  }
+  .data-dot{
+    animation:none !important;
+    transition:none !important;
+    opacity:.95 !important;
+    transform:translateY(var(--fall)) !important;
+  }
+}
+`;
+  document.head.appendChild(style);
+})();
+
+/* Preserve the canonical navigation keys when setLevelUI updates ?level=.
+   The legacy implementation replaced history.state with {level} and could
+   erase Menu/child state during a cross-tab level change. */
+(() => {
+  const originalSetLevelUI = window.setLevelUI;
+  if (typeof originalSetLevelUI !== "function" || originalSetLevelUI.__saStateMergeWrapped) return;
+
+  const wrapped = function(level) {
+    const previous = history.state && typeof history.state === "object"
+      ? { ...history.state }
+      : {};
+    const result = originalSetLevelUI.call(this, level);
+    try {
+      const current = history.state && typeof history.state === "object"
+        ? history.state
+        : {};
+      history.replaceState({ ...previous, ...current }, "", window.location.href);
+    } catch (_) {}
+    return result;
+  };
+
+  wrapped.__saStateMergeWrapped = true;
+  wrapped.__saOriginal = originalSetLevelUI;
+  window.setLevelUI = wrapped;
+})();
+
+/* Revoke non-PDF Preview Blob URLs when the image is replaced/closed. The PDF
+   engine owns its own Blob URLs; this tracker only observes blob: image srcs
+   inside previewBody. */
+(() => {
+  const previewBody = document.getElementById("previewBody");
+  if (!previewBody || previewBody.dataset.saBlobCleanup === "1") return;
+  previewBody.dataset.saBlobCleanup = "1";
+
+  const tracked = new Set();
+  const sync = () => {
+    const live = new Set(
+      [...previewBody.querySelectorAll('img[src^="blob:"]')]
+        .map(img => img.src)
+        .filter(Boolean)
+    );
+
+    for (const url of tracked) {
+      if (!live.has(url)) {
+        try { URL.revokeObjectURL(url); } catch (_) {}
+        tracked.delete(url);
+      }
+    }
+    for (const url of live) tracked.add(url);
+  };
+
+  new MutationObserver(sync).observe(previewBody, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["src"]
+  });
+  sync();
+
+  window.addEventListener("pagehide", () => {
+    for (const url of tracked) {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }
+    tracked.clear();
+  }, { once: true });
+})();
+
 /* Load feature polish last, after archive data/filter/menu scripts exist. */
 (() => {
+  if (window.__statArchiveFeaturePolishLoadedV2) return;
   if (document.querySelector('script[data-stat-feature-polish]')) return;
   const script = document.createElement('script');
-  script.src = 'assets/js/feature-polish.js?v=20260901-3';
+  script.src = 'assets/js/feature-polish.js?v=20260910-bugfix-1';
   script.dataset.statFeaturePolish = '1';
   script.async = false;
   document.body.appendChild(script);
@@ -246,6 +353,9 @@
       })
       .catch(() => {});
   }
+
+  if (menuButton.dataset.saOfflineVisualBound === "1") return;
+  menuButton.dataset.saOfflineVisualBound = "1";
 
   menuButton.addEventListener("click", event => {
     event.preventDefault();
