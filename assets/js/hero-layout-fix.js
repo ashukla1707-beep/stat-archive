@@ -57,25 +57,22 @@ html body .card .card-actions .action-btn{
 })();
 
 /* =========================================================
-   MANUAL -> HOME HISTORY FLOW
+   MANUAL -> HOME HISTORY FLOW v3
 
-   A Manual is opened from inside Menu -> chooser, but the user-facing Back
-   destination is Home. Before navigating to the standalone Manual page, walk
-   the app history back to its Home entry. Navigating to the Manual from there
-   discards the forward Menu/chooser rows, producing a clean Home -> Manual
-   stack. Both the Manual's visible Back button and Android/system Back then
-   return directly to Home.
+   The chooser itself is a Menu child. Older code tried to walk backward
+   through Menu history before opening the standalone Manual. On normal web,
+   other popstate/Menu restorers could win that race and leave the user back
+   at Menu instead of navigating.
+
+   Make the current chooser entry Home in-place, then navigate to Manual.
+   This is synchronous, creates no popstate race, and produces the required
+   Manual -> Back -> Home behavior.
    ========================================================= */
 (() => {
   "use strict";
 
   if (window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V2__) return;
-  window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V2__ = true;
-
-  let pendingHref = "";
-  let movingToHome = false;
-  let attempts = 0;
-  let fallbackTimer = 0;
+  window.__STAT_ARCHIVE_MANUAL_CHOICE_NAV_V2__ = "3";
 
   function homeUrl() {
     const url = new URL(location.href);
@@ -83,72 +80,25 @@ html body .card .card-actions .action-btn{
     return url.href;
   }
 
-  function isHomeState() {
-    try {
-      const url = new URL(location.href);
-      const state = history.state?.statArchiveNav;
-      return url.searchParams.get("menu") !== "1" && (state === "home" || !state);
-    } catch (_) {
-      return history.state?.statArchiveNav === "home";
-    }
-  }
+  function normalizeCurrentEntryToHome() {
+    const next = { ...(history.state || {}), statArchiveNav:"home" };
+    delete next.statArchiveChild;
+    delete next.statArchiveMenuOpen;
 
-  function normalizeHomeState() {
     try {
-      const next = { ...(history.state || {}), statArchiveNav:"home" };
-      delete next.statArchiveChild;
-      delete next.statArchiveMenuOpen;
       history.replaceState(next, "", homeUrl());
-    } catch (_) {}
+    } catch (_) {
+      try { history.replaceState(next, "", location.href); } catch (_) {}
+    }
 
-    try { window.__statArchiveNavigation?.closeChildren?.(); } catch (_) {}
+    /* Do not hide the chooser before navigation. Keeping it visible prevents
+       any legacy child-close observer from seeing a disappearing child during
+       this transition. The standalone page navigation removes it naturally. */
     try { window.__statArchiveNavigation?.closeMenu?.(); } catch (_) {}
     try { window.__statArchiveNavigation?.releaseMenuScrollLock?.(); } catch (_) {}
   }
 
-  function finishAtHomeAndOpenManual() {
-    if (!movingToHome) return;
-
-    const href = pendingHref;
-    pendingHref = "";
-    movingToHome = false;
-    attempts = 0;
-    clearTimeout(fallbackTimer);
-
-    normalizeHomeState();
-    if (href) window.location.assign(href);
-  }
-
-  function continueToHome() {
-    if (!movingToHome) return;
-
-    if (isHomeState()) {
-      finishAtHomeAndOpenManual();
-      return;
-    }
-
-    if (attempts >= 5) {
-      /* Safety fallback for an old WebView history stack that has lost its
-         state object. Make the current app entry Home, then open Manual. */
-      normalizeHomeState();
-      finishAtHomeAndOpenManual();
-      return;
-    }
-
-    attempts += 1;
-    history.back();
-
-    clearTimeout(fallbackTimer);
-    fallbackTimer = window.setTimeout(() => {
-      if (!movingToHome) return;
-      if (isHomeState()) finishAtHomeAndOpenManual();
-      else continueToHome();
-    }, 350);
-  }
-
   document.addEventListener("click", event => {
-    if (movingToHome) return;
-
     const target = event.target instanceof Element ? event.target : null;
     const choice = target?.closest?.("#manualChooserOverlay [data-manual-href]");
     if (!choice) return;
@@ -159,20 +109,10 @@ html body .card .card-actions .action-btn{
     event.preventDefault();
     event.stopImmediatePropagation();
 
-    pendingHref = new URL(href, location.href).href;
-    movingToHome = true;
-    attempts = 0;
-
-    /* Keep the chooser visually present until Back starts. Its existing child
-       observer therefore cannot misread a manual selection as a closed child. */
-    continueToHome();
+    const destination = new URL(href, location.href).href;
+    normalizeCurrentEntryToHome();
+    window.location.assign(destination);
   }, true);
-
-  window.addEventListener("popstate", () => {
-    if (!movingToHome) return;
-    clearTimeout(fallbackTimer);
-    window.setTimeout(continueToHome, 0);
-  });
 })();
 
 /* =========================================================
