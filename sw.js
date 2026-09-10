@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260910-audit-bugfix-v1";
+const CACHE = "stat-archive-shell-v20260911-apk-cleanup-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -45,6 +45,11 @@ function decorateNavigationHtml(html) {
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for every batch.',
     'A focused academic archive of notes and books, curated specifically for University of Lucknow — organized by subject and kept useful for everyone.'
   );
+
+  /* Remove obsolete visible text at the HTML-shell level so Android WebView/PWA
+     cannot show stale copies even before runtime scripts execute. */
+  out = out.replace(/\s*<div\s+class=["']curve-note\s+note-one["']\s*>\s*MEAN\s*<\/div>/i, '');
+  out = out.replace(/\s*<div\s+id=["']permissionHint["'][^>]*>[\s\S]*?<\/div>/i, '');
 
   /* The source SVG historically contained its own SMIL clip-width animation,
      while hero-animation.js also drew the same curve. Remove the inline SMIL
