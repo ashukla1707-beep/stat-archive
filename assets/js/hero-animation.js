@@ -1,3 +1,13 @@
+/* Load the lightweight startup coordinator before the hero is armed. */
+(() => {
+  if (document.querySelector('script[data-stat-startup-polish]')) return;
+  const script = document.createElement('script');
+  script.src = 'assets/js/startup-polish.js?v=20260910-1';
+  script.dataset.statStartupPolish = '1';
+  script.async = false;
+  document.head.appendChild(script);
+})();
+
 (function () {
   "use strict";
 
@@ -9,6 +19,7 @@
 
   let started = false;
   let prepared = null;
+  let startupFallbackTimer = 0;
 
   function prepareHeroAnimation() {
     if (prepared) return prepared;
@@ -63,6 +74,7 @@
 
     const { curve, dots, revealRect, pathLength } = state;
     started = true;
+    clearTimeout(startupFallbackTimer);
 
     revealRect?.setAttribute("width", "520");
     document.getElementById("statHeroPreloadGuard")?.remove();
@@ -98,14 +110,28 @@
     }, 3800);
   }
 
-  function scheduleStart() {
-    setTimeout(startHeroAnimation, 250);
+  function queueStart() {
+    if (started) return;
+    clearTimeout(startupFallbackTimer);
+    window.setTimeout(startHeroAnimation, 90);
   }
 
-  if (document.readyState === "complete") {
-    scheduleStart();
+  function armStart() {
+    if (document.documentElement.dataset.statStartupReady === "1") {
+      queueStart();
+      return;
+    }
+
+    document.addEventListener("statarchive:startup-ready", queueStart, { once:true });
+
+    /* Never leave the graph frozen if the archive API is unavailable. */
+    startupFallbackTimer = window.setTimeout(queueStart, 3500);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", armStart, { once:true });
   } else {
-    window.addEventListener("load", scheduleStart, { once: true });
+    armStart();
   }
 
   /* =========================================================
