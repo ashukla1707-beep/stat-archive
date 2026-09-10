@@ -127,6 +127,8 @@ html body .header .hero-line .sub .hero-sub-lead,html body .header .hero-line .s
 html body .header .hero-line .sub,html body .header .hero-line .sub *{user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none!important;-webkit-tap-highlight-color:transparent!important}
 html body .header .hero-line .sub::selection,html body .header .hero-line .sub *::selection{background:transparent!important;color:inherit!important}
 html body .header .hero-line .sub::-moz-selection,html body .header .hero-line .sub *::-moz-selection{background:transparent!important;color:inherit!important}
+/* Hide obsolete hero annotation and archive permissions notice. */
+html body .header .curve-note.note-one,html body #permissionHint{display:none!important}
 /* Offline Library light-mode destructive action: must override generic light action styling. */
 body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,body[data-theme="light"] #offlineLibraryOverlay button[data-sa-delete-id]{color:#d94b5b!important;border-color:rgba(217,75,91,.38)!important;background:rgba(217,75,91,.075)!important}
 @media (min-width:1101px){html body .header .hero-copy{width:58%!important;max-width:850px!important;position:relative!important;z-index:3!important;transform:translateY(-18px)!important;overflow:visible!important}html body .header .hero-line{display:flex!important;align-items:flex-start!important;gap:14px!important;width:100%!important;margin-top:18px!important;padding:0!important;overflow:visible!important}html body .header .hero-line>span[aria-hidden="true"]{position:static!important;flex:0 0 44px!important;width:44px!important;min-width:44px!important;height:1px!important;margin:10px 0 0!important;padding:0!important;transform:none!important}html body .header .hero-line .sub{display:block!important;flex:1 1 auto!important;width:auto!important;max-width:none!important;min-width:0!important;height:auto!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;white-space:normal!important;font-size:13px!important;line-height:1.58!important;transform:none!important}html body .header .hero-sub-lead,html body .header .hero-sub-tail{display:block!important;position:static!important;line-height:1.58!important}html body .header .hero-sub-lead{white-space:nowrap!important}html body .header .hero-sub-tail{white-space:nowrap!important;margin-top:1px!important}}
@@ -136,7 +138,12 @@ body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,
     document.head.appendChild(style);
   }
 
-  function applyHeroFix() { repairHeroCopy(); installHeroLayout(); }
+  function applyHeroFix() {
+    repairHeroCopy();
+    installHeroLayout();
+    document.querySelector(".curve-note.note-one")?.remove();
+    document.getElementById("permissionHint")?.remove();
+  }
   applyHeroFix();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyHeroFix, { once:true });
   window.addEventListener("pageshow", applyHeroFix);
