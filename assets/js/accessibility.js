@@ -12,6 +12,16 @@
     "[role='dialog']"
   ];
 
+  /* runtime.js already owns keyboard trapping/escape behavior for these
+     overlays. Do not process the same key twice in two independent layers. */
+  const runtimeHandledIds = new Set([
+    "loginOverlay",
+    "contributorDisclaimerOverlay",
+    "overlay",
+    "previewOverlay",
+    "editEntryOverlay"
+  ]);
+
   let lastFocused = null;
   let activeModal = null;
 
@@ -79,7 +89,7 @@
 
   document.addEventListener("keydown", e => {
     const modal = findOpenModal();
-    if (!modal) return;
+    if (!modal || runtimeHandledIds.has(modal.id)) return;
 
     if (e.key === "Tab") {
       const items = focusables(modal);
@@ -93,6 +103,8 @@
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault(); last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      } else if (!modal.contains(document.activeElement)) {
         e.preventDefault(); first.focus();
       }
       return;
@@ -164,20 +176,112 @@
   syncModalFocus();
 })();
 
+/* Ensure reduced-motion is honored even though an older mobile rule forces
+   the probability animation with !important. Normal-motion visuals are not
+   changed. */
+(() => {
+  if (document.getElementById("statArchiveReducedMotionFix")) return;
+  const style = document.createElement("style");
+  style.id = "statArchiveReducedMotionFix";
+  style.textContent = `
+@media (prefers-reduced-motion: reduce){
+  .gaussian-curve{
+    animation:none !important;
+    transition:none !important;
+    stroke-dasharray:none !important;
+    stroke-dashoffset:0 !important;
+    opacity:1 !important;
+  }
+  .data-dot{
+    animation:none !important;
+    transition:none !important;
+    opacity:.95 !important;
+    transform:translateY(var(--fall)) !important;
+  }
+}
+`;
+  document.head.appendChild(style);
+})();
+
+/* Preserve navigation metadata when the M.Sc/B.Sc UI updates ?level=. The
+   original setLevelUI replaces history.state with only {level}. */
+(() => {
+  const originalSetLevelUI = window.setLevelUI;
+  if (typeof originalSetLevelUI !== "function" || originalSetLevelUI.__saStateMergeWrapped) return;
+
+  const wrapped = function(level) {
+    const previous = history.state && typeof history.state === "object"
+      ? { ...history.state }
+      : {};
+    const result = originalSetLevelUI.call(this, level);
+    try {
+      const current = history.state && typeof history.state === "object"
+        ? history.state
+        : {};
+      history.replaceState({ ...previous, ...current }, "", location.href);
+    } catch (_) {}
+    return result;
+  };
+
+  wrapped.__saStateMergeWrapped = true;
+  wrapped.__saOriginal = originalSetLevelUI;
+  window.setLevelUI = wrapped;
+})();
+
+/* preview.js creates Blob URLs for non-PDF image previews. Track only those
+   image URLs and revoke them as soon as the preview DOM stops using them. */
+(() => {
+  const previewBody = document.getElementById("previewBody");
+  if (!previewBody || previewBody.dataset.saBlobCleanup === "1") return;
+  previewBody.dataset.saBlobCleanup = "1";
+
+  const tracked = new Set();
+  const sync = () => {
+    const live = new Set(
+      [...previewBody.querySelectorAll('img[src^="blob:"]')]
+        .map(img => img.src)
+        .filter(Boolean)
+    );
+
+    for (const url of tracked) {
+      if (!live.has(url)) {
+        try { URL.revokeObjectURL(url); } catch (_) {}
+        tracked.delete(url);
+      }
+    }
+    for (const url of live) tracked.add(url);
+  };
+
+  new MutationObserver(sync).observe(previewBody, {
+    childList:true,
+    subtree:true,
+    attributes:true,
+    attributeFilter:["src"]
+  });
+  sync();
+
+  window.addEventListener("pagehide", () => {
+    for (const url of tracked) {
+      try { URL.revokeObjectURL(url); } catch (_) {}
+    }
+    tracked.clear();
+  }, { once:true });
+})();
+
 /*
  * Normal web and installed APK/PWA must use the same final Menu stack.
  *
- * The installed shell already contains these scripts because sw.js injects
- * them. A direct web load of index.html historically did not, which left web
- * on the legacy Menu markup and the old delayed Offline Library click path.
- * Wait for DOMContentLoaded, then load only the pieces that are genuinely
- * absent. On the installed shell every matching <script> already exists, so
- * this becomes a no-op and cannot create duplicate listeners.
+ * Keep correctness-sensitive modules ahead of feature-polish. speed-boost V3
+ * can safely unwrap an already-running V2 after a service-worker update, and
+ * search-suggestions establishes the canonical autocomplete before the legacy
+ * fallback in feature-polish initializes.
  */
 (() => {
   const runtime = [
+    "assets/js/speed-boost.js?v=20260910-bugfix-3",
     "assets/js/startup-polish.js?v=20260910-2",
-    "assets/js/feature-polish.js?v=20260905-7",
+    "assets/js/search-suggestions.js?v=20260910-bugfix-1",
+    "assets/js/feature-polish.js?v=20260910-bugfix-2",
     "assets/js/menu-polish.js?v=20260909-websync-1",
     "assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2",
     "assets/js/menu-header-reference.js?v=20260910-5",
@@ -255,11 +359,10 @@
 /* =========================================================
    OFFLINE LIBRARY — WEB + PWA ENABLEMENT
    The IndexedDB implementation already works in normal browsers/PWAs.
-   This block now owns only capability + count synchronization.
+   This block owns only capability + count synchronization.
 
-   Opening is intentionally NOT handled here anymore. The canonical
-   offline-library-handoff.js is shared by web and APK/PWA, so both surfaces
-   use exactly the same click, history and Menu-to-Library transition path.
+   Opening is intentionally handled by offline-library-handoff.js so web and
+   APK/PWA use the same click, history and Menu-to-Library transition path.
    ========================================================= */
 (() => {
   const menuButton = document.getElementById("menuOfflineLibraryBtn");
