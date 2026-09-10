@@ -1,11 +1,10 @@
 (function () {
   "use strict";
 
-  /* The hero file can be present in both the source HTML and a previously
-     decorated PWA shell. Keep one animation owner even if it is encountered
-     twice during a transition between cached versions. */
-  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V2__) return;
-  window.__STAT_ARCHIVE_HERO_ANIMATION_V2__ = true;
+  /* One animation owner. V3 replaces the old long staggered sequence with a
+     short path draw and a compact dot settle so the hero never feels laggy. */
+  if (window.__STAT_ARCHIVE_HERO_ANIMATION_V3__) return;
+  window.__STAT_ARCHIVE_HERO_ANIMATION_V3__ = true;
 
   let started = false;
   let prepared = null;
@@ -14,91 +13,141 @@
     if (prepared) return prepared;
 
     const curve = document.querySelector(".gaussian-curve");
-    const dots = document.querySelectorAll(".data-dot");
+    const dots = [...document.querySelectorAll(".data-dot")];
     const revealRect = document.getElementById("gaussianRevealRect");
 
     if (!curve) return null;
 
-    /* index.html historically contained a SMIL <animate> on the clip rect.
-       That animation started as soon as the SVG was parsed, then this script
-       reset the same curve and drew it again. End/remove any surviving SMIL
-       animation and fully open the clip before the single JS draw begins. */
+    /* Remove the older SVG reveal so it cannot compete with the JS animation. */
     revealRect?.querySelectorAll("animate").forEach(animation => {
       try { animation.endElement?.(); } catch (_) {}
       animation.remove();
     });
     revealRect?.setAttribute("width", "520");
 
+    let pathLength = 1000;
+    try {
+      const measured = curve.getTotalLength();
+      if (Number.isFinite(measured) && measured > 1) pathLength = Math.ceil(measured);
+    } catch (_) {}
+
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", "1", "important");
-    curve.style.setProperty("stroke-dashoffset", "1", "important");
+    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
+    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
     curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
       dot.style.setProperty("animation", "none", "important");
+      dot.style.setProperty("transition", "none", "important");
+      dot.style.setProperty("transform", "translateY(0)", "important");
+      dot.style.setProperty("opacity", "0", "important");
     });
 
-    prepared = { curve, dots, revealRect };
+    prepared = { curve, dots, revealRect, pathLength };
     return prepared;
   }
 
-  /* Run immediately when this script is parsed rather than waiting for the
-     load event. The service-worker shell also suppresses the old SMIL reveal
-     before parsing, so there is no first animation to race this preparation. */
+  function finishHeroImmediately(state) {
+    const { curve, dots, revealRect } = state;
+    revealRect?.setAttribute("width", "520");
+    curve.style.setProperty("animation", "none", "important");
+    curve.style.setProperty("transition", "none", "important");
+    curve.style.setProperty("stroke-dasharray", "none", "important");
+    curve.style.setProperty("stroke-dashoffset", "0", "important");
+    curve.style.setProperty("opacity", "1", "important");
+
+    dots.forEach(dot => {
+      const fall = dot.style.getPropertyValue("--fall").trim() || "0px";
+      dot.style.setProperty("animation", "none", "important");
+      dot.style.setProperty("transition", "none", "important");
+      dot.style.setProperty("transform", `translateY(${fall})`, "important");
+      dot.style.setProperty("opacity", ".95", "important");
+    });
+  }
+
+  /* Prepare as early as possible so the stylesheet's old dot delays never get
+     a chance to become the visible animation. */
   prepareHeroAnimation();
 
   function startHeroAnimation() {
     if (started) return;
 
     const state = prepareHeroAnimation();
-    if (!state) return;
+    if (!state) {
+      window.setTimeout(startHeroAnimation, 50);
+      return;
+    }
 
-    const { curve, dots, revealRect } = state;
     started = true;
+    const { curve, dots, revealRect, pathLength } = state;
 
     revealRect?.setAttribute("width", "520");
     document.getElementById("statHeroPreloadGuard")?.remove();
 
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduceMotion) {
+      finishHeroImmediately(state);
+      return;
+    }
+
     curve.style.setProperty("animation", "none", "important");
     curve.style.setProperty("transition", "none", "important");
-    curve.style.setProperty("stroke-dasharray", "1", "important");
-    curve.style.setProperty("stroke-dashoffset", "1", "important");
+    curve.style.setProperty("stroke-dasharray", `${pathLength} ${pathLength}`, "important");
+    curve.style.setProperty("stroke-dashoffset", String(pathLength), "important");
     curve.style.setProperty("opacity", "1", "important");
 
     dots.forEach(dot => {
       dot.style.setProperty("animation", "none", "important");
+      dot.style.setProperty("transition", "none", "important");
+      dot.style.setProperty("transform", "translateY(0)", "important");
+      dot.style.setProperty("opacity", "0", "important");
     });
 
+    /* Force only one initial layout read, then let the compositor handle the
+       whole sequence. */
     void curve.getBoundingClientRect();
 
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        curve.style.setProperty(
-          "transition",
-          "stroke-dashoffset 3.4s cubic-bezier(.22,.61,.36,1)",
-          "important"
-        );
-        curve.style.setProperty("stroke-dashoffset", "0", "important");
-        dots.forEach(dot => dot.style.removeProperty("animation"));
+      curve.style.setProperty(
+        "transition",
+        "stroke-dashoffset 1.25s cubic-bezier(.22,.61,.36,1)",
+        "important"
+      );
+      curve.style.setProperty("stroke-dashoffset", "0", "important");
+
+      /* Dots finish in well under a second instead of continuing for 3s+. */
+      dots.forEach((dot, index) => {
+        const fall = dot.style.getPropertyValue("--fall").trim() || "0px";
+        window.setTimeout(() => {
+          dot.style.setProperty(
+            "transition",
+            "transform .34s cubic-bezier(.22,.61,.36,1), opacity .20s ease-out",
+            "important"
+          );
+          dot.style.setProperty("transform", `translateY(${fall})`, "important");
+          dot.style.setProperty("opacity", ".95", "important");
+        }, 230 + index * 35);
       });
     });
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       curve.style.setProperty("transition", "none", "important");
       curve.style.setProperty("stroke-dasharray", "none", "important");
       curve.style.setProperty("stroke-dashoffset", "0", "important");
-    }, 3800);
+      dots.forEach(dot => dot.style.setProperty("transition", "none", "important"));
+    }, 1450);
   }
 
   function scheduleStart() {
-    setTimeout(startHeroAnimation, 250);
+    window.setTimeout(startHeroAnimation, 60);
   }
 
-  if (document.readyState === "complete") {
-    scheduleStart();
+  /* Do not wait for window.load: network/font work should never delay the hero. */
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scheduleStart, { once: true });
   } else {
-    window.addEventListener("load", scheduleStart, { once: true });
+    scheduleStart();
   }
 
   /* =========================================================
