@@ -216,78 +216,8 @@ html body #summaryAccess{
   });
 })();
 
-/* =========================================================
-   MEAN SYMBOL — exactly centred below the SVG x-axis
-   ========================================================= */
-(() => {
-  "use strict";
-
-  function installMeanSymbol() {
-    const hero = document.querySelector(".hero-probability");
-    const svg = hero?.querySelector(".probability-svg");
-    const label = hero?.querySelector(".axis-mid");
-    if (!hero || !svg || !label) return;
-
-    hero.querySelector("#statArchiveMeanSymbol")?.remove();
-
-    const heroRect = hero.getBoundingClientRect();
-    const ctm = svg.getScreenCTM?.();
-    let x = heroRect.width / 2;
-    let y = heroRect.height - 16;
-
-    if (ctm) {
-      const point = svg.createSVGPoint();
-      point.x = 260;
-      point.y = 258;
-      const screenPoint = point.matrixTransform(ctm);
-      x = screenPoint.x - heroRect.left;
-      y = screenPoint.y - heroRect.top;
-    }
-
-    const isLight = document.body?.dataset.theme === "light";
-    label.textContent = "μ";
-    label.style.setProperty("display", "block", "important");
-    label.style.setProperty("position", "absolute", "important");
-    label.style.setProperty("left", `${x}px`, "important");
-    label.style.setProperty("top", `${y + 3}px`, "important");
-    label.style.setProperty("bottom", "auto", "important");
-    label.style.setProperty("transform", "translateX(-50%)", "important");
-    label.style.setProperty("z-index", "8", "important");
-    label.style.setProperty("width", "auto", "important");
-    label.style.setProperty("height", "auto", "important");
-    label.style.setProperty("font-family", "Arial, Helvetica, sans-serif", "important");
-    label.style.setProperty("font-size", "14px", "important");
-    label.style.setProperty("font-style", "normal", "important");
-    label.style.setProperty("font-weight", "500", "important");
-    label.style.setProperty("line-height", "1", "important");
-    label.style.setProperty("letter-spacing", "0", "important");
-    label.style.setProperty("color", isLight ? "#2f8f5b" : "#5ee7f7", "important");
-    label.style.setProperty("opacity", "1", "important");
-    label.style.setProperty("visibility", "visible", "important");
-    label.style.setProperty("pointer-events", "none", "important");
-  }
-
-  function run() {
-    installMeanSymbol();
-    requestAnimationFrame(installMeanSymbol);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", run, { once:true });
-  } else {
-    run();
-  }
-
-  window.addEventListener("load", run, { once:true });
-  window.addEventListener("pageshow", run);
-  window.addEventListener("resize", run);
-  document.addEventListener("statarchive:startup-ready", run);
-  document.addEventListener("statarchive:theme-change", run);
-
-  const themeObserver = new MutationObserver(run);
-  function observeTheme() {
-    if (document.body) themeObserver.observe(document.body, { attributes:true, attributeFilter:["data-theme"] });
-  }
-  if (document.body) observeTheme();
-  else document.addEventListener("DOMContentLoaded", observeTheme, { once:true });
-})();
+/*
+  The hero μ is intentionally styled and positioned only in hero-animation.js.
+  Keeping a single owner prevents web, APK, desktop-mode, and mobile layouts
+  from applying different font sizes or offsets to the same Greek symbol.
+*/
