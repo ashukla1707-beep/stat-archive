@@ -39,6 +39,17 @@ html body #summaryAccess{
   line-height:1.08 !important;
 }
 
+/* One mu size everywhere: browser, raw HTML, desktop-mode and APK/PWA. */
+html body .header .hero-probability .axis-mid,
+html.stat-archive-pwa body .header .hero-probability .axis-mid{
+  font-family:Arial,Helvetica,sans-serif !important;
+  font-size:14px !important;
+  font-style:normal !important;
+  font-weight:500 !important;
+  line-height:1 !important;
+  letter-spacing:0 !important;
+}
+
 @media(max-width:700px){
   html body .card .card-actions{
     grid-template-columns:repeat(3,minmax(0,1fr)) !important;
@@ -51,6 +62,10 @@ html body #summaryAccess{
   }
   html body #summaryAccess{
     font-size:16px !important;
+  }
+  html body .header .hero-probability .axis-mid,
+  html.stat-archive-pwa body .header .hero-probability .axis-mid{
+    font-size:14px !important;
   }
 }
 `;
@@ -217,7 +232,7 @@ html body #summaryAccess{
 })();
 
 /*
-  The hero μ is intentionally styled and positioned only in hero-animation.js.
-  Keeping a single owner prevents web, APK, desktop-mode, and mobile layouts
-  from applying different font sizes or offsets to the same Greek symbol.
+  hero-animation.js owns the mu position and theme colour. This file also
+  enforces the same 14px font in APK/PWA so older responsive CSS cannot make
+  the symbol smaller than the web/HTML version.
 */
