@@ -141,6 +141,49 @@
     sub.innerHTML = '<span class="hero-sub-lead">A focused academic archive of notes and books, curated specifically for University of Lucknow</span>' + '<span class="hero-sub-tail"> — organized by subject and kept useful for everyone.</span>';
   }
 
+  function positionMeanSymbol() {
+    const hero = document.querySelector(".hero-probability");
+    const svg = hero?.querySelector(".probability-svg");
+    const label = hero?.querySelector(".axis-mid");
+    if (!hero || !svg || !label) return;
+
+    const heroRect = hero.getBoundingClientRect();
+    const ctm = svg.getScreenCTM?.();
+    if (!ctm) return;
+
+    const point = svg.createSVGPoint();
+    point.x = 260;
+    point.y = 258;
+    const screenPoint = point.matrixTransform(ctm);
+    const x = screenPoint.x - heroRect.left;
+    const y = screenPoint.y - heroRect.top;
+    const isLight = document.body?.dataset.theme === "light";
+
+    label.textContent = "μ";
+    label.style.setProperty("display", "block", "important");
+    label.style.setProperty("visibility", "visible", "important");
+    label.style.setProperty("opacity", "1", "important");
+    label.style.setProperty("position", "absolute", "important");
+    label.style.setProperty("left", `${x}px`, "important");
+    label.style.setProperty("top", `${y + 2}px`, "important");
+    label.style.setProperty("right", "auto", "important");
+    label.style.setProperty("bottom", "auto", "important");
+    label.style.setProperty("transform", "translateX(-50%)", "important");
+    label.style.setProperty("z-index", "20", "important");
+    label.style.setProperty("width", "auto", "important");
+    label.style.setProperty("height", "auto", "important");
+    label.style.setProperty("margin", "0", "important");
+    label.style.setProperty("padding", "0", "important");
+    label.style.setProperty("font-family", "Arial, Helvetica, sans-serif", "important");
+    label.style.setProperty("font-size", "14px", "important");
+    label.style.setProperty("font-style", "normal", "important");
+    label.style.setProperty("font-weight", "500", "important");
+    label.style.setProperty("line-height", "1", "important");
+    label.style.setProperty("letter-spacing", "0", "important");
+    label.style.setProperty("color", isLight ? "#2f8f5b" : "#5ee7f7", "important");
+    label.style.setProperty("pointer-events", "none", "important");
+  }
+
   function installHeroLayout() {
     document.getElementById("statArchiveDirectHeroFix")?.remove();
     const style = document.createElement("style");
@@ -151,7 +194,7 @@ html body .header .hero-line .sub,html body .header .hero-line .sub *{user-selec
 html body .header .hero-line .sub::selection,html body .header .hero-line .sub *::selection{background:transparent!important;color:inherit!important}
 html body .header .hero-line .sub::-moz-selection,html body .header .hero-line .sub *::-moz-selection{background:transparent!important;color:inherit!important}
 html body .header .curve-note.note-one,html body #permissionHint{display:none!important}
-html body .header .hero-probability .axis-mid{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;left:50%!important;bottom:2px!important;transform:translateX(-50%)!important;width:auto!important;height:auto!important;z-index:8!important;font-family:Arial,Helvetica,sans-serif!important;font-size:14px!important;font-style:normal!important;font-weight:500!important;line-height:1!important;letter-spacing:0!important;color:#5ee7f7!important}
+html body .header .hero-probability .axis-mid{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;width:auto!important;height:auto!important;z-index:20!important;font-family:Arial,Helvetica,sans-serif!important;font-size:14px!important;font-style:normal!important;font-weight:500!important;line-height:1!important;letter-spacing:0!important;color:#5ee7f7!important}
 html body[data-theme="light"] .header .hero-probability .axis-mid{color:#2f8f5b!important}
 body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,body[data-theme="light"] #offlineLibraryOverlay button[data-sa-delete-id]{color:#d94b5b!important;border-color:rgba(217,75,91,.38)!important;background:rgba(217,75,91,.075)!important}
 @media (min-width:1101px){html body .header .hero-copy{width:58%!important;max-width:850px!important;position:relative!important;z-index:3!important;transform:translateY(-18px)!important;overflow:visible!important}html body .header .hero-line{display:flex!important;align-items:flex-start!important;gap:14px!important;width:100%!important;margin-top:18px!important;padding:0!important;overflow:visible!important}html body .header .hero-line>span[aria-hidden="true"]{position:static!important;flex:0 0 44px!important;width:44px!important;min-width:44px!important;height:1px!important;margin:10px 0 0!important;padding:0!important;transform:none!important}html body .header .hero-line .sub{display:block!important;flex:1 1 auto!important;width:auto!important;max-width:none!important;min-width:0!important;height:auto!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;white-space:normal!important;font-size:13px!important;line-height:1.58!important;transform:none!important}html body .header .hero-sub-lead,html body .header .hero-sub-tail{display:block!important;position:static!important;line-height:1.58!important}html body .header .hero-sub-lead{white-space:nowrap!important}html body .header .hero-sub-tail{white-space:nowrap!important;margin-top:1px!important}}
@@ -164,12 +207,18 @@ body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,
   function applyHeroFix() {
     repairHeroCopy();
     installHeroLayout();
+    positionMeanSymbol();
+    requestAnimationFrame(positionMeanSymbol);
     document.querySelector(".curve-note.note-one")?.remove();
     document.getElementById("permissionHint")?.remove();
   }
   applyHeroFix();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyHeroFix, { once:true });
+  window.addEventListener("load", positionMeanSymbol, { once:true });
   window.addEventListener("pageshow", applyHeroFix);
+  window.addEventListener("resize", () => requestAnimationFrame(positionMeanSymbol));
+  document.addEventListener("statarchive:startup-ready", () => requestAnimationFrame(positionMeanSymbol));
+  document.addEventListener("statarchive:theme-change", positionMeanSymbol);
 })();
 
 (() => {
