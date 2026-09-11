@@ -217,7 +217,7 @@ html body #summaryAccess{
 })();
 
 /* =========================================================
-   MEAN SYMBOL — upright mu attached to the dotted line
+   MEAN SYMBOL — upright mu below the dotted baseline
    ========================================================= */
 (() => {
   "use strict";
@@ -234,12 +234,13 @@ html body #summaryAccess{
       symbol.id = "statArchiveMeanSymbol";
       symbol.textContent = "μ";
       symbol.setAttribute("x", "260");
-      symbol.setAttribute("y", "281");
       symbol.setAttribute("text-anchor", "middle");
       symbol.setAttribute("aria-hidden", "true");
       svg.appendChild(symbol);
     }
 
+    /* Baseline is y=258. Keep the complete mu visibly below it on web layouts. */
+    symbol.setAttribute("y", "286");
     const isLight = document.body?.dataset.theme === "light";
     symbol.setAttribute("fill", isLight ? "#2f8f5b" : "#5ee7f7");
     symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
