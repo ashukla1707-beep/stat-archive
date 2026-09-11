@@ -217,36 +217,37 @@ html body #summaryAccess{
 })();
 
 /* =========================================================
-   MEAN SYMBOL — upright mu below the dotted baseline
+   MEAN SYMBOL — visible CSS label below dotted baseline
    ========================================================= */
 (() => {
   "use strict";
 
   function installMeanSymbol() {
-    const svg = document.querySelector(".hero-probability .probability-svg");
-    if (!svg) return;
+    const hero = document.querySelector(".hero-probability");
+    const label = hero?.querySelector(".axis-mid");
+    if (!hero || !label) return;
 
-    document.querySelector(".hero-probability .axis-mid")?.style.setProperty("display", "none", "important");
+    hero.querySelector("#statArchiveMeanSymbol")?.remove();
 
-    let symbol = svg.querySelector("#statArchiveMeanSymbol");
-    if (!symbol) {
-      symbol = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      symbol.id = "statArchiveMeanSymbol";
-      symbol.textContent = "μ";
-      symbol.setAttribute("x", "260");
-      symbol.setAttribute("text-anchor", "middle");
-      symbol.setAttribute("aria-hidden", "true");
-      svg.appendChild(symbol);
-    }
-
-    /* Baseline is y=258. Keep the complete mu visibly below it on web layouts. */
-    symbol.setAttribute("y", "286");
     const isLight = document.body?.dataset.theme === "light";
-    symbol.setAttribute("fill", isLight ? "#2f8f5b" : "#5ee7f7");
-    symbol.setAttribute("font-family", "Arial, Helvetica, sans-serif");
-    symbol.setAttribute("font-size", "22");
-    symbol.setAttribute("font-style", "normal");
-    symbol.setAttribute("font-weight", "500");
+    label.textContent = "μ";
+    label.style.setProperty("display", "block", "important");
+    label.style.setProperty("position", "absolute", "important");
+    label.style.setProperty("left", "50%", "important");
+    label.style.setProperty("bottom", "2px", "important");
+    label.style.setProperty("transform", "translateX(-50%)", "important");
+    label.style.setProperty("z-index", "6", "important");
+    label.style.setProperty("width", "auto", "important");
+    label.style.setProperty("height", "auto", "important");
+    label.style.setProperty("font-family", "Arial, Helvetica, sans-serif", "important");
+    label.style.setProperty("font-size", "14px", "important");
+    label.style.setProperty("font-style", "normal", "important");
+    label.style.setProperty("font-weight", "500", "important");
+    label.style.setProperty("line-height", "1", "important");
+    label.style.setProperty("letter-spacing", "0", "important");
+    label.style.setProperty("color", isLight ? "#2f8f5b" : "#5ee7f7", "important");
+    label.style.setProperty("opacity", "1", "important");
+    label.style.setProperty("visibility", "visible", "important");
   }
 
   function run() {
@@ -261,6 +262,7 @@ html body #summaryAccess{
   }
 
   window.addEventListener("pageshow", run);
+  window.addEventListener("resize", run);
   document.addEventListener("statarchive:theme-change", run);
 
   const themeObserver = new MutationObserver(run);
