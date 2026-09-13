@@ -1,6 +1,6 @@
 (() => {
-  if (window.__statArchiveSearchSuggestionsLoadedV4) return;
-  window.__statArchiveSearchSuggestionsLoadedV4 = true;
+  if (window.__statArchiveSearchSuggestionsLoadedV5) return;
+  window.__statArchiveSearchSuggestionsLoadedV5 = true;
 
   const esc = value => String(value ?? "").replace(/[&<>"]/g, ch => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
@@ -28,6 +28,22 @@
     return [];
   }
 
+  function dataSubjects() {
+    try {
+      if (typeof subjects !== "undefined" && Array.isArray(subjects)) return subjects;
+    } catch (_) {}
+    try {
+      if (Array.isArray(window.subjects)) return window.subjects;
+    } catch (_) {}
+    const seen = new Map();
+    dataEntries().forEach(entry => {
+      const code = String(entry?.subject || "").trim();
+      if (!code || seen.has(code)) return;
+      seen.set(code, { code, name: subjectName(code) || code });
+    });
+    return [...seen.values()];
+  }
+
   function isQuestionPaperType(type) {
     const t = String(type || "").trim().toLowerCase();
     return t === "previous year question" || t === "previous-year question" || t === "previous year questions" ||
@@ -46,6 +62,40 @@
       entry?.subject, subjectName(entry?.subject)].filter(Boolean).join(" ").toLowerCase();
   }
 
+  function subjectMatches(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+
+    const counts = new Map();
+    dataEntries().forEach(entry => {
+      const code = String(entry?.subject || "").trim();
+      if (code) counts.set(code, (counts.get(code) || 0) + 1);
+    });
+
+    return dataSubjects()
+      .map(subject => {
+        const code = String(subject?.code || subject?.id || "").trim();
+        const name = String(subject?.name || subjectName(code) || code).trim();
+        const hay = `${name} ${code}`.toLowerCase();
+        return { code, name, hay, count: counts.get(code) || 0 };
+      })
+      .filter(subject => subject.name && subject.hay.includes(q))
+      .sort((a, b) => {
+        const an = a.name.toLowerCase();
+        const bn = b.name.toLowerCase();
+        const as = an.startsWith(q) ? 0 : an.includes(q) ? 1 : 2;
+        const bs = bn.startsWith(q) ? 0 : bn.includes(q) ? 1 : 2;
+        return as - bs || an.localeCompare(bn);
+      })
+      .slice(0, 4)
+      .map(subject => ({
+        kind: "subject",
+        id: "",
+        label: subject.name,
+        meta: `Subject · ${subject.count} ${subject.count === 1 ? "entry" : "entries"}`
+      }));
+  }
+
   function entryMatches(query) {
     const q = query.toLowerCase();
     return dataEntries()
@@ -60,6 +110,7 @@
       })
       .slice(0, 8)
       .map(e => ({
+        kind: "entry",
         id: String(e.id ?? ""),
         label: labelFor(e),
         meta: [subjectName(e.subject), e.type, e.year].filter(Boolean).join(" · ")
@@ -79,6 +130,7 @@
         const year = card.querySelector(".card-year")?.textContent || "";
         const label = type.toLowerCase().startsWith("book -") ? type : (title || type);
         return {
+          kind: "entry",
           id: card.dataset.id || "",
           label: label.trim(),
           type: type.trim(),
@@ -99,8 +151,8 @@
 
   function setup() {
     const input = findInput();
-    if (!input || input.dataset.searchSuggestionsV4 === "1") return;
-    input.dataset.searchSuggestionsV4 = "1";
+    if (!input || input.dataset.searchSuggestionsV5 === "1") return;
+    input.dataset.searchSuggestionsV5 = "1";
 
     const panel = document.createElement("div");
     panel.className = "archive-search-suggestions-v2";
@@ -116,6 +168,7 @@
       .archive-search-suggestion-v2:hover,.archive-search-suggestion-v2.is-active{background:rgba(94,231,247,.10)}
       body[data-theme="light"] .archive-search-suggestion-v2:hover,body[data-theme="light"] .archive-search-suggestion-v2.is-active{background:rgba(52,125,115,.10)}
       .archive-search-suggestion-v2-main{min-width:0}.archive-search-suggestion-v2-title{display:block;font:700 13px/1.35 'Inter',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.archive-search-suggestion-v2-meta{display:block;margin-top:3px;color:var(--muted);font:600 10px/1.3 'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.archive-search-suggestion-v2-arrow{flex:0 0 auto;color:var(--accent);font-size:16px}
+      .archive-search-suggestion-v2[data-kind="subject"] .archive-search-suggestion-v2-title{color:var(--accent)}
       @media(max-width:700px){.archive-search-suggestions-v2{max-height:45vh}.archive-search-suggestion-v2{padding:10px}.archive-search-suggestion-v2-title{font-size:12px}}
     `;
     document.head.appendChild(style);
@@ -142,12 +195,14 @@
       const q = input.value.trim();
       if (!q) return close();
 
-      matches = entryMatches(q);
-      if (!matches.length) matches = domMatches(q);
+      const subjectResults = subjectMatches(q);
+      let entryResults = entryMatches(q);
+      if (!entryResults.length) entryResults = domMatches(q);
+      matches = [...subjectResults, ...entryResults].slice(0, 10);
       if (!matches.length) return close();
 
       panel.innerHTML = matches.map((m,i) => `
-        <button type="button" class="archive-search-suggestion-v2" data-i="${i}" role="option">
+        <button type="button" class="archive-search-suggestion-v2" data-i="${i}" data-kind="${esc(m.kind || "entry")}" role="option">
           <span class="archive-search-suggestion-v2-main">
             <span class="archive-search-suggestion-v2-title">${esc(m.label)}</span>
             <span class="archive-search-suggestion-v2-meta">${esc(m.meta)}</span>
@@ -178,6 +233,18 @@
       applyLiveArchiveFilter();
       input.dispatchEvent(new Event("input",{bubbles:true}));
       close();
+
+      if (m.kind === "subject") {
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          const row = Array.from(document.querySelectorAll(".subject-row")).find(el => {
+            const heading = el.querySelector(".subject-title,.subject-name,h2,h3")?.textContent || "";
+            return heading.trim().toLowerCase() === m.label.trim().toLowerCase();
+          });
+          row?.scrollIntoView({behavior:"smooth",block:"start",inline:"nearest"});
+        }));
+        return;
+      }
+
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         const card = document.querySelector(`.card[data-id="${CSS.escape(m.id)}"]`);
         if (!card) return;
