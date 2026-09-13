@@ -50,6 +50,18 @@ async function fetchDriveFile(id, request) {
   return lastResponse;
 }
 
+function outputContentType(upstream, requestedName) {
+  const raw = String(upstream.headers.get("Content-Type") || "").trim();
+  const lower = raw.toLowerCase();
+  const generic = !raw || lower.includes("application/octet-stream") || lower.includes("binary/octet-stream");
+
+  if (/\.pdf$/i.test(requestedName) && generic) {
+    return "application/pdf";
+  }
+
+  return raw || (/\.pdf$/i.test(requestedName) ? "application/pdf" : "application/octet-stream");
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -78,7 +90,7 @@ export default {
       }
 
       const headers = new Headers();
-      headers.set("Content-Type", upstream.headers.get("Content-Type") || "application/pdf");
+      headers.set("Content-Type", outputContentType(upstream, requestedName));
 
       const length = upstream.headers.get("Content-Length");
       if (length) headers.set("Content-Length", length);
