@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260913-mu-stable-v1";
+const CACHE = "stat-archive-shell-v20260913-touch-desktop-firstpaint-v2";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -57,6 +57,19 @@ function decorateNavigationHtml(html) {
     out = out.replace(
       '</head>',
       '<style id="statHeroPreloadGuard">.gaussian-curve{opacity:0!important}.data-dot{opacity:0!important;animation:none!important}.hero-probability .axis-mid{font-family:Arial,Helvetica,sans-serif!important;font-size:14px!important;font-style:normal!important;font-weight:500!important;line-height:1!important;letter-spacing:0!important}</style>\n</head>'
+    );
+  }
+
+  /* In a phone browser with Desktop site enabled, the independent replacement
+     graph is built by hero-layout-fix.js. Keep the legacy SVG completely hidden
+     from the very first painted frame so refresh never shows only the baseline,
+     mean line, or mu before the replacement graph is ready. This guard is
+     intentionally separate from statHeroPreloadGuard because hero-animation.js
+     removes that temporary preload guard when its animation starts. */
+  if (!out.includes('id="statTouchDesktopFirstPaintGuard"')) {
+    out = out.replace(
+      '</head>',
+      '<style id="statTouchDesktopFirstPaintGuard">@media (pointer:coarse) and (min-width:701px){.hero-probability>.probability-svg,.hero-probability>.axis-mid{visibility:hidden!important;opacity:0!important}.hero-probability>#statTouchDesktopGraph{visibility:visible!important;opacity:1!important}}</style>\n</head>'
     );
   }
 
