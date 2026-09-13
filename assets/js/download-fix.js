@@ -165,6 +165,23 @@
         ? window.statArchiveDriveStreamUrl(entry, "inline")
         : entry.driveUrl;
 
+      /* Newer APKs can hand the same-origin stream URL straight to Android's
+         DownloadManager. That avoids loading a 100+ MB PDF into JS/base64. */
+      if (isAndroid() && typeof window.AndroidBridge.downloadUrl === "function") {
+        let nativeName = "";
+        try {
+          if (typeof window.archiveDownloadName === "function") {
+            nativeName = window.archiveDownloadName(entry);
+          }
+        } catch (_) {}
+        if (!nativeName) nativeName = entry.title || entry.filename || "Stat Archive file.pdf";
+        nativeName = cleanName(nativeName);
+        if (!/\.pdf$/i.test(nativeName)) nativeName += ".pdf";
+        window.AndroidBridge.downloadUrl(inlineUrl, nativeName, "application/pdf");
+        try { window.incrementActivity?.("download"); } catch (_) {}
+        return;
+      }
+
       const response = await nativeFetch()(inlineUrl, {
         method: "GET",
         cache: "no-store",
