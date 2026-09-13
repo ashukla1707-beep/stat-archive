@@ -5482,3 +5482,18 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     isolation:isolate!important;
   }
 }
+
+
+/* Remove touch pressed/focus impression while menu is open. */
+@media (pointer:coarse){
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"],
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:hover,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:active,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus-visible{
+    background:transparent!important;
+    box-shadow:none!important;
+    filter:none!important;
+    outline:none!important;
+  }
+}
