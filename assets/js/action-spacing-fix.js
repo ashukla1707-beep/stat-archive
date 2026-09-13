@@ -88,17 +88,15 @@ html body .archive-entries-divider::after{
   box-shadow:none !important;
 }
 
-/* Theme changes should be instantaneous. The old theme animation caused the
-   whole Home screen/Menu to look like it was reloading. Only suppress visual
-   transitions during the two paint frames in which the theme actually flips. */
+/* Theme changes should be instantaneous everywhere: browser, installed PWA,
+   Android APK WebView, and mobile browsers using Desktop site. */
 html.stat-theme-settling *,
 html.stat-theme-settling *::before,
 html.stat-theme-settling *::after{
   transition:none !important;
 }
 
-/* Keep the normal hero mu explicitly theme-aware. A few legacy rules only set
-   its font and left the color frozen at the previous theme. */
+/* Canonical hero mu color for every runtime/layout. */
 html body .header .hero-probability .axis-mid{
   color:#5ee7f7 !important;
   fill:#5ee7f7 !important;
@@ -109,15 +107,15 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
   fill:#2f8f5b !important;
 }
 
-/* Do not show the extra range/scroll strip beneath subject cards on phones.
-   Cards remain horizontally swipeable, without the stray little bar seen in
-   the recording. */
-@media(max-width:700px){
-  html body .subject-mobile-scrollbar,
-  html body .subject-mobile-scroll-range{
-    display:none !important;
-  }
+/* The extra range/scroll strip is not part of the card design. Hide it in all
+   runtimes; horizontal card navigation itself remains available by swipe,
+   trackpad/mouse wheel and the normal desktop arrows. */
+html body .subject-mobile-scrollbar,
+html body .subject-mobile-scroll-range{
+  display:none !important;
+}
 
+@media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
     padding-top:18px !important;
@@ -131,7 +129,7 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
 `;
   document.head.appendChild(style);
 
-  /* ---------- Theme / hero stability ---------- */
+  /* ---------- Theme / hero stability: common to web, PWA and APK ---------- */
   const markThemeSettling = () => {
     document.documentElement.classList.add('stat-theme-settling');
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -164,6 +162,8 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
       mu.style.setProperty('fill', color, 'important');
     });
 
+    /* The alternate graph used by a coarse-pointer desktop viewport is still
+       kept in sync, but it is only one rendering path of the same global rule. */
     const touchGraph = document.getElementById('statTouchDesktopGraph');
     touchGraph?.querySelectorAll('[data-stat-touch-color]').forEach(node => {
       if (node.hasAttribute('stroke')) node.setAttribute('stroke', color);
@@ -175,8 +175,6 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
       curve.style.filter = isLight ? 'none' : 'drop-shadow(0 0 7px rgba(94,231,247,.34))';
     }
 
-    /* hero-layout-fix listens to this event; dispatch it here as well because
-       older theme handlers changed data-theme without emitting the event. */
     try {
       document.dispatchEvent(new CustomEvent('statarchive:theme-change', { detail:{ theme:value } }));
     } catch (_) {}
@@ -196,11 +194,10 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
   themeObserver.observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
   syncThemeAndMu();
 
-  /* ---------- Atomic M.Sc / B.Sc switch ----------
+  /* ---------- Atomic M.Sc / B.Sc switch: common to every runtime ----------
      Keep the current archive on screen while the new level is fetched, then
-     replace it once. The old implementation emptied the archive, rendered a
-     Loading state, and rendered again when data arrived; that double rebuild
-     caused the visible page jump/flicker in the recording. */
+     replace it once. This avoids an empty/loading rebuild and page jump on the
+     normal website, installed PWA and APK alike. */
   try {
     if (typeof switchLevel === 'function' && !window.__statArchiveAtomicLevelSwitchV1) {
       window.__statArchiveAtomicLevelSwitchV1 = true;
@@ -227,8 +224,6 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
         document.getElementById('subjectFilterExpanded')?.remove();
         levelSwitchInProgress = true;
 
-        /* Change only the small level toggle immediately. Do not clear/rebuild
-           the archive until replacement data is ready. */
         currentLevel = value;
         try { localStorage.setItem('statArchiveLevel', value); } catch (_) {}
         setLevelUI(value);
