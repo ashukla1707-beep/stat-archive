@@ -1,0 +1,62 @@
+name: Activate public ratings and reviews
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/activate-public-reviews.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load public reviews UI everywhere
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          idx = Path('index.html')
+          s = idx.read_text()
+          tag = '<script src="assets/js/public-reviews.js?v=20260914-public-v1"></script>'
+          if 'assets/js/public-reviews.js' not in s:
+              if '<script src="assets/js/menu-polish.js"></script>' in s:
+                  s = s.replace('<script src="assets/js/menu-polish.js"></script>', '<script src="assets/js/menu-polish.js"></script>\n' + tag, 1)
+              else:
+                  s = s.replace('</body>', tag + '\n</body>')
+          idx.write_text(s)
+
+          sw = Path('sw.js')
+          t = sw.read_text()
+          t = re.sub(r'const CACHE = "[^"]+";', 'const CACHE = "stat-archive-shell-v20260914-public-reviews-v1";', t, count=1)
+          if '"./assets/js/public-reviews.js"' not in t:
+              t = t.replace('"./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/menu-alignment-fix.js",', '"./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/public-reviews.js","./assets/js/menu-alignment-fix.js",', 1)
+          marker = "const MENU_POLISH_TAG = '<script src=\"./assets/js/menu-polish.js?v=20260909-websync-1\"></script>';"
+          review_const = "const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-public-v1\"></script>';"
+          if 'const PUBLIC_REVIEWS_TAG' not in t:
+              t = t.replace(marker, marker + '\n' + review_const, 1)
+          if "if (!out.includes('assets/js/public-reviews.js'))" not in t:
+              t = t.replace("  if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\\n</body>`);", "  if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\\n</body>`);\n  if (!out.includes('assets/js/public-reviews.js')) out = out.replace('</body>', `${PUBLIC_REVIEWS_TAG}\\n</body>`);", 1)
+          live_needle = "    url.pathname.endsWith('/assets/js/menu-polish.js') ||\n"
+          live_add = "    url.pathname.endsWith('/assets/js/public-reviews.js') ||\n"
+          if live_add not in t and live_needle in t:
+              t = t.replace(live_needle, live_needle + live_add, 1)
+          sw.write_text(t)
+          PY
+      - name: Commit activation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+          else
+            git commit -m "Activate public ratings and reviews"
+            git push origin HEAD:main
+          fi
