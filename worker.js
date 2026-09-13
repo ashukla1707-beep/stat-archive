@@ -7,6 +7,7 @@ function cleanFilename(value) {
 
 function driveId(raw) {
   const value = String(raw || "").trim();
+  if (/^[A-Za-z0-9_-]{10,}$/.test(value)) return value;
   const match = value.match(/\/file\/d\/([A-Za-z0-9_-]+)/i)
     || value.match(/[?&]id=([A-Za-z0-9_-]+)/i)
     || value.match(/\/d\/([A-Za-z0-9_-]+)/i);
