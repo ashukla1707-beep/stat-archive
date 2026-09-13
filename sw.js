@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260913-mu12-consistent-v3";
+const CACHE = "stat-archive-shell-v20260913-hero-spacing-v4";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
