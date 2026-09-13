@@ -162,3 +162,25 @@ body[data-theme="light"] .entry-method-card{background:#faf7ef;color:#27302d}bod
   pointer-events:none !important;
   transition:none !important;
 }
+
+/* Mobile browser Desktop-site mode: use the final hamburger coordinates from
+   the first stylesheet paint, so hero-layout-fix.js cannot cause a refresh jump. */
+@media (pointer:coarse) and (min-width:701px){
+  html body .header #mainMenuBtn.main-menu-btn{
+    position:absolute !important;
+    top:calc(50% - 83px) !important;
+    right:44px !important;
+    left:auto !important;
+    bottom:auto !important;
+    margin:0 !important;
+    width:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    height:38px !important;
+    min-height:38px !important;
+    max-height:38px !important;
+    transform:none !important;
+    transition:none !important;
+    animation:none !important;
+  }
+}
