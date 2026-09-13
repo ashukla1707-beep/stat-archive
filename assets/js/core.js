@@ -411,6 +411,10 @@ async function getArchiveRole() {
   }
 }
 
+function googleDriveFileId(url){const raw=String(url||"").trim();const m=raw.match(/\/file\/d\/([A-Za-z0-9_-]+)/i)||raw.match(/[?&]id=([A-Za-z0-9_-]+)/i)||raw.match(/\/d\/([A-Za-z0-9_-]+)/i);return m?m[1]:"";}
+function googleDrivePreviewUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`:String(raw||"");}
+function googleDriveDownloadUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`:String(raw||"");}
+
 function mapDbEntry(e) {
   return {
     id: e.id,

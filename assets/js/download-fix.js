@@ -18,6 +18,12 @@
     }
 
     try {
+      if (entry?.driveUrl) {
+        const url = typeof googleDriveDownloadUrl === 'function' ? googleDriveDownloadUrl(entry) : entry.driveUrl;
+        const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.download=entry.filename||entry.title||'stat-archive-file.pdf'; document.body.appendChild(a); a.click(); a.remove();
+        try { incrementActivity('download'); } catch (_) {}
+        return;
+      }
       const workerUrl =
         typeof WORKER_URL === 'string'
           ? WORKER_URL
@@ -70,6 +76,7 @@
   }
 
   function reliableDownloadEntry(entry, btn) {
+    if (entry?.driveUrl) return browserDownloadEntry(entry, btn);
     /* Preserve the APK's existing native bridge behavior. */
     if (window.AndroidBridge && originalDownloadEntry) {
       return originalDownloadEntry(entry, btn);

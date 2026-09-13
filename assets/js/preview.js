@@ -842,6 +842,11 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     state = { abort, tasks: new Map() };
 
     try {
+      if (entry?.driveUrl) {
+        const previewUrl = typeof googleDrivePreviewUrl === "function" ? googleDrivePreviewUrl(entry) : entry.driveUrl;
+        body.innerHTML = `<iframe src="${escapeHtml(previewUrl)}" title="${escapeHtml(entry?.title || entry?.filename || "Preview")}" style="width:100%;height:100%;border:0;background:#080c12"></iframe>`;
+        return;
+      }
       const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
       const response = await fetch(fileUrl, { cache: "no-store", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);

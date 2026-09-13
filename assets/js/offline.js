@@ -1157,10 +1157,7 @@ async function saveEntryOffline(
   entry,
   btn
 ) {
-  if (
-    !entry ||
-    entry.driveUrl
-  ) {
+  if (!entry) {
     return;
   }
 
@@ -1197,14 +1194,10 @@ async function saveEntryOffline(
 
 
   try {
-    const response =
-      await fetch(
-        `${WORKER_URL}/file?id=${
-          encodeURIComponent(
-            entry.id
-          )
-        }`
-      );
+    const fileUrl = entry.driveUrl
+      ? (typeof googleDriveDownloadUrl === "function" ? googleDriveDownloadUrl(entry) : entry.driveUrl)
+      : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
+    const response = await fetch(fileUrl,{method:"GET",cache:"no-store",credentials:"omit"});
 
 
     if (!response.ok) {

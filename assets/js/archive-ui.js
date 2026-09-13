@@ -190,9 +190,7 @@ function buildCard(entry) {
     </div>
 
     <div class="card-actions">
-      ${entry.driveUrl
-      ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
-: `
+      
   <button
     class="action-btn pv-btn${previewedEntryIds.has(String(entry.id)) ? " is-previewed" : ""}"
   >
@@ -211,8 +209,7 @@ function buildCard(entry) {
   >
     ${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}
   </button>
-`
-      }
+
       ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
       ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="Delete entry" aria-label="Delete entry">🗑</button>` : ""}
     </div>
