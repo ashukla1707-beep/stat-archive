@@ -1,0 +1,39 @@
+name: Fix light subject pill leak
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-light-subject-pill-leak.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove light-theme active subject color bleed
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> assets/styles.css <<'CSS'
+
+/* Prevent desktop light-theme active subject pill color/shadow from bleeding
+   outside its rounded edge (visible near the lower-left of “All subjects”). */
+@media (min-width:701px){
+  body[data-theme="light"] #subjectFilterRow .pill.active{
+    background:#5a3a73!important;
+    border-color:#5a3a73!important;
+    box-shadow:none!important;
+    background-clip:padding-box!important;
+    overflow:hidden!important;
+    isolation:isolate!important;
+  }
+}
+CSS
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/styles.css
+          git commit -m "Fix light theme active subject pill color bleed"
+          git push origin HEAD:main
