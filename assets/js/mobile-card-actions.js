@@ -283,10 +283,10 @@ html body[data-theme="light"] .card .card-actions .pv-btn.sa-preview-used,
 html body[data-theme="light"] .card .card-actions .dl-btn.is-downloaded,
 html body[data-theme="light"] .card .card-actions .download-btn.is-downloaded,
 html body[data-theme="light"] .card .card-actions .offline-btn.is-saved{
-  color:#2f7f74 !important;
-  background:rgba(52,125,115,.14) !important;
-  border:1px solid rgba(52,125,115,.40) !important;
-  box-shadow:inset 0 0 0 1px rgba(52,125,115,.08) !important;
+  color:#4b365f !important;
+  background:#f1ebf6 !important;
+  border:1px solid #d8cce2 !important;
+  box-shadow:inset 0 0 0 1px rgba(102,75,128,.08) !important;
 }
 
 @media (max-width:380px){
