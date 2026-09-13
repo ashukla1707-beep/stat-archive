@@ -355,3 +355,168 @@ html body[data-theme="light"] .card .card-actions .offline-btn.is-saved{
     previewBtn.classList.add('sa-preview-used');
   }, true);
 })();
+
+/* =========================================================
+   PREVIEW POPUP + TOOLBAR SLIDE CONTROL
+   Common behavior for browser, PWA and APK. On narrow screens the preview
+   remains a floating dialog instead of becoming a full-screen page.
+   ========================================================= */
+(() => {
+  if (window.__statArchivePreviewPopupPolishV1) return;
+  window.__statArchivePreviewPopupPolishV1 = true;
+
+  const style = document.createElement('style');
+  style.id = 'statArchivePreviewPopupPolish';
+  style.textContent = `
+html body #previewOverlay.overlay{
+  align-items:center !important;
+  justify-content:center !important;
+  padding:14px !important;
+  background:rgba(3,7,12,.76) !important;
+  backdrop-filter:blur(7px) !important;
+  -webkit-backdrop-filter:blur(7px) !important;
+}
+html body #previewOverlay.overlay .preview-card.sa-reader-active{
+  width:min(1120px,calc(100vw - 28px)) !important;
+  height:min(900px,calc(100dvh - 28px)) !important;
+  max-width:1120px !important;
+  max-height:900px !important;
+  margin:auto !important;
+  border-radius:18px !important;
+  overflow:hidden !important;
+  box-shadow:0 24px 70px rgba(0,0,0,.48) !important;
+}
+html body #previewOverlay.overlay .preview-card.sa-reader-active .sa-reader-toolbar{
+  position:relative !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  flex-wrap:nowrap !important;
+  scroll-behavior:smooth !important;
+  scrollbar-width:none !important;
+  padding-right:46px !important;
+}
+html body #previewOverlay.overlay .preview-card.sa-reader-active .sa-reader-toolbar::-webkit-scrollbar{
+  display:none !important;
+}
+html body #previewOverlay.overlay .preview-card.sa-reader-active .sa-reader-group{
+  flex:0 0 auto !important;
+}
+.sa-toolbar-slide-btn{
+  position:sticky !important;
+  right:2px !important;
+  top:0 !important;
+  z-index:20 !important;
+  flex:0 0 34px !important;
+  width:34px !important;
+  min-width:34px !important;
+  height:34px !important;
+  margin-left:auto !important;
+  padding:0 !important;
+  border-radius:9px !important;
+  border:1px solid var(--line-strong,rgba(148,163,184,.28)) !important;
+  background:var(--panel-solid,#0f141d) !important;
+  color:var(--text,#f5f7fb) !important;
+  box-shadow:-10px 0 18px var(--panel-solid,#0f141d) !important;
+  font:800 18px/1 'JetBrains Mono',monospace !important;
+  display:none !important;
+  align-items:center !important;
+  justify-content:center !important;
+  cursor:pointer !important;
+  touch-action:manipulation !important;
+}
+.sa-toolbar-slide-btn.is-visible{display:inline-flex !important;}
+body[data-theme="light"] .sa-toolbar-slide-btn{
+  background:#f7f3e9 !important;
+  color:#27302d !important;
+  border-color:#d9d1c2 !important;
+  box-shadow:-10px 0 18px #f7f3e9 !important;
+}
+@media(max-width:700px){
+  html body #previewOverlay.overlay{
+    padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom)) !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  html body #previewOverlay.overlay .preview-card.sa-reader-active{
+    width:calc(100vw - 20px) !important;
+    height:min(88dvh,820px) !important;
+    max-width:680px !important;
+    max-height:calc(100dvh - 24px) !important;
+    margin:auto !important;
+    padding:12px !important;
+    border-radius:18px !important;
+  }
+  html body #previewOverlay.overlay .preview-card.sa-reader-active>.form-header{
+    margin-bottom:8px !important;
+  }
+  html body #previewOverlay.overlay .preview-card.sa-reader-active .sa-reader-toolbar{
+    padding:7px 46px 7px 7px !important;
+    gap:6px !important;
+  }
+  .sa-toolbar-slide-btn{
+    position:absolute !important;
+    right:7px !important;
+    top:7px !important;
+    box-shadow:-12px 0 18px var(--panel-solid,#0f141d) !important;
+  }
+  body[data-theme="light"] .sa-toolbar-slide-btn{
+    box-shadow:-12px 0 18px #f7f3e9 !important;
+  }
+}
+`;
+  document.head.appendChild(style);
+
+  function enhanceToolbar(toolbar){
+    if (!toolbar || toolbar.dataset.saSlideEnhanced === '1') return;
+    toolbar.dataset.saSlideEnhanced = '1';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sa-reader-btn sa-toolbar-slide-btn';
+    btn.setAttribute('aria-label','Show more preview controls');
+    btn.setAttribute('title','More controls');
+    btn.textContent = '›';
+    toolbar.appendChild(btn);
+
+    const sync = () => {
+      const max = Math.max(0, toolbar.scrollWidth - toolbar.clientWidth);
+      const overflow = max > 6;
+      btn.classList.toggle('is-visible', overflow);
+      if (!overflow) return;
+      const atEnd = toolbar.scrollLeft >= max - 8;
+      btn.textContent = atEnd ? '‹' : '›';
+      btn.setAttribute('aria-label', atEnd ? 'Show previous preview controls' : 'Show more preview controls');
+      btn.setAttribute('title', atEnd ? 'Previous controls' : 'More controls');
+    };
+
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const max = Math.max(0, toolbar.scrollWidth - toolbar.clientWidth);
+      const atEnd = toolbar.scrollLeft >= max - 8;
+      toolbar.scrollTo({
+        left: atEnd ? 0 : Math.min(max, toolbar.scrollLeft + Math.max(150, toolbar.clientWidth * .72)),
+        behavior:'smooth'
+      });
+      setTimeout(sync, 320);
+    });
+
+    toolbar.addEventListener('scroll', () => requestAnimationFrame(sync), {passive:true});
+    window.addEventListener('resize', sync, {passive:true});
+    requestAnimationFrame(() => requestAnimationFrame(sync));
+    setTimeout(sync, 250);
+  }
+
+  function enhancePreview(){
+    document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
+  }
+
+  const observer = new MutationObserver(enhancePreview);
+  const start = () => {
+    enhancePreview();
+    if (document.body) observer.observe(document.body,{subtree:true,childList:true});
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
+  else start();
+})();
