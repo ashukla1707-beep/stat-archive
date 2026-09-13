@@ -42,7 +42,7 @@ html body #summaryAccess{
 /* Canonical mu appearance for the normal web/APK graph. */
 html body .header .hero-probability .axis-mid{
   font-family:Arial,Helvetica,sans-serif !important;
-  font-size:14px !important;
+  font-size:12px !important;
   font-style:normal !important;
   font-weight:500 !important;
   line-height:1 !important;
@@ -103,7 +103,7 @@ html body .header .hero-probability .axis-mid{
     font-size:16px !important;
   }
   html body .header .hero-probability .axis-mid{
-    font-size:14px !important;
+    font-size:12px !important;
   }
 }
 `;
@@ -447,7 +447,7 @@ html body .header .hero-probability .axis-mid{
       "text-anchor": "middle",
       fill: color,
       "font-family": "Arial, Helvetica, sans-serif",
-      "font-size": 22,
+      "font-size": 12,
       "font-style": "normal",
       "font-weight": 500,
       "data-stat-touch-color": "1"

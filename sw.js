@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260913-touch-desktop-firstpaint-v2";
+const CACHE = "stat-archive-shell-v20260913-mu12-consistent-v3";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -22,7 +22,7 @@ const MENU_FLASH_GUARD = `
 `;
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260910-bugfix-2"></script>';
-const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu-stable-1"></script>';
+const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu12-consistent-2"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260910-mobile-reference-1"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
@@ -56,7 +56,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('id="statHeroPreloadGuard"')) {
     out = out.replace(
       '</head>',
-      '<style id="statHeroPreloadGuard">.gaussian-curve{opacity:0!important}.data-dot{opacity:0!important;animation:none!important}.hero-probability .axis-mid{font-family:Arial,Helvetica,sans-serif!important;font-size:14px!important;font-style:normal!important;font-weight:500!important;line-height:1!important;letter-spacing:0!important}</style>\n</head>'
+      '<style id="statHeroPreloadGuard">.gaussian-curve{opacity:0!important}.data-dot{opacity:0!important;animation:none!important}.hero-probability .axis-mid{font-family:Arial,Helvetica,sans-serif!important;font-size:12px!important;font-style:normal!important;font-weight:500!important;line-height:1!important;letter-spacing:0!important}</style>\n</head>'
     );
   }
 
