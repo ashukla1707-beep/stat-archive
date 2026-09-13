@@ -82,7 +82,7 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-btn{margin:0!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-info,html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-zoom{text-align:center!important;min-width:0!important}
   .sa-toolbar-expand-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;justify-self:end!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;margin:0!important;border-radius:9px!important;font:800 18px/1 'JetBrains Mono',monospace!important;transition:transform .18s ease,background .18s ease!important}
-  .sa-toolbar-expand-btn.is-open{transform:rotate(180deg)!important}
+  .sa-toolbar-expand-btn.is-open{background:rgba(148,163,184,.12)!important}
   .sa-toolbar-extra-row{position:absolute!important;left:7px!important;right:7px!important;top:calc(100% + 6px)!important;z-index:35!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:6px!important;padding:0!important;max-height:0!important;opacity:0!important;transform:translateY(-6px)!important;overflow:hidden!important;pointer-events:none!important;transition:max-height .2s ease,opacity .16s ease,transform .2s ease,padding .2s ease!important;border:1px solid transparent!important;border-radius:10px!important;background:var(--panel-solid,#0f141d)!important;box-shadow:0 12px 28px rgba(0,0,0,.3)!important}
   .sa-toolbar-extra-row.is-open{max-height:52px!important;opacity:1!important;transform:translateY(0)!important;pointer-events:auto!important;padding:7px!important;border-color:var(--line-strong,rgba(148,163,184,.22))!important}
   .sa-toolbar-extra-row .sa-reader-btn{flex:1 1 0!important;min-width:0!important;height:34px!important;padding:0 8px!important;gap:5px!important;font-size:11px!important}
@@ -127,7 +127,7 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
     btn.setAttribute('aria-label','Show more preview controls');
     btn.setAttribute('aria-expanded','false');
     btn.setAttribute('title','More controls');
-    btn.textContent = '⌄';
+    btn.textContent = '⋯';
 
     toolbar.append(btn, extra);
 
