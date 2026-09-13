@@ -36,9 +36,10 @@
 
   const MU_STYLE = Object.freeze({
     fontFamily: "Arial, Helvetica, sans-serif",
-    fontSize: "14px",
+    normalFontSize: 14,
+    touchDesktopFontSize: 22,
     fontStyle: "normal",
-    fontWeight: "500",
+    fontWeight: "600",
     lineHeight: "1",
     darkColor: "#5ee7f7",
     lightColor: "#2f8f5b",
@@ -51,6 +52,11 @@
     const raw = getComputedStyle(dot).getPropertyValue("--fall").trim();
     const n = parseFloat(raw);
     return Number.isFinite(n) ? n : 0;
+  }
+
+  function isTouchDesktopViewport() {
+    const coarse = !!window.matchMedia?.("(pointer: coarse)").matches;
+    return coarse && window.innerWidth > 700;
   }
 
   function prepareHeroAnimation() {
@@ -169,6 +175,11 @@
     const x = screenPoint.x - heroRect.left;
     const y = screenPoint.y - heroRect.top;
     const isLight = document.body?.dataset.theme === "light";
+    const touchDesktop = isTouchDesktopViewport();
+    const fontPx = touchDesktop ? MU_STYLE.touchDesktopFontSize : MU_STYLE.normalFontSize;
+    const requestedTop = y + MU_STYLE.axisGap;
+    const maxTop = Math.max(0, heroRect.height - fontPx - 5);
+    const safeTop = Math.min(requestedTop, maxTop);
 
     label.textContent = "μ";
     label.style.setProperty("display", "block", "important");
@@ -176,22 +187,23 @@
     label.style.setProperty("opacity", "1", "important");
     label.style.setProperty("position", "absolute", "important");
     label.style.setProperty("left", `${x}px`, "important");
-    label.style.setProperty("top", `${y + MU_STYLE.axisGap}px`, "important");
+    label.style.setProperty("top", `${safeTop}px`, "important");
     label.style.setProperty("right", "auto", "important");
     label.style.setProperty("bottom", "auto", "important");
     label.style.setProperty("transform", "translateX(-50%)", "important");
-    label.style.setProperty("z-index", "20", "important");
+    label.style.setProperty("z-index", "30", "important");
     label.style.setProperty("width", "auto", "important");
     label.style.setProperty("height", "auto", "important");
     label.style.setProperty("margin", "0", "important");
     label.style.setProperty("padding", "0", "important");
     label.style.setProperty("font-family", MU_STYLE.fontFamily, "important");
-    label.style.setProperty("font-size", MU_STYLE.fontSize, "important");
+    label.style.setProperty("font-size", `${fontPx}px`, "important");
     label.style.setProperty("font-style", MU_STYLE.fontStyle, "important");
     label.style.setProperty("font-weight", MU_STYLE.fontWeight, "important");
     label.style.setProperty("line-height", MU_STYLE.lineHeight, "important");
     label.style.setProperty("letter-spacing", "0", "important");
     label.style.setProperty("color", isLight ? MU_STYLE.lightColor : MU_STYLE.darkColor, "important");
+    label.style.setProperty("text-shadow", touchDesktop ? "0 0 8px rgba(94,231,247,.45)" : "none", "important");
     label.style.setProperty("pointer-events", "none", "important");
   }
 
@@ -205,8 +217,9 @@ html body .header .hero-line .sub,html body .header .hero-line .sub *{user-selec
 html body .header .hero-line .sub::selection,html body .header .hero-line .sub *::selection{background:transparent!important;color:inherit!important}
 html body .header .hero-line .sub::-moz-selection,html body .header .hero-line .sub *::-moz-selection{background:transparent!important;color:inherit!important}
 html body .header .curve-note.note-one,html body #permissionHint{display:none!important}
-html body .header .hero-probability .axis-mid{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;width:auto!important;height:auto!important;z-index:20!important;font-family:Arial,Helvetica,sans-serif!important;font-size:14px!important;font-style:normal!important;font-weight:500!important;line-height:1!important;letter-spacing:0!important;color:#5ee7f7!important}
+html body .header .hero-probability .axis-mid{display:block!important;visibility:visible!important;opacity:1!important;position:absolute!important;width:auto!important;height:auto!important;z-index:30!important;font-family:Arial,Helvetica,sans-serif!important;font-size:14px!important;font-style:normal!important;font-weight:600!important;line-height:1!important;letter-spacing:0!important;color:#5ee7f7!important}
 html body[data-theme="light"] .header .hero-probability .axis-mid{color:#2f8f5b!important}
+@media (pointer:coarse) and (min-width:701px){html body .header .hero-probability .axis-mid{font-size:22px!important;font-weight:600!important;text-shadow:0 0 8px rgba(94,231,247,.45)!important}}
 body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,body[data-theme="light"] #offlineLibraryOverlay button[data-sa-delete-id]{color:#d94b5b!important;border-color:rgba(217,75,91,.38)!important;background:rgba(217,75,91,.075)!important}
 @media (min-width:1101px){html body .header .hero-copy{width:58%!important;max-width:850px!important;position:relative!important;z-index:3!important;transform:translateY(-18px)!important;overflow:visible!important}html body .header .hero-line{display:flex!important;align-items:flex-start!important;gap:14px!important;width:100%!important;margin-top:18px!important;padding:0!important;overflow:visible!important}html body .header .hero-line>span[aria-hidden="true"]{position:static!important;flex:0 0 44px!important;width:44px!important;min-width:44px!important;height:1px!important;margin:10px 0 0!important;padding:0!important;transform:none!important}html body .header .hero-line .sub{display:block!important;flex:1 1 auto!important;width:auto!important;max-width:none!important;min-width:0!important;height:auto!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;white-space:normal!important;font-size:13px!important;line-height:1.58!important;transform:none!important}html body .header .hero-sub-lead,html body .header .hero-sub-tail{display:block!important;position:static!important;line-height:1.58!important}html body .header .hero-sub-lead{white-space:nowrap!important}html body .header .hero-sub-tail{white-space:nowrap!important;margin-top:1px!important}}
 @media (min-width:701px) and (max-width:1100px){html body .header .hero-copy{transform:none!important;overflow:visible!important}html body .header .hero-line,html body .header .hero-line .sub{height:auto!important;max-height:none!important;overflow:visible!important;white-space:normal!important}html body .header .hero-sub-lead,html body .header .hero-sub-tail{display:inline!important;white-space:normal!important;line-height:inherit!important}}
@@ -228,6 +241,7 @@ body[data-theme="light"] #offlineLibraryOverlay button.sa-offline-action.delete,
   window.addEventListener("load", positionMeanSymbol, { once:true });
   window.addEventListener("pageshow", applyHeroFix);
   window.addEventListener("resize", () => requestAnimationFrame(positionMeanSymbol));
+  window.visualViewport?.addEventListener("resize", () => requestAnimationFrame(positionMeanSymbol));
   document.addEventListener("statarchive:startup-ready", () => requestAnimationFrame(positionMeanSymbol));
   document.addEventListener("statarchive:theme-change", positionMeanSymbol);
 })();
