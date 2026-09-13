@@ -227,16 +227,15 @@ html body .header .hero-probability .axis-mid{
 })();
 
 /* =========================================================
-   PHONE + BROWSER DESKTOP-SITE HERO GRAPH
-   Rebuilt independently from the normal responsive graph so desktop-site
-   scaling on a phone cannot clip, resize or misplace the curve or mu label.
-   Normal desktop, normal mobile web and the APK layout are untouched.
+   PHONE + BROWSER DESKTOP-SITE HERO GRAPH v2
+   A single independent SVG is created once and then allowed to scale naturally.
+   Browser resize / visualViewport events never rebuild or restart its animation.
    ========================================================= */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V1__) return;
-  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V1__ = true;
+  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V2__) return;
+  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V2__ = true;
 
   const NS = "http://www.w3.org/2000/svg";
   const CURVE_DURATION = 8000;
@@ -245,10 +244,10 @@ html body .header .hero-probability .axis-mid{
   const X_MAX = 502;
   let raf = 0;
   let active = false;
+  let built = false;
 
   function isTouchDesktop() {
-    const coarse = !!window.matchMedia?.("(pointer: coarse)").matches;
-    return coarse && window.innerWidth > 700;
+    return (navigator.maxTouchPoints || 0) > 0 && window.innerWidth > 700;
   }
 
   function easeOutCubic(t) {
@@ -260,10 +259,33 @@ html body .header .hero-probability .axis-mid{
     return document.body?.dataset.theme === "light" ? "#2f8f5b" : "#5ee7f7";
   }
 
+  function svgEl(name, attrs = {}) {
+    const node = document.createElementNS(NS, name);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+    return node;
+  }
+
+  function updateTheme() {
+    const svg = document.getElementById("statTouchDesktopGraph");
+    if (!svg) return;
+    const color = themeColor();
+    svg.querySelectorAll("[data-stat-touch-color]").forEach(node => {
+      if (node.hasAttribute("stroke")) node.setAttribute("stroke", color);
+      if (node.hasAttribute("fill") && node.getAttribute("fill") !== "none") node.setAttribute("fill", color);
+    });
+    const curve = svg.querySelector("[data-stat-touch-curve]");
+    if (curve) {
+      curve.style.filter = document.body?.dataset.theme === "light"
+        ? "none"
+        : "drop-shadow(0 0 7px rgba(94,231,247,.34))";
+    }
+  }
+
   function removeTouchGraph() {
     cancelAnimationFrame(raf);
     raf = 0;
     active = false;
+    built = false;
     document.getElementById("statTouchDesktopGraph")?.remove();
 
     const hero = document.querySelector(".hero-probability");
@@ -271,29 +293,24 @@ html body .header .hero-probability .axis-mid{
     hero?.querySelector(".axis-mid")?.style.removeProperty("display");
   }
 
-  function svgEl(name, attrs = {}) {
-    const node = document.createElementNS(NS, name);
-    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
-    return node;
-  }
-
   function buildTouchGraph() {
-    if (!isTouchDesktop()) {
-      removeTouchGraph();
-      return;
+    if (built || document.getElementById("statTouchDesktopGraph")) {
+      built = true;
+      updateTheme();
+      return true;
     }
+    if (!isTouchDesktop()) return false;
 
     const hero = document.querySelector(".hero-probability");
     const sourceSvg = hero?.querySelector(".probability-svg");
     const sourceCurve = sourceSvg?.querySelector(".gaussian-curve");
-    if (!hero || !sourceSvg || !sourceCurve) return;
+    if (!hero || !sourceSvg || !sourceCurve) return false;
 
     const curveD = sourceCurve.getAttribute("d");
-    if (!curveD) return;
+    if (!curveD) return false;
 
-    cancelAnimationFrame(raf);
-    document.getElementById("statTouchDesktopGraph")?.remove();
-
+    /* Hide the legacy graph before inserting the replacement, preventing one
+       visible frame of the already-complete legacy curve. */
     sourceSvg.style.setProperty("display", "none", "important");
     hero.querySelector(".axis-mid")?.style.setProperty("display", "none", "important");
 
@@ -321,14 +338,16 @@ html body .header .hero-probability .axis-mid{
 
     const baseline = svgEl("line", {
       x1: 18, y1: 258, x2: 502, y2: 258,
-      stroke: color, "stroke-width": 1.15, opacity: 0.62
+      stroke: color, "stroke-width": 1.15, opacity: 0.62,
+      "data-stat-touch-color": "1"
     });
     svg.appendChild(baseline);
 
     const mean = svgEl("line", {
       x1: 260, y1: 40, x2: 260, y2: 258,
       stroke: color, "stroke-width": 1,
-      "stroke-dasharray": "6 8", opacity: 0.22
+      "stroke-dasharray": "6 8", opacity: 0.22,
+      "data-stat-touch-color": "1"
     });
     svg.appendChild(mean);
 
@@ -338,7 +357,9 @@ html body .header .hero-probability .axis-mid{
       stroke: color,
       "stroke-width": 7,
       "stroke-linecap": "round",
-      "stroke-linejoin": "round"
+      "stroke-linejoin": "round",
+      "data-stat-touch-color": "1",
+      "data-stat-touch-curve": "1"
     });
     curve.style.filter = document.body?.dataset.theme === "light"
       ? "none"
@@ -362,7 +383,8 @@ html body .header .hero-probability .axis-mid{
         fill: color,
         stroke: color,
         "stroke-width": 0.8,
-        opacity: 0
+        opacity: 0,
+        "data-stat-touch-color": "1"
       });
       dot.style.transformBox = "fill-box";
       dot.style.transformOrigin = "center";
@@ -382,12 +404,14 @@ html body .header .hero-probability .axis-mid{
       "font-family": "Arial, Helvetica, sans-serif",
       "font-size": 22,
       "font-style": "normal",
-      "font-weight": 500
+      "font-weight": 500,
+      "data-stat-touch-color": "1"
     });
     mu.textContent = "μ";
     svg.appendChild(mu);
 
     hero.appendChild(svg);
+    built = true;
     active = true;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -398,7 +422,7 @@ html body .header .hero-probability .axis-mid{
         dot.style.opacity = ".95";
         dot.style.transform = `translateY(${fall}px)`;
       });
-      return;
+      return true;
     }
 
     const startedAt = performance.now();
@@ -433,25 +457,32 @@ html body .header .hero-probability .axis-mid{
           dot.style.opacity = ".95";
           dot.style.transform = `translateY(${fall}px)`;
         });
+        raf = 0;
       }
     }
     raf = requestAnimationFrame(frame);
+    return true;
   }
 
-  function syncTouchGraph() {
-    if (isTouchDesktop()) buildTouchGraph();
-    else removeTouchGraph();
+  function syncMode() {
+    if (isTouchDesktop()) {
+      buildTouchGraph();
+    } else if (built || document.getElementById("statTouchDesktopGraph")) {
+      removeTouchGraph();
+    }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(syncTouchGraph), { once:true });
-  } else {
-    requestAnimationFrame(syncTouchGraph);
+  /* Try immediately: this file is loaded after the hero markup. If the markup
+     is not present yet, DOMContentLoaded is the only fallback that can build it.
+     We deliberately do NOT rebuild on load/pageshow/resize. */
+  if (!buildTouchGraph() && document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", buildTouchGraph, { once:true });
   }
 
-  window.addEventListener("load", syncTouchGraph, { once:true });
-  window.addEventListener("pageshow", syncTouchGraph);
-  window.addEventListener("resize", () => requestAnimationFrame(syncTouchGraph));
-  window.visualViewport?.addEventListener("resize", () => requestAnimationFrame(syncTouchGraph));
-  document.addEventListener("statarchive:theme-change", () => requestAnimationFrame(syncTouchGraph));
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(syncMode, 180);
+  });
+  document.addEventListener("statarchive:theme-change", updateTheme);
 })();
