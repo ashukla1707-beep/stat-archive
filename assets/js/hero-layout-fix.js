@@ -39,7 +39,7 @@ html body #summaryAccess{
   line-height:1.08 !important;
 }
 
-/* One canonical mu size everywhere. */
+/* Canonical mu appearance. */
 html body .header .hero-probability .axis-mid{
   font-family:Arial,Helvetica,sans-serif !important;
   font-size:14px !important;
@@ -47,6 +47,21 @@ html body .header .hero-probability .axis-mid{
   font-weight:500 !important;
   line-height:1 !important;
   letter-spacing:0 !important;
+  text-shadow:none !important;
+}
+
+/* A phone in browser Desktop-site mode scales the whole desktop canvas down.
+   Give the graph a little more bottom room and use a modestly larger mu so it
+   keeps the same visual proportion without touching the x-axis. */
+@media (pointer:coarse) and (min-width:701px){
+  html body .header .hero-probability .probability-svg{
+    bottom:28px !important;
+  }
+  html body .header .hero-probability .axis-mid{
+    font-size:18px !important;
+    font-weight:500 !important;
+    text-shadow:none !important;
+  }
 }
 
 @media(max-width:700px){
@@ -225,4 +240,4 @@ html body .header .hero-probability .axis-mid{
   });
 })();
 
-/* hero-animation.js owns mu positioning and theme colour. Size is 14px everywhere. */
+/* hero-animation.js owns precise mu positioning and theme colour. */
