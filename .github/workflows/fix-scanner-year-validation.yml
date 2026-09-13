@@ -1,0 +1,37 @@
+name: Fix scanner year validation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-scanner-year-validation.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move year validation to archive step
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('assets/js/scanner.js')
+          s=p.read_text()
+          old="async function generate(){if(state.busy||!state.pages.length)return;var m=meta();if(question(m.type)&&!/^(19|20)\\d{2}$/.test(m.year)){err('Enter a valid 4-digit year before generating the PDF.');return;}state.busy=true;"
+          new="async function generate(){if(state.busy||!state.pages.length)return;var m=meta();state.busy=true;"
+          if old not in s:
+              raise SystemExit('generate validation target not found')
+          s=s.replace(old,new,1)
+          old2="function addGeneratedToArchive(){if(state.busy||!state.generatedFile)return;var add=$('scannerAddArchive');if(add)add.disabled=true;closeScanner();"
+          new2="function addGeneratedToArchive(){if(state.busy||!state.generatedFile)return;var m=meta();if(question(m.type)&&!/^(19|20)\\d{2}$/.test(m.year)){err('Enter a valid 4-digit year before adding to archive.');return;}var add=$('scannerAddArchive');if(add)add.disabled=true;closeScanner();"
+          if old2 not in s:
+              raise SystemExit('archive validation target not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/scanner.js
+          git commit -m "Validate year only when adding scanned PDF to archive"
+          git push
