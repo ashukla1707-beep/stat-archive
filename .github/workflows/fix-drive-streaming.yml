@@ -1,0 +1,162 @@
+name: Fix Drive streaming actions
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-drive-streaming.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Drive actions
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+
+          # Add a tiny same-origin streaming endpoint. It never stores Drive files
+          # in Cloudflare; it only streams bytes from Google Drive to the user.
+          Path('worker.js').write_text(r'''function cleanFilename(value) {
+            const raw = String(value || "Stat Archive file.pdf")
+              .replace(/[\\/:*?"<>|\r\n]+/g, "_")
+              .trim();
+            return raw || "Stat Archive file.pdf";
+          }
+
+          function driveId(raw) {
+            const value = String(raw || "").trim();
+            const match = value.match(/\/file\/d\/([A-Za-z0-9_-]+)/i)
+              || value.match(/[?&]id=([A-Za-z0-9_-]+)/i)
+              || value.match(/\/d\/([A-Za-z0-9_-]+)/i);
+            return match ? match[1] : "";
+          }
+
+          export default {
+            async fetch(request, env) {
+              const url = new URL(request.url);
+
+              if (url.pathname === "/drive-file") {
+                const id = driveId(url.searchParams.get("id"));
+                if (!id) return new Response("Invalid Drive file", { status: 400 });
+
+                const requestedName = cleanFilename(url.searchParams.get("name"));
+                const mode = url.searchParams.get("mode") === "download" ? "attachment" : "inline";
+                const upstreamUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`;
+
+                const upstream = await fetch(upstreamUrl, {
+                  method: "GET",
+                  headers: { "User-Agent": request.headers.get("User-Agent") || "StatArchive/1.0" },
+                  redirect: "follow"
+                });
+
+                if (!upstream.ok) {
+                  return new Response("Drive file unavailable", { status: upstream.status });
+                }
+
+                const headers = new Headers();
+                headers.set("Content-Type", upstream.headers.get("Content-Type") || "application/octet-stream");
+                const length = upstream.headers.get("Content-Length");
+                if (length) headers.set("Content-Length", length);
+                headers.set("Cache-Control", "private, max-age=0, no-store");
+                headers.set("Content-Disposition", `${mode}; filename*=UTF-8''${encodeURIComponent(requestedName)}`);
+                headers.set("X-Content-Type-Options", "nosniff");
+
+                return new Response(upstream.body, { status: 200, headers });
+              }
+
+              return env.ASSETS.fetch(request);
+            }
+          };
+          ''', encoding='utf-8')
+
+          # Configure the existing Cloudflare Worker to keep serving static assets
+          # while exposing /drive-file from worker.js.
+          p = Path('wrangler.jsonc')
+          cfg = json.loads(p.read_text(encoding='utf-8'))
+          cfg['main'] = 'worker.js'
+          cfg.setdefault('assets', {})['binding'] = 'ASSETS'
+          p.write_text(json.dumps(cfg, indent=2) + '\n', encoding='utf-8')
+
+          # Core helper used by Download and Offline. Prefer archive entry title
+          # so Drive's original filename never leaks into the save dialog.
+          p = Path('assets/js/core.js')
+          s = p.read_text(encoding='utf-8')
+          marker = 'function mapDbEntry(e) {'
+          helper = r'''function archiveDownloadName(entry) {
+            const raw = String(entry?.title || entry?.filename || "Stat Archive file").trim();
+            const extMatch = String(entry?.filename || "").match(/\.[A-Za-z0-9]{1,8}$/);
+            const ext = extMatch ? extMatch[0] : (/pdf/i.test(String(entry?.type || "")) ? ".pdf" : ".pdf");
+            return /\.[A-Za-z0-9]{1,8}$/.test(raw) ? raw : raw + ext;
+          }
+
+          function statArchiveDriveStreamUrl(entry, mode = "inline") {
+            const id = typeof googleDriveFileId === "function" ? googleDriveFileId(entry?.driveUrl) : "";
+            if (!id) return "";
+            const name = archiveDownloadName(entry);
+            return `${window.location.origin}/drive-file?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&mode=${mode === "download" ? "download" : "inline"}`;
+          }
+
+          '''
+          if 'function statArchiveDriveStreamUrl(' not in s:
+            if marker not in s: raise SystemExit('core marker not found')
+            s = s.replace(marker, helper + marker, 1)
+            p.write_text(s, encoding='utf-8')
+
+          # Download Drive files through same-origin streaming endpoint so the
+          # browser receives the Stat Archive entry name, not Google's original name.
+          p = Path('assets/js/download-fix.js')
+          s = p.read_text(encoding='utf-8')
+          old = """      if (entry?.driveUrl) {\n        const url = typeof googleDriveDownloadUrl === 'function' ? googleDriveDownloadUrl(entry) : entry.driveUrl;\n        const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.download=entry.filename||entry.title||'stat-archive-file.pdf'; document.body.appendChild(a); a.click(); a.remove();\n        try { incrementActivity('download'); } catch (_) {}\n        return;\n      }"""
+          new = """      if (entry?.driveUrl) {\n        const url = typeof statArchiveDriveStreamUrl === 'function'\n          ? statArchiveDriveStreamUrl(entry, 'download')\n          : entry.driveUrl;\n        const a = document.createElement('a');\n        a.href = url;\n        a.download = typeof archiveDownloadName === 'function' ? archiveDownloadName(entry) : (entry.title || entry.filename || 'Stat Archive file.pdf');\n        a.style.display = 'none';\n        document.body.appendChild(a);\n        a.click();\n        a.remove();\n        try { incrementActivity('download'); } catch (_) {}\n        return;\n      }"""
+          if old not in s: raise SystemExit('download Drive block not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          # Offline Drive save must use same-origin streaming; direct Google fetch
+          # is blocked by browser CORS and caused the user's "Failed to fetch".
+          p = Path('assets/js/offline.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''    const fileUrl = entry.driveUrl
+      ? (typeof googleDriveDownloadUrl === "function" ? googleDriveDownloadUrl(entry) : entry.driveUrl)
+      : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;'''
+          new = '''    const fileUrl = entry.driveUrl
+      ? (typeof statArchiveDriveStreamUrl === "function" ? statArchiveDriveStreamUrl(entry, "inline") : entry.driveUrl)
+      : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;'''
+          if old not in s: raise SystemExit('offline Drive URL block not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          # Add a subtle source badge to Drive-backed entries so users can tell
+          # they are hosted externally without bringing back "Open in Drive".
+          p = Path('assets/js/archive-ui.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''      <span class="card-type"${isBook && entry.title ? ` data-full-title="${escapeHtml(typeLabel)}" tabindex="0"` : ""}>${escapeHtml(typeLabel)}</span>
+      ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}'''
+          new = '''      <span class="card-type"${isBook && entry.title ? ` data-full-title="${escapeHtml(typeLabel)}" tabindex="0"` : ""}>${escapeHtml(typeLabel)}</span>
+      ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
+      ${entry.driveUrl ? `<span class="card-source-badge" title="File hosted on Google Drive">DRIVE</span>` : ""}'''
+          if old not in s: raise SystemExit('card meta block not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          # Style the Drive badge without affecting the current card layout.
+          p = Path('assets/js/mobile-card-actions.js')
+          s = p.read_text(encoding='utf-8')
+          marker = "  document.head.appendChild(style);"
+          css = r'''
+          .card-source-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 7px;border-radius:999px;border:1px solid rgba(99,239,255,.28);background:rgba(99,239,255,.08);color:#75eefa;font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.08em;white-space:nowrap}
+          body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#5a3a73}
+          '''
+          # Put the badge CSS into the first injected style block.
+          if '.card-source-badge{' not in s:
+            idx = s.find('`;\n\n  document.head.appendChild(style);')
+            if idx < 0: raise SystemExit('mobile card style end not found')
+            s = s[:idx] + css + s[idx:]
+            p.write_text(s, encoding='utf-8')
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add worker.js wrangler.jsonc assets/js/core.js assets/js/download-fix.js assets/js/offline.js assets/js/archive-ui.js assets/js/mobile-card-actions.js
+          git diff --cached --quiet || git commit -m "Fix Drive offline and download naming"
+          git push origin HEAD:main
