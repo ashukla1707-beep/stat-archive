@@ -5497,3 +5497,39 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     outline:none!important;
   }
 }
+
+
+/* Hamburger touch behaviour: match the menu close button by removing any
+   lingering tap/focus/pressed visual impression. */
+@media (pointer:coarse), (hover:none){
+  html body #mainMenuBtn.main-menu-btn{
+    -webkit-tap-highlight-color:transparent!important;
+    -webkit-touch-callout:none!important;
+    user-select:none!important;
+  }
+  html body #mainMenuBtn.main-menu-btn:hover,
+  html body #mainMenuBtn.main-menu-btn:active,
+  html body #mainMenuBtn.main-menu-btn:focus,
+  html body #mainMenuBtn.main-menu-btn:focus-visible,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]{
+    background:rgba(9,14,21,.64)!important;
+    border-color:rgba(148,163,184,.18)!important;
+    color:#cbd5e1!important;
+    box-shadow:none!important;
+    filter:none!important;
+    outline:none!important;
+    transform:none!important;
+  }
+  html body[data-theme="light"] #mainMenuBtn.main-menu-btn:hover,
+  html body[data-theme="light"] #mainMenuBtn.main-menu-btn:active,
+  html body[data-theme="light"] #mainMenuBtn.main-menu-btn:focus,
+  html body[data-theme="light"] #mainMenuBtn.main-menu-btn:focus-visible,
+  html body[data-theme="light"] #mainMenuBtn.main-menu-btn[aria-expanded="true"]{
+    background:rgba(250,248,241,.72)!important;
+    border-color:rgba(86,65,100,.16)!important;
+    color:#4b365f!important;
+    box-shadow:none!important;
+    filter:none!important;
+    outline:none!important;
+  }
+}
