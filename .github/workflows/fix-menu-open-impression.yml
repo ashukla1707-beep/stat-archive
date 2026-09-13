@@ -10,19 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply menu open-state style
+      - name: Apply hamburger touch feedback fix
         shell: python
         run: |
           from pathlib import Path
           p = Path('assets/styles.css')
           s = p.read_text(encoding='utf-8')
-          css = '''\n\n/* Remove touch pressed/focus impression while menu is open. */\n@media (pointer:coarse){\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"],\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:hover,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:active,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus-visible{\n    background:transparent!important;\n    box-shadow:none!important;\n    filter:none!important;\n    outline:none!important;\n  }\n}\n'''
-          if 'Remove touch pressed/focus impression while menu is open.' not in s:
+          css = '''\n\n/* Hamburger touch behaviour: match the menu close button by removing any\n   lingering tap/focus/pressed visual impression. */\n@media (pointer:coarse), (hover:none){\n  html body #mainMenuBtn.main-menu-btn{\n    -webkit-tap-highlight-color:transparent!important;\n    -webkit-touch-callout:none!important;\n    user-select:none!important;\n  }\n  html body #mainMenuBtn.main-menu-btn:hover,\n  html body #mainMenuBtn.main-menu-btn:active,\n  html body #mainMenuBtn.main-menu-btn:focus,\n  html body #mainMenuBtn.main-menu-btn:focus-visible,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded=\"true\"]{\n    background:rgba(9,14,21,.64)!important;\n    border-color:rgba(148,163,184,.18)!important;\n    color:#cbd5e1!important;\n    box-shadow:none!important;\n    filter:none!important;\n    outline:none!important;\n    transform:none!important;\n  }\n  html body[data-theme=\"light\"] #mainMenuBtn.main-menu-btn:hover,\n  html body[data-theme=\"light\"] #mainMenuBtn.main-menu-btn:active,\n  html body[data-theme=\"light\"] #mainMenuBtn.main-menu-btn:focus,\n  html body[data-theme=\"light\"] #mainMenuBtn.main-menu-btn:focus-visible,\n  html body[data-theme=\"light\"] #mainMenuBtn.main-menu-btn[aria-expanded=\"true\"]{\n    background:rgba(250,248,241,.72)!important;\n    border-color:rgba(86,65,100,.16)!important;\n    color:#4b365f!important;\n    box-shadow:none!important;\n    filter:none!important;\n    outline:none!important;\n  }\n}\n'''
+          marker = 'Hamburger touch behaviour: match the menu close button'
+          if marker not in s:
               p.write_text(s + css, encoding='utf-8')
       - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
           git add assets/styles.css
-          git diff --cached --quiet || git commit -m "Remove menu button impression while open"
+          git diff --cached --quiet || git commit -m "Remove hamburger tap impression"
           git push origin HEAD:main
