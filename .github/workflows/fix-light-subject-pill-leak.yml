@@ -1,10 +1,13 @@
 name: Fix light subject pill leak
+
 on:
   push:
     branches: [main]
     paths: ['.github/workflows/fix-light-subject-pill-leak.yml']
+
 permissions:
   contents: write
+
 jobs:
   fix:
     runs-on: ubuntu-latest
@@ -14,21 +17,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat >> assets/styles.css <<'CSS'
-
-/* Prevent desktop light-theme active subject pill color/shadow from bleeding
-   outside its rounded edge (visible near the lower-left of “All subjects”). */
-@media (min-width:701px){
-  body[data-theme="light"] #subjectFilterRow .pill.active{
-    background:#5a3a73!important;
-    border-color:#5a3a73!important;
-    box-shadow:none!important;
-    background-clip:padding-box!important;
-    overflow:hidden!important;
-    isolation:isolate!important;
-  }
-}
-CSS
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('assets/styles.css')
+          s = p.read_text(encoding='utf-8')
+          marker = '/* Desktop light-theme active subject pill bleed fix */'
+          if marker not in s:
+              s += '''\n\n/* Desktop light-theme active subject pill bleed fix */\n@media (min-width:701px){\n  body[data-theme="light"] #subjectFilterRow .pill.active{\n    background:#5a3a73!important;\n    border-color:#5a3a73!important;\n    box-shadow:none!important;\n    background-clip:padding-box!important;\n    overflow:hidden!important;\n    isolation:isolate!important;\n  }\n}\n'''
+              p.write_text(s, encoding='utf-8')
+          PY
       - name: Commit fix
         shell: bash
         run: |
