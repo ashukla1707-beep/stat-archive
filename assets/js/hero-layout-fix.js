@@ -86,11 +86,9 @@ html.stat-archive-android-webview body .header .hero-probability .axis-mid{
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", install, { once:true });
-  } else {
-    install();
-  }
+  /* Run immediately instead of waiting for DOMContentLoaded so the final
+     mu size is already active on the very first visible frame. */
+  install();
 })();
 
 /* =========================================================
