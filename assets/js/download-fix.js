@@ -4,8 +4,7 @@
  * - Browser/PWA downloads stay reliable.
  * - Drive-backed downloads work inside the Android WebView too.
  * - Offline PDFs are type/filename-normalized so Android sees a PDF, not .bin.
- * - Offline PDFs open in Stat Archive's own pdf.js preview, so very large files
- *   do not have to be base64-copied into another Android app just to read them.
+ * - Offline PDFs open with the platform/browser PDF handler instead of Stat Archive's reader.
  */
 (() => {
   "use strict";
@@ -304,12 +303,12 @@
     };
   }
 
-  /* Open an offline file through the existing Stat Archive pdf.js reader.
-     A temporary fetch shim feeds previewEntry() the IndexedDB Blob directly.
-     This avoids copying a 100+ MB PDF through the Android Javascript bridge. */
+  /* Offline > Open should never use Stat Archive's internal PDF reader.
+     APK delegates to Android's PDF app chooser. Web/PWA delegates to the
+     browser/device's normal PDF handling through the original offline opener. */
   if (originalOpenOfflineFile) {
     window.openOfflineFile = async function repairedOpenOfflineFile(id) {
-      if (typeof window.getOfflineFile !== "function" || typeof window.previewEntry !== "function") {
+      if (typeof window.getOfflineFile !== "function") {
         return originalOpenOfflineFile(id);
       }
 
@@ -318,45 +317,7 @@
       const normalized = await normalizeRecordBlob(record);
       await persistNormalizedOfflineRecord(record, normalized);
 
-      /* In the Android APK, Offline > Open must hand the saved file to
-         Android so the user can choose a PDF app instead of opening Stat
-         Archive's internal reader. */
-      if (isAndroid()) return originalOpenOfflineFile(id);
-
-      if (!normalized.pdf) return originalOpenOfflineFile(id);
-
-      try { window.closeOfflineLibrary?.(); } catch (_) {}
-
-      const marker = `__offline_pdf_${String(id)}_${Date.now()}`;
-      const entry = {
-        id: marker,
-        title: record.title || normalized.filename,
-        filename: normalized.filename,
-        type: record.type || "",
-        year: record.year || "",
-        _offlineBlob: normalized.blob,
-        _offlineFilename: normalized.filename,
-        _offlineMime: normalized.mime
-      };
-
-      const previousFetch = window.fetch;
-      const expected = `${typeof WORKER_URL === "string" ? WORKER_URL : "https://stat-archive-api.lustats.workers.dev"}/file?id=${encodeURIComponent(marker)}`;
-      window.fetch = function(input, init) {
-        const url = typeof input === "string" ? input : String(input?.url || input || "");
-        if (url === expected) {
-          return Promise.resolve(new Response(normalized.blob, {
-            status: 200,
-            headers: { "Content-Type": normalized.mime }
-          }));
-        }
-        return previousFetch.call(this, input, init);
-      };
-
-      try {
-        await window.previewEntry(entry);
-      } finally {
-        window.fetch = previousFetch;
-      }
+      return originalOpenOfflineFile(id);
     };
   }
 
