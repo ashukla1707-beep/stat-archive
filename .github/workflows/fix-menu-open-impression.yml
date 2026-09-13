@@ -10,29 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Remove persistent menu-button impression while menu is open
+      - name: Apply menu open-state style
+        shell: python
         run: |
-          cat >> assets/styles.css <<'CSS'
-
-/* Touch/coarse-pointer menu button: while the side menu is open, do not keep
-   the tap/pressed/focus visual impression on the hamburger button. */
-@media (pointer:coarse){
-  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"],
-  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:hover,
-  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:active,
-  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus,
-  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus-visible{
-    background:transparent!important;
-    box-shadow:none!important;
-    filter:none!important;
-    outline:none!important;
-  }
-}
-CSS
+          from pathlib import Path
+          p = Path('assets/styles.css')
+          s = p.read_text(encoding='utf-8')
+          css = '''\n\n/* Remove touch pressed/focus impression while menu is open. */\n@media (pointer:coarse){\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"],\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:hover,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:active,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus,\n  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus-visible{\n    background:transparent!important;\n    box-shadow:none!important;\n    filter:none!important;\n    outline:none!important;\n  }\n}\n'''
+          if 'Remove touch pressed/focus impression while menu is open.' not in s:
+              p.write_text(s + css, encoding='utf-8')
       - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
           git add assets/styles.css
-          git commit -m "Remove menu button impression while open"
+          git diff --cached --quiet || git commit -m "Remove menu button impression while open"
           git push origin HEAD:main
