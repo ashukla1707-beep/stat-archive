@@ -67,12 +67,14 @@
   background:var(--bg,#070a0f);color:var(--text,#f5f7fb);
 }
 .sa-reader-toolbar{
+  position:relative;
   flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
-  gap:8px;flex-wrap:wrap;padding:8px 10px;
+  gap:8px;flex-wrap:nowrap;padding:8px 10px;
   border:1px solid var(--line,rgba(148,163,184,.14));border-radius:10px 10px 0 0;
   background:var(--panel-solid,#0f141d);
+  overflow:visible;
 }
-.sa-reader-group{display:flex;align-items:center;gap:6px;min-width:0}
+.sa-reader-group{display:flex;align-items:center;gap:6px;min-width:0;flex:0 0 auto}
 .sa-reader-btn{
   min-width:34px;height:34px;padding:0 9px;
   border:1px solid var(--line-strong,rgba(148,163,184,.24));border-radius:8px;
@@ -82,6 +84,20 @@
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 .sa-reader-btn:disabled{opacity:.35;cursor:default}
+.sa-reader-more-toggle{font-size:18px;letter-spacing:1px;padding-bottom:4px}
+.sa-reader-more-menu{
+  position:absolute;right:8px;top:calc(100% + 6px);z-index:30;
+  display:none;flex-direction:column;gap:6px;
+  min-width:158px;padding:8px;
+  border:1px solid var(--line-strong,rgba(148,163,184,.24));
+  border-radius:10px;background:var(--panel-solid,#0f141d);
+  box-shadow:0 12px 32px rgba(0,0,0,.34);
+}
+.sa-reader-more-menu.show{display:flex}
+.sa-reader-more-menu .sa-reader-btn{
+  width:100%;height:36px;justify-content:flex-start;gap:9px;padding:0 11px;
+}
+.sa-reader-menu-icon{display:inline-flex;width:20px;justify-content:center;font-size:15px}
 .sa-reader-info,.sa-reader-zoom{
   white-space:nowrap;color:var(--muted,#8b97aa);
   font:600 11px 'JetBrains Mono',monospace;
@@ -130,21 +146,24 @@
 body[data-theme="light"] .sa-reader-viewport{background:#e9e4da}
 body[data-theme="light"] .sa-reader-toolbar,body[data-theme="light"] .sa-reader-bottom{background:#f7f3e9}
 body[data-theme="light"] .sa-reader-btn{background:#fffaf1;color:#27302d;border-color:#ddd6c8}
+body[data-theme="light"] .sa-reader-more-menu{background:#f7f3e9;border-color:#ddd6c8;box-shadow:0 12px 28px rgba(74,59,39,.18)}
 body[data-theme="light"] .sa-reader-info,body[data-theme="light"] .sa-reader-zoom{color:#59635e}
 body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);color:#59635e}
 @media(max-width:700px){
-  #previewOverlay{padding:0!important;align-items:stretch!important}
-  #previewOverlay .preview-card.sa-reader-active{
-    width:100vw!important;height:100dvh!important;max-height:none!important;
-    margin:0!important;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))!important;
-    border-radius:0!important;
-  }
-  .sa-reader-toolbar{padding:7px 7px;gap:5px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
-  .sa-reader-toolbar::-webkit-scrollbar{display:none}
-  .sa-reader-group{flex:0 0 auto}
+  .sa-reader-toolbar{padding:7px;gap:5px;overflow:visible;flex-wrap:nowrap}
+  .sa-reader-group{gap:5px}
   .sa-reader-btn{min-width:32px;height:32px;padding:0 7px}
   .sa-reader-info,.sa-reader-zoom{font-size:10px}
+  .sa-reader-zoom{min-width:42px}
+  .sa-reader-more-menu{right:7px;min-width:152px}
   .sa-reader-bottom{padding:7px}
+}
+@media(max-width:390px){
+  .sa-reader-toolbar{gap:4px;padding:6px}
+  .sa-reader-group{gap:4px}
+  .sa-reader-btn{min-width:30px;height:30px;padding:0 6px}
+  .sa-reader-info{font-size:9px}
+  .sa-reader-zoom{font-size:9px;min-width:38px}
 }
 `;
     document.head.appendChild(style);
@@ -274,9 +293,12 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
             <button type="button" class="sa-reader-btn" id="saReaderOut" aria-label="Zoom out">−</button>
             <span class="sa-reader-zoom" id="saReaderZoom">100%</span>
             <button type="button" class="sa-reader-btn" id="saReaderIn" aria-label="Zoom in">+</button>
-            <button type="button" class="sa-reader-btn" id="saReaderReset" aria-label="Reset zoom">1:1</button>
-            <button type="button" class="sa-reader-btn" id="saReaderDownload" aria-label="Download" title="Download">↓</button>
-            <button type="button" class="sa-reader-btn" id="saReaderPrint" aria-label="Print" title="Print">⎙</button>
+          </div>
+          <button type="button" class="sa-reader-btn sa-reader-more-toggle" id="saReaderMore" aria-label="More preview options" aria-expanded="false" title="More options">⋯</button>
+          <div class="sa-reader-more-menu" id="saReaderMoreMenu" role="menu" aria-label="Preview options">
+            <button type="button" class="sa-reader-btn" id="saReaderReset" role="menuitem"><span class="sa-reader-menu-icon">1:1</span><span>Reset zoom</span></button>
+            <button type="button" class="sa-reader-btn" id="saReaderDownload" role="menuitem"><span class="sa-reader-menu-icon">↓</span><span>Download</span></button>
+            <button type="button" class="sa-reader-btn" id="saReaderPrint" role="menuitem"><span class="sa-reader-menu-icon">🖨</span><span>Print</span></button>
           </div>
         </div>
         <div class="sa-reader-viewport" id="saReaderViewport">
@@ -305,9 +327,11 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     const reset = document.getElementById("saReaderReset");
     const download = document.getElementById("saReaderDownload");
     const print = document.getElementById("saReaderPrint");
+    const more = document.getElementById("saReaderMore");
+    const moreMenu = document.getElementById("saReaderMoreMenu");
     const open = document.getElementById("saReaderOpen");
 
-    if (!viewport || !sizer || !surface || !info || !zoomLabel || !status || !prev || !next || !zoomOut || !zoomIn || !reset || !download || !print || !open) {
+    if (!viewport || !sizer || !surface || !info || !zoomLabel || !status || !prev || !next || !zoomOut || !zoomIn || !reset || !download || !print || !more || !moreMenu || !open) {
       throw new Error("Preview UI initialization failed");
     }
 
@@ -355,6 +379,8 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       reset,
       download,
       print,
+      more,
+      moreMenu,
       open,
       metas,
       tasks,
@@ -465,6 +491,24 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       status.classList.add("show");
       s.statusTimer = setTimeout(() => status.classList.remove("show"), ms);
     }
+
+    function closeMoreMenu() {
+      moreMenu.classList.remove("show");
+      more.setAttribute("aria-expanded", "false");
+    }
+
+    more.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const openNow = !moreMenu.classList.contains("show");
+      moreMenu.classList.toggle("show", openNow);
+      more.setAttribute("aria-expanded", openNow ? "true" : "false");
+    };
+
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Node && (more.contains(event.target) || moreMenu.contains(event.target))) return;
+      closeMoreMenu();
+    }, { signal: s.abort.signal });
 
     const fragment = document.createDocumentFragment();
     for (const m of metas) {
@@ -769,11 +813,13 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       commitZoom(size.w / 2, size.h / 2, s.zoom + ZOOM_STEP);
     };
     reset.onclick = () => {
+      closeMoreMenu();
       const size = viewportSize();
       commitZoom(size.w / 2, size.h / 2, 1);
     };
 
     download.onclick = () => {
+      closeMoreMenu();
       try {
         if (typeof window.downloadEntry === "function") window.downloadEntry(entry, download);
         else downloadBlob(blob, pdfName(entry));
@@ -782,7 +828,10 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         downloadBlob(blob, pdfName(entry));
       }
     };
-    print.onclick = () => printBlob(blob, print, pdfName(entry));
+    print.onclick = () => {
+      closeMoreMenu();
+      printBlob(blob, print, pdfName(entry));
+    };
     open.onclick = () => openBlob(blob, pdfName(entry));
 
     if ("ResizeObserver" in window) {
