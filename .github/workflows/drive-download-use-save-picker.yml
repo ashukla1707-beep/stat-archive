@@ -1,0 +1,41 @@
+name: Drive download use Save As picker
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/drive-download-use-save-picker.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Drive APK download behavior
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('assets/js/download-fix.js')
+          s=p.read_text()
+          old='''      /* Newer APKs can hand the same-origin stream URL straight to Android's\n         DownloadManager. That avoids loading a 100+ MB PDF into JS/base64. */\n      if (isAndroid() && typeof window.AndroidBridge.downloadUrl === "function") {\n        let nativeName = "";\n        try {\n          if (typeof window.archiveDownloadName === "function") {\n            nativeName = window.archiveDownloadName(entry);\n          }\n        } catch (_) {}\n        if (!nativeName) nativeName = entry.title || entry.filename || "Stat Archive file.pdf";\n        nativeName = cleanName(nativeName);\n        if (!/\\.pdf$/i.test(nativeName)) nativeName += ".pdf";\n        window.AndroidBridge.downloadUrl(inlineUrl, nativeName, "application/pdf");\n        try { window.incrementActivity?.("download"); } catch (_) {}\n        return;\n      }\n'''
+          new='''      /* APK downloads must behave like every other Stat Archive file: open\n         Android's Save As / folder picker first. Newer APKs stream the URL\n         straight into the chosen document; older APKs fall back to saveFile. */\n      if (isAndroid() && typeof window.AndroidBridge.saveUrl === "function") {\n        let nativeName = "";\n        try {\n          if (typeof window.archiveDownloadName === "function") {\n            nativeName = window.archiveDownloadName(entry);\n          }\n        } catch (_) {}\n        if (!nativeName) nativeName = entry.title || entry.filename || "Stat Archive file.pdf";\n        nativeName = cleanName(nativeName);\n        if (!/\\.pdf$/i.test(nativeName)) nativeName += ".pdf";\n        window.AndroidBridge.saveUrl(inlineUrl, nativeName, "application/pdf");\n        try { window.incrementActivity?.("download"); } catch (_) {}\n        return;\n      }\n'''
+          if old not in s:
+              raise SystemExit('target Drive DownloadManager block not found')
+          p.write_text(s.replace(old,new))
+
+          sw=Path('sw.js')
+          t=sw.read_text()
+          t=t.replace('stat-archive-shell-v20260914-drive-apk-repair-v1','stat-archive-shell-v20260914-drive-save-picker-v1')
+          t=t.replace('download-fix.js?v=20260914-drive-apk-repair-v1','download-fix.js?v=20260914-drive-save-picker-v1')
+          sw.write_text(t)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/download-fix.js sw.js
+          git commit -m "Use Save As picker for Drive downloads" || exit 0
+          git push
