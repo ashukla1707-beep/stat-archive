@@ -1,0 +1,46 @@
+name: Fix mu position stability
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-mu-position-stability.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lock mobile mu position from first paint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('assets/js/hero-animation.js')
+          s=p.read_text(encoding='utf-8')
+          needle='''    const heroRect = hero.getBoundingClientRect();\n    const ctm = svg.getScreenCTM?.();\n    if (!ctm) return;\n\n    const point = svg.createSVGPoint();'''
+          replacement='''    /* On the normal phone layout the stylesheet already places mu correctly\n       from the first paint. Do not replace that stable bottom-based position\n       with a later SVG-CTM top coordinate, which causes a visible refresh jump. */\n    if (window.innerWidth <= 700) {\n      const isLight = document.body?.dataset.theme === "light";\n      label.textContent = "μ";\n      label.style.setProperty("display", "block", "important");\n      label.style.setProperty("visibility", "visible", "important");\n      label.style.setProperty("opacity", "1", "important");\n      label.style.setProperty("position", "absolute", "important");\n      label.style.setProperty("left", "50%", "important");\n      label.style.setProperty("right", "auto", "important");\n      label.style.setProperty("top", "auto", "important");\n      label.style.setProperty("bottom", "4px", "important");\n      label.style.setProperty("transform", "translateX(-50%)", "important");\n      label.style.setProperty("z-index", "30", "important");\n      label.style.setProperty("width", "auto", "important");\n      label.style.setProperty("height", "auto", "important");\n      label.style.setProperty("margin", "0", "important");\n      label.style.setProperty("padding", "0", "important");\n      label.style.setProperty("font-family", MU_STYLE.fontFamily, "important");\n      label.style.setProperty("font-size", `${MU_STYLE.normalFontSize}px`, "important");\n      label.style.setProperty("font-style", MU_STYLE.fontStyle, "important");\n      label.style.setProperty("font-weight", MU_STYLE.fontWeight, "important");\n      label.style.setProperty("line-height", MU_STYLE.lineHeight, "important");\n      label.style.setProperty("letter-spacing", "0", "important");\n      label.style.setProperty("color", isLight ? MU_STYLE.lightColor : MU_STYLE.darkColor, "important");\n      label.style.setProperty("text-shadow", "none", "important");\n      label.style.setProperty("pointer-events", "none", "important");\n      return;\n    }\n\n    const heroRect = hero.getBoundingClientRect();\n    const ctm = svg.getScreenCTM?.();\n    if (!ctm) return;\n\n    const point = svg.createSVGPoint();'''
+          if needle not in s:
+              raise SystemExit('Expected positionMeanSymbol block not found')
+          s=s.replace(needle,replacement,1)
+          p.write_text(s,encoding='utf-8')
+
+          # Validate the mobile branch owns the same stable position used by CSS.
+          s=p.read_text(encoding='utf-8')
+          assert 'if (window.innerWidth <= 700)' in s
+          assert 'label.style.setProperty("bottom", "4px", "important")' in s
+          assert 'label.style.setProperty("top", "auto", "important")' in s
+          print('Mobile mu position locked to first-paint CSS geometry.')
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/hero-animation.js
+          git commit -m "Keep mobile mu position stable on refresh"
+          git push origin HEAD:main
