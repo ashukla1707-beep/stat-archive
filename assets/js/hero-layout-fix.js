@@ -298,7 +298,7 @@ html body .header .hero-probability .axis-mid{
   }
 
   function themeColor() {
-    return document.body?.dataset.theme === "light" ? "#2f8f5b" : "#5ee7f7";
+    return document.body?.dataset.theme === "light" ? "#347d73" : "#5ee7f7";
   }
 
   function svgEl(name, attrs = {}) {

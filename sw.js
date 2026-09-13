@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260913-mu-final-pixel-v5";
+const CACHE = "stat-archive-shell-v20260913-mu-light-match-v6";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [

@@ -103,8 +103,8 @@ html body .header .hero-probability .axis-mid{
 }
 html[data-theme="light"] body .header .hero-probability .axis-mid,
 html body[data-theme="light"] .header .hero-probability .axis-mid{
-  color:#2f8f5b !important;
-  fill:#2f8f5b !important;
+  color:#347d73 !important;
+  fill:#347d73 !important;
 }
 
 /* The extra range/scroll strip is not part of the card design. Hide it in all
@@ -156,7 +156,7 @@ html body .subject-mobile-scroll-range{
       document.documentElement.setAttribute('data-theme', value);
     }
 
-    const color = isLight ? '#2f8f5b' : '#5ee7f7';
+    const color = isLight ? '#347d73' : '#5ee7f7';
     document.querySelectorAll('.hero-probability .axis-mid').forEach(mu => {
       mu.style.setProperty('color', color, 'important');
       mu.style.setProperty('fill', color, 'important');
