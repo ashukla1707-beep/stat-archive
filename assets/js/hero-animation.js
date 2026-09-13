@@ -145,11 +145,16 @@
     frameId = requestAnimationFrame(tick);
   }
 
-  function queueStart() { if (started) return; clearTimeout(startupFallbackTimer); window.setTimeout(startHeroAnimation, 90); }
+  function queueStart() {
+    if (started) return;
+    clearTimeout(startupFallbackTimer);
+    window.setTimeout(startHeroAnimation, 90);
+  }
   function armStart() {
-    if (document.documentElement.dataset.statStartupReady === "1") { queueStart(); return; }
-    document.addEventListener("statarchive:startup-ready", queueStart, { once:true });
-    startupFallbackTimer = window.setTimeout(queueStart, 3500);
+    /* Do not wait for archive summary/data loading. The hero should begin as
+       soon as its DOM is ready, otherwise the graph can stay blank for several
+       seconds on mobile desktop-site mode. */
+    queueStart();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", armStart, { once:true }); else armStart();
 
