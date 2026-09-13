@@ -1,0 +1,34 @@
+name: Change preview more icon
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/change-preview-more-icon.yml']
+permissions:
+  contents: write
+jobs:
+  change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace dropdown chevron with more menu icon
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('assets/js/mobile-card-actions.js')
+          s=p.read_text()
+          old="btn.textContent = '⌄';"
+          new="btn.textContent = '⋯';"
+          if old not in s:
+              raise SystemExit('target icon not found')
+          s=s.replace(old,new,1)
+          # A three-dot menu should not rotate when opened.
+          s=s.replace("  .sa-toolbar-expand-btn.is-open{transform:rotate(180deg)!important}\n", "  .sa-toolbar-expand-btn.is-open{background:rgba(148,163,184,.12)!important}\n", 1)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/mobile-card-actions.js
+          git commit -m "Use more menu icon in preview toolbar"
+          git push
