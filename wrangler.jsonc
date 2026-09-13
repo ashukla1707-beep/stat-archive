@@ -8,5 +8,19 @@
     "not_found_handling": "single-page-application",
     "binding": "ASSETS"
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "REVIEWS",
+        "class_name": "ReviewsStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "reviews-v1",
+      "new_sqlite_classes": ["ReviewsStore"]
+    }
+  ],
   "main": "worker.js"
 }
