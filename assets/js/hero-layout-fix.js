@@ -7,12 +7,6 @@
   function install() {
     document.documentElement.classList.add("stat-archive-pwa");
 
-    /* Android WebView scales the page differently from the normal browser.
-       Mark only the real WebView so the mu can be visually matched to web. */
-    const ua = navigator.userAgent || "";
-    const isAndroidWebView = /Android/i.test(ua) && (/;\s*wv\)/i.test(ua) || /Version\/4\.0/i.test(ua));
-    document.documentElement.classList.toggle("stat-archive-android-webview", isAndroidWebView);
-
     let style = document.getElementById(STYLE_ID);
     if (!style) {
       style = document.createElement("style");
@@ -45,7 +39,7 @@ html body #summaryAccess{
   line-height:1.08 !important;
 }
 
-/* Browser/raw HTML: this is the reference size that already looks correct. */
+/* One canonical mu size everywhere. */
 html body .header .hero-probability .axis-mid{
   font-family:Arial,Helvetica,sans-serif !important;
   font-size:14px !important;
@@ -53,12 +47,6 @@ html body .header .hero-probability .axis-mid{
   font-weight:500 !important;
   line-height:1 !important;
   letter-spacing:0 !important;
-}
-
-/* The Android WebView renders the same CSS px smaller after page scaling.
-   Compensate only inside the APK so it visually matches the 14px web label. */
-html.stat-archive-android-webview body .header .hero-probability .axis-mid{
-  font-size:22px !important;
 }
 
 @media(max-width:700px){
@@ -77,17 +65,12 @@ html.stat-archive-android-webview body .header .hero-probability .axis-mid{
   html body .header .hero-probability .axis-mid{
     font-size:14px !important;
   }
-  html.stat-archive-android-webview body .header .hero-probability .axis-mid{
-    font-size:22px !important;
-  }
 }
 `;
       document.head.appendChild(style);
     }
   }
 
-  /* Run immediately instead of waiting for DOMContentLoaded so the final
-     mu size is already active on the very first visible frame. */
   install();
 })();
 
@@ -242,8 +225,4 @@ html.stat-archive-android-webview body .header .hero-probability .axis-mid{
   });
 })();
 
-/*
-  hero-animation.js owns the mu position and theme colour. Browser/raw HTML
-  keeps the 14px reference size; Android WebView gets a visual-size correction
-  so the APK matches the web appearance after WebView page scaling.
-*/
+/* hero-animation.js owns mu positioning and theme colour. Size is 14px everywhere. */
