@@ -1,0 +1,28 @@
+name: Fix hero grid corner
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-hero-grid-corner.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clip hero grid to rounded card
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('assets/styles.css')
+          s = p.read_text(encoding='utf-8')
+          css = '''\n\n/* Keep the hero's decorative grid strictly inside the rounded card. */\n.header::before{\n  border-radius:inherit!important;\n  clip-path:inset(0 round 24px)!important;\n  overflow:hidden!important;\n}\n@media(max-width:700px){\n  .header::before{clip-path:inset(0 round 20px)!important;}\n}\n'''
+          if 'Keep the hero\'s decorative grid strictly inside the rounded card.' not in s:
+              p.write_text(s + css, encoding='utf-8')
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/styles.css
+          git diff --cached --quiet || git commit -m "Clip hero grid inside rounded corner"
+          git push origin HEAD:main
