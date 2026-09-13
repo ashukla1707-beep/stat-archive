@@ -56,7 +56,7 @@ html body .header .hero-probability .axis-mid{
   html body .header #mainMenuBtn.main-menu-btn{
     position:absolute !important;
     top:calc(50% - 83px) !important;
-    right:36px !important;
+    right:44px !important;
     left:auto !important;
     bottom:auto !important;
     margin:0 !important;
