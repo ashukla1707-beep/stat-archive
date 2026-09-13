@@ -1,0 +1,74 @@
+name: Use browser PDF handler for offline files
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/open-offline-browser-handler.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch offline open behavior
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('assets/js/download-fix.js')
+          s = p.read_text()
+          old = '''      const record = await window.getOfflineFile(String(id));
+      if (!record?.blob) throw new Error("Offline file could not be found.");
+      const normalized = await normalizeRecordBlob(record);
+      await persistNormalizedOfflineRecord(record, normalized);
+
+      if (!normalized.pdf) return originalOpenOfflineFile(id);
+
+      try { window.closeOfflineLibrary?.(); } catch (_) {}
+
+      const marker = `__offline_pdf_${String(id)}_${Date.now()}`;'''
+          new = '''      const record = await window.getOfflineFile(String(id));
+      if (!record?.blob) throw new Error("Offline file could not be found.");
+      const normalized = await normalizeRecordBlob(record);
+      await persistNormalizedOfflineRecord(record, normalized);
+
+      /* Web/PWA should use the browser/device's normal PDF handler rather than
+         Stat Archive's built-in reader. The original offline opener already
+         creates a Blob URL and opens it outside the Stat Archive preview. */
+      if (!isAndroid()) {
+        return originalOpenOfflineFile(id);
+      }
+
+      if (!normalized.pdf) return originalOpenOfflineFile(id);
+
+      try { window.closeOfflineLibrary?.(); } catch (_) {}
+
+      const marker = `__offline_pdf_${String(id)}_${Date.now()}`;'''
+          if old not in s:
+              raise SystemExit('target offline-open block not found')
+          p.write_text(s.replace(old, new, 1))
+
+          sw = Path('sw.js')
+          t = sw.read_text()
+          t = t.replace('stat-archive-shell-v20260914-drive-save-picker-v1', 'stat-archive-shell-v20260914-offline-external-open-v1', 1)
+          t = t.replace('download-fix.js?v=20260914-drive-save-picker-v1', 'download-fix.js?v=20260914-offline-external-open-v1', 1)
+          sw.write_text(t)
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/download-fix.js sw.js
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+          else
+            git commit -m "Open offline PDFs with browser handler on web"
+            git push origin HEAD:main
+          fi
