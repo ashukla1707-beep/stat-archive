@@ -115,6 +115,20 @@ html body .subject-mobile-scroll-range{
   display:none !important;
 }
 
+/* On touch/coarse-pointer devices the hamburger must not retain a sticky
+   hover/pressed/focus effect after a tap. Real desktop mouse hover remains
+   untouched because these rules only apply where hover is unavailable. */
+@media (hover:none), (pointer:coarse){
+  html body #mainMenuBtn.main-menu-btn:hover,
+  html body #mainMenuBtn.main-menu-btn:active,
+  html body #mainMenuBtn.main-menu-btn:focus:not(:focus-visible){
+    transform:none !important;
+    filter:none !important;
+    box-shadow:none !important;
+    outline:none !important;
+  }
+}
+
 @media(max-width:700px){
   html body .archive-entries-divider{
     margin-top:0 !important;
@@ -296,4 +310,28 @@ html body .subject-mobile-scroll-range{
   } catch (err) {
     console.warn('Could not install atomic level switching:', err);
   }
+
+  /* Clear the hamburger's sticky focus/pressed state after touch interaction.
+     This prevents the visual effect seen after opening/closing the menu in
+     touch browsers, PWA and the Android WebView without changing desktop hover. */
+  const releaseMenuButtonState = () => {
+    const btn = document.getElementById('mainMenuBtn');
+    if (!btn) return;
+    try { btn.blur(); } catch (_) {}
+    btn.classList.remove('is-pressed', 'is-active', 'active');
+  };
+
+  const isTouchLike = () => !!window.matchMedia?.('(hover:none), (pointer:coarse)').matches;
+
+  document.addEventListener('pointerup', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!isTouchLike() || !target?.closest?.('#mainMenuBtn')) return;
+    requestAnimationFrame(releaseMenuButtonState);
+  }, true);
+
+  document.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!isTouchLike() || !target?.closest?.('#mainMenuBtn,#mainMenuCloseBtn,#mainMenuBackdrop')) return;
+    setTimeout(releaseMenuButtonState, 0);
+  }, true);
 })();
