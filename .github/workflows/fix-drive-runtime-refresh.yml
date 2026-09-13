@@ -1,0 +1,53 @@
+name: Fix Drive runtime refresh
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-drive-runtime-refresh.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix service worker routing and stale Drive scripts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('sw.js')
+          s=p.read_text()
+          s=s.replace('stat-archive-shell-v20260913-mu-light-match-v6','stat-archive-shell-v20260914-drive-runtime-v1',1)
+          needle="""  const isDocumentNavigation = request.mode === 'navigate';
+"""
+          replacement="""  // Drive files are streamed by the Cloudflare Worker. Never let the
+  // service worker cache or app-shell-route these large binary responses.
+  if (url.pathname === '/drive-file') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  const isDocumentNavigation = request.mode === 'navigate';
+"""
+          if needle not in s: raise SystemExit('fetch routing insertion point not found')
+          s=s.replace(needle,replacement,1)
+          needle2="""  const isLiveRuntime =
+    url.pathname.endsWith('/assets/js/preview.js') ||
+"""
+          replacement2="""  const isLiveRuntime =
+    url.pathname.endsWith('/assets/js/core.js') ||
+    url.pathname.endsWith('/assets/js/archive-ui.js') ||
+    url.pathname.endsWith('/assets/js/download-fix.js') ||
+    url.pathname.endsWith('/assets/js/offline.js') ||
+    url.pathname.endsWith('/assets/js/preview.js') ||
+"""
+          if needle2 not in s: raise SystemExit('runtime insertion point not found')
+          s=s.replace(needle2,replacement2,1)
+          p.write_text(s)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add sw.js
+          git commit -m "Fix Drive download and offline runtime routing"
+          git push
