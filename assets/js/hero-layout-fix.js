@@ -50,6 +50,39 @@ html body .header .hero-probability .axis-mid{
   text-shadow:none !important;
 }
 
+/* Mobile browser in Desktop-site mode: lock the menu controls to their final
+   desktop positions from the first authoritative JS style pass. This prevents
+   the hamburger/side-menu jump when later menu polish styles are installed. */
+@media (pointer:coarse) and (min-width:701px){
+  html body .header #mainMenuBtn.main-menu-btn{
+    position:absolute !important;
+    top:18px !important;
+    right:18px !important;
+    left:auto !important;
+    bottom:auto !important;
+    margin:0 !important;
+    width:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    height:38px !important;
+    min-height:38px !important;
+    max-height:38px !important;
+    transform:none !important;
+  }
+  html body #mainSideMenu.main-side-menu,
+  html body #mainSideMenu.main-side-menu.stat-menu-polished{
+    position:fixed !important;
+    top:18px !important;
+    right:18px !important;
+    bottom:18px !important;
+    left:auto !important;
+    width:min(390px,calc(100vw - 36px)) !important;
+    height:auto !important;
+    max-height:calc(100dvh - 36px) !important;
+    transform-origin:right top !important;
+  }
+}
+
 @media(max-width:700px){
   html body .card .card-actions{
     grid-template-columns:repeat(3,minmax(0,1fr)) !important;
@@ -227,19 +260,22 @@ html body .header .hero-probability .axis-mid{
 })();
 
 /* =========================================================
-   PHONE + BROWSER DESKTOP-SITE HERO GRAPH v2
-   A single independent SVG is created once and then allowed to scale naturally.
-   Browser resize / visualViewport events never rebuild or restart its animation.
+   PHONE + BROWSER DESKTOP-SITE HERO GRAPH v3
+   Independent SVG for mobile browser Desktop-site mode.
+   - Curve stays separated from the x-axis.
+   - Curve draw is intentionally faster than the APK/normal graph.
+   - Resize events never rebuild or restart an active/completed animation.
    ========================================================= */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V2__) return;
-  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V2__ = true;
+  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V3__) return;
+  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V3__ = true;
 
   const NS = "http://www.w3.org/2000/svg";
-  const CURVE_DURATION = 8000;
+  const CURVE_DURATION = 5000;
   const DOT_DURATION = 4000;
+  const CURVE_LIFT = -10;
   const X_MIN = 18;
   const X_MAX = 502;
   let raf = 0;
@@ -309,8 +345,6 @@ html body .header .hero-probability .axis-mid{
     const curveD = sourceCurve.getAttribute("d");
     if (!curveD) return false;
 
-    /* Hide the legacy graph before inserting the replacement, preventing one
-       visible frame of the already-complete legacy curve. */
     sourceSvg.style.setProperty("display", "none", "important");
     hero.querySelector(".axis-mid")?.style.setProperty("display", "none", "important");
 
@@ -353,6 +387,7 @@ html body .header .hero-probability .axis-mid{
 
     const curve = svgEl("path", {
       d: curveD,
+      transform: `translate(0 ${CURVE_LIFT})`,
       fill: "none",
       stroke: color,
       "stroke-width": 7,
@@ -472,9 +507,6 @@ html body .header .hero-probability .axis-mid{
     }
   }
 
-  /* Try immediately: this file is loaded after the hero markup. If the markup
-     is not present yet, DOMContentLoaded is the only fallback that can build it.
-     We deliberately do NOT rebuild on load/pageshow/resize. */
   if (!buildTouchGraph() && document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", buildTouchGraph, { once:true });
   }
