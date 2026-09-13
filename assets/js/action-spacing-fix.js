@@ -144,10 +144,12 @@ html body[data-theme="light"] .header .hero-probability .axis-mid{
   });
 
   function syncThemeAndMu() {
-    const bodyLight = document.body?.getAttribute('data-theme') === 'light';
-    const htmlLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const isLight = bodyLight || htmlLight;
-    const value = isLight ? 'light' : 'dark';
+    const bodyTheme = document.body?.getAttribute('data-theme');
+    const htmlTheme = document.documentElement.getAttribute('data-theme');
+    const value = bodyTheme === 'light' || bodyTheme === 'dark'
+      ? bodyTheme
+      : (htmlTheme === 'light' ? 'light' : 'dark');
+    const isLight = value === 'light';
 
     if (document.body && document.body.getAttribute('data-theme') !== value) {
       document.body.setAttribute('data-theme', value);
