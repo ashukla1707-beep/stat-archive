@@ -1,0 +1,255 @@
+name: Drive-backed archive actions
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/drive-card-actions.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Drive-backed card actions
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # 1) Cards: use the same Preview / Download / Offline actions for Drive entries.
+          p = Path('assets/js/archive-ui.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''      ${entry.driveUrl
+      ? `<button class="action-btn drive-btn">↗ Open in Drive</button>`
+: `
+  <button
+    class="action-btn pv-btn${previewedEntryIds.has(String(entry.id)) ? " is-previewed" : ""}"
+  >
+    ⊙ Preview
+  </button>
+
+  <button
+    class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"
+  >
+    ⬇ Download
+  </button>
+
+  <button
+    class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}"
+    title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}"
+  >
+    ${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}
+  </button>
+`
+      }'''
+          new = '''
+  <button
+    class="action-btn pv-btn${previewedEntryIds.has(String(entry.id)) ? " is-previewed" : ""}"
+  >
+    ⊙ Preview
+  </button>
+
+  <button
+    class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"
+  >
+    ⬇ Download
+  </button>
+
+  <button
+    class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}"
+    title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}"
+  >
+    ${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}
+  </button>'''
+          if old not in s:
+              raise SystemExit('archive-ui Drive action block not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          # 2) Core helper: normalize public Google Drive links once for all actions.
+          p = Path('assets/js/core.js')
+          s = p.read_text(encoding='utf-8')
+          marker = 'function mapDbEntry(e) {'
+          helper = '''function googleDriveFileId(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]+)/i,
+    /[?&]id=([a-zA-Z0-9_-]+)/i,
+    /\/d\/([a-zA-Z0-9_-]+)/i
+  ];
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (match) return match[1];
+  }
+  return "";
+}
+
+function googleDrivePreviewUrl(entryOrUrl) {
+  const raw = typeof entryOrUrl === "string" ? entryOrUrl : entryOrUrl?.driveUrl;
+  const id = googleDriveFileId(raw);
+  return id ? `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview` : String(raw || "");
+}
+
+function googleDriveDownloadUrl(entryOrUrl) {
+  const raw = typeof entryOrUrl === "string" ? entryOrUrl : entryOrUrl?.driveUrl;
+  const id = googleDriveFileId(raw);
+  return id
+    ? `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`
+    : String(raw || "");
+}
+
+'''
+          if 'function googleDriveFileId(url)' not in s:
+              if marker not in s:
+                  raise SystemExit('core marker not found')
+              s = s.replace(marker, helper + marker, 1)
+              p.write_text(s, encoding='utf-8')
+
+          # 3) Preview: Drive files stay in Drive and are previewed in the Stat Archive modal.
+          p = Path('assets/js/preview.js')
+          s = p.read_text(encoding='utf-8')
+          target = '''    const abort = new AbortController();
+    state = { abort, tasks: new Map() };
+
+    try {
+      const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;'''
+          replacement = '''    const abort = new AbortController();
+    state = { abort, tasks: new Map() };
+
+    try {
+      if (entry?.driveUrl) {
+        const previewUrl = typeof googleDrivePreviewUrl === "function"
+          ? googleDrivePreviewUrl(entry)
+          : entry.driveUrl;
+        body.innerHTML = `<iframe src="${escapeHtml(previewUrl)}" title="${escapeHtml(entry?.title || entry?.filename || "Preview")}" style="width:100%;height:100%;border:0;background:#080c12" allow="autoplay"></iframe>`;
+        return;
+      }
+
+      const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;'''
+          if target not in s:
+              raise SystemExit('preview target not found')
+          p.write_text(s.replace(target, replacement, 1), encoding='utf-8')
+
+          # 4) Download: large Drive files download directly from Drive instead of proxying through R2/Worker.
+          p = Path('assets/js/download-fix.js')
+          s = p.read_text(encoding='utf-8')
+          target = '''    try {
+      const workerUrl =
+        typeof WORKER_URL === 'string'
+          ? WORKER_URL
+          : 'https://stat-archive-api.lustats.workers.dev';
+
+      const fileUrl = `${workerUrl}/file?id=${encodeURIComponent(entry.id)}`;
+
+      /* speed-boost.js wraps window.fetch for preview caching. Downloads should
+         bypass that wrapper so the browser receives a fresh, normal Response. */'''
+          replacement = '''    try {
+      if (entry?.driveUrl) {
+        const url = typeof googleDriveDownloadUrl === 'function'
+          ? googleDriveDownloadUrl(entry)
+          : entry.driveUrl;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = entry.filename || entry.title || 'stat-archive-file.pdf';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        try { incrementActivity('download'); } catch (_) {}
+        return;
+      }
+
+      const workerUrl =
+        typeof WORKER_URL === 'string'
+          ? WORKER_URL
+          : 'https://stat-archive-api.lustats.workers.dev';
+
+      const fileUrl = `${workerUrl}/file?id=${encodeURIComponent(entry.id)}`;
+
+      /* speed-boost.js wraps window.fetch for preview caching. Downloads should
+         bypass that wrapper so the browser receives a fresh, normal Response. */'''
+          if target not in s:
+              raise SystemExit('download target not found')
+          s = s.replace(target, replacement, 1)
+          target2 = '''  function reliableDownloadEntry(entry, btn) {
+    /* Preserve the APK's existing native bridge behavior. */
+    if (window.AndroidBridge && originalDownloadEntry) {
+      return originalDownloadEntry(entry, btn);
+    }
+
+    return browserDownloadEntry(entry, btn);
+  }'''
+          replacement2 = '''  function reliableDownloadEntry(entry, btn) {
+    /* Drive-backed files should remain in Drive even inside the APK. */
+    if (entry?.driveUrl) return browserDownloadEntry(entry, btn);
+
+    /* Preserve the APK's existing native bridge behavior for R2 files. */
+    if (window.AndroidBridge && originalDownloadEntry) {
+      return originalDownloadEntry(entry, btn);
+    }
+
+    return browserDownloadEntry(entry, btn);
+  }'''
+          if target2 not in s:
+              raise SystemExit('reliable download target not found')
+          p.write_text(s.replace(target2, replacement2, 1), encoding='utf-8')
+
+          # 5) Offline: allow Drive-backed entries and fetch the public Drive download URL.
+          p = Path('assets/js/offline.js')
+          s = p.read_text(encoding='utf-8')
+          target = '''  if (
+    !entry ||
+    entry.driveUrl
+  ) {
+    return;
+  }'''
+          replacement = '''  if (!entry) {
+    return;
+  }'''
+          if target not in s:
+              raise SystemExit('offline Drive guard not found')
+          s = s.replace(target, replacement, 1)
+          target2 = '''    const response =
+      await fetch(
+        `${WORKER_URL}/file?id=${
+          encodeURIComponent(
+            entry.id
+          )
+        }`
+      );'''
+          replacement2 = '''    const fileUrl = entry.driveUrl
+      ? (typeof googleDriveDownloadUrl === "function" ? googleDriveDownloadUrl(entry) : entry.driveUrl)
+      : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
+
+    const response = await fetch(fileUrl, {
+      method: "GET",
+      cache: "no-store",
+      credentials: "omit"
+    });'''
+          if target2 not in s:
+              raise SystemExit('offline fetch target not found')
+          s = s.replace(target2, replacement2, 1)
+          target3 = '''    if (!response.ok) {
+      throw new Error(
+        "Couldn't save that file for offline use."
+      );
+    }'''
+          replacement3 = '''    if (!response.ok || response.type === "opaque") {
+      throw new Error(
+        entry.driveUrl
+          ? "Couldn't save this Drive file offline. Make sure the Drive file is shared publicly (Anyone with the link)."
+          : "Couldn't save that file for offline use."
+      );
+    }'''
+          if target3 not in s:
+              raise SystemExit('offline response target not found')
+          p.write_text(s.replace(target3, replacement3, 1), encoding='utf-8')
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/archive-ui.js assets/js/core.js assets/js/preview.js assets/js/download-fix.js assets/js/offline.js
+          git diff --cached --quiet || git commit -m "Add Preview Download Offline actions for Drive files"
+          git push origin HEAD:main
