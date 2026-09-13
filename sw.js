@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260914-drive-save-picker-v1";
+const CACHE = "stat-archive-shell-v20260914-public-reviews-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -10,7 +10,7 @@ const APP_SHELL = [
   "./assets/js/tooltips.js","./assets/js/startup-polish.js","./assets/js/service-worker-register.js","./assets/js/hero-animation.js",
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
   "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",
-  "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/menu-alignment-fix.js",
+  "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/public-reviews.js","./assets/js/menu-alignment-fix.js",
   "./assets/js/menu-header-reference.js","./assets/js/offline-library-hybrid.js","./assets/js/scroll-lock-coordinator.js",
   "./assets/js/offline-library-handoff.js","./manuals/reader.html","./manuals/contributor.html",
   "./manifest.json","./icons/icon-192.png","./icons/icon-512.png"
@@ -31,6 +31,7 @@ const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
+const PUBLIC_REVIEWS_TAG = '<script src="./assets/js/public-reviews.js?v=20260914-public-v1"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
 const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-5"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
@@ -105,6 +106,7 @@ function decorateNavigationHtml(html) {
   if (!out.includes('assets/js/search-filter-fix.js')) out = out.replace('</body>', `${SEARCH_FILTER_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/entry-method-fix.js')) out = out.replace('</body>', `${ENTRY_METHOD_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-polish.js')) out = out.replace('</body>', `${MENU_POLISH_TAG}\n</body>`);
+  if (!out.includes('assets/js/public-reviews.js')) out = out.replace('</body>', `${PUBLIC_REVIEWS_TAG}\n</body>`);
   if (!out.includes('assets/js/menu-alignment-fix.js')) out = out.replace('</body>', `${MENU_ALIGNMENT_FIX_TAG}\n</body>`);
   out = out.replace('</body>', `${MENU_HEADER_REFERENCE_TAG}\n</body>`);
   out = out.replace('</body>', `${OFFLINE_HYBRID_TAG}\n${SCROLL_LOCK_COORDINATOR_TAG}\n${OFFLINE_HANDOFF_TAG}\n</body>`);
@@ -278,6 +280,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/service-worker-register.js') ||
     url.pathname.endsWith('/assets/js/accessibility.js') ||
     url.pathname.endsWith('/assets/js/menu-polish.js') ||
+    url.pathname.endsWith('/assets/js/public-reviews.js') ||
     url.pathname.endsWith('/assets/js/menu-alignment-fix.js') ||
     url.pathname.endsWith('/assets/js/menu-header-reference.js') ||
     url.pathname.endsWith('/assets/js/offline-library-hybrid.js') ||
