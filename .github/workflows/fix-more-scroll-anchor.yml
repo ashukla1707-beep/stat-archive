@@ -1,3 +1,4 @@
+# Triggered after workflow registration on main.
 name: Fix More scroll anchor
 
 on:
