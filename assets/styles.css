@@ -5469,3 +5469,16 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 
 }
+
+
+/* Desktop light-theme active subject pill bleed fix */
+@media (min-width:701px){
+  body[data-theme="light"] #subjectFilterRow .pill.active{
+    background:#5a3a73!important;
+    border-color:#5a3a73!important;
+    box-shadow:none!important;
+    background-clip:padding-box!important;
+    overflow:hidden!important;
+    isolation:isolate!important;
+  }
+}
