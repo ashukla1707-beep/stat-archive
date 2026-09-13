@@ -50,14 +50,13 @@ html body .header .hero-probability .axis-mid{
   text-shadow:none !important;
 }
 
-/* Mobile browser in Desktop-site mode: lock the menu controls to their final
-   desktop positions from the first authoritative JS style pass. This prevents
-   the hamburger/side-menu jump when later menu polish styles are installed. */
+/* Mobile browser in Desktop-site mode: keep the hamburger visually inside the
+   probability box and remove the refresh-time position transition. */
 @media (pointer:coarse) and (min-width:701px){
   html body .header #mainMenuBtn.main-menu-btn{
     position:absolute !important;
-    top:18px !important;
-    right:18px !important;
+    top:calc(50% - 111px) !important;
+    right:96px !important;
     left:auto !important;
     bottom:auto !important;
     margin:0 !important;
@@ -68,6 +67,13 @@ html body .header .hero-probability .axis-mid{
     min-height:38px !important;
     max-height:38px !important;
     transform:none !important;
+    transition:none !important;
+    animation:none !important;
+  }
+  html body .header .hero-probability,
+  html body .header .hero-probability .probability-svg,
+  html body .header #statTouchDesktopGraph{
+    transition:none !important;
   }
   html body #mainSideMenu.main-side-menu,
   html body #mainSideMenu.main-side-menu.stat-menu-polished{
@@ -260,20 +266,20 @@ html body .header .hero-probability .axis-mid{
 })();
 
 /* =========================================================
-   PHONE + BROWSER DESKTOP-SITE HERO GRAPH v3
+   PHONE + BROWSER DESKTOP-SITE HERO GRAPH v4
    Independent SVG for mobile browser Desktop-site mode.
    - Curve stays separated from the x-axis.
-   - Curve draw is intentionally faster than the APK/normal graph.
+   - Curve draw completes in 3 seconds.
    - Resize events never rebuild or restart an active/completed animation.
    ========================================================= */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V3__) return;
-  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V3__ = true;
+  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V4__) return;
+  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V4__ = true;
 
   const NS = "http://www.w3.org/2000/svg";
-  const CURVE_DURATION = 5000;
+  const CURVE_DURATION = 3000;
   const DOT_DURATION = 4000;
   const CURVE_LIFT = -10;
   const X_MIN = 18;
@@ -346,6 +352,7 @@ html body .header .hero-probability .axis-mid{
     if (!curveD) return false;
 
     sourceSvg.style.setProperty("display", "none", "important");
+    sourceSvg.style.setProperty("transition", "none", "important");
     hero.querySelector(".axis-mid")?.style.setProperty("display", "none", "important");
 
     const svg = svgEl("svg", {
@@ -365,7 +372,9 @@ html body .header .hero-probability .axis-mid{
       "display:block",
       "overflow:visible",
       "z-index:3",
-      "pointer-events:none"
+      "pointer-events:none",
+      "transition:none",
+      "animation:none"
     ].join(";");
 
     const color = themeColor();
@@ -396,6 +405,7 @@ html body .header .hero-probability .axis-mid{
       "data-stat-touch-color": "1",
       "data-stat-touch-curve": "1"
     });
+    curve.style.transition = "none";
     curve.style.filter = document.body?.dataset.theme === "light"
       ? "none"
       : "drop-shadow(0 0 7px rgba(94,231,247,.34))";
@@ -483,7 +493,7 @@ html body .header .hero-probability .axis-mid{
         dot.style.transform = `translateY(${fall * easeOutCubic(local)}px)`;
       });
 
-      if (curveRaw < 1) {
+      if (curveRaw < 1 || dotRaw < 1) {
         raf = requestAnimationFrame(frame);
       } else {
         curve.style.strokeDasharray = "none";
