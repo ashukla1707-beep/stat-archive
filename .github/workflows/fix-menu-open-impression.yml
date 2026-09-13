@@ -1,0 +1,38 @@
+name: Fix menu open impression
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-menu-open-impression.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove persistent menu-button impression while menu is open
+        run: |
+          cat >> assets/styles.css <<'CSS'
+
+/* Touch/coarse-pointer menu button: while the side menu is open, do not keep
+   the tap/pressed/focus visual impression on the hamburger button. */
+@media (pointer:coarse){
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"],
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:hover,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:active,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus,
+  html body #mainMenuBtn.main-menu-btn[aria-expanded="true"]:focus-visible{
+    background:transparent!important;
+    box-shadow:none!important;
+    filter:none!important;
+    outline:none!important;
+  }
+}
+CSS
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/styles.css
+          git commit -m "Remove menu button impression while open"
+          git push origin HEAD:main
