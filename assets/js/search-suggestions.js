@@ -1,6 +1,6 @@
 (() => {
-  if (window.__statArchiveSearchSuggestionsLoadedV5) return;
-  window.__statArchiveSearchSuggestionsLoadedV5 = true;
+  if (window.__statArchiveSearchSuggestionsLoadedV6) return;
+  window.__statArchiveSearchSuggestionsLoadedV6 = true;
 
   const esc = value => String(value ?? "").replace(/[&<>"]/g, ch => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
@@ -151,8 +151,8 @@
 
   function setup() {
     const input = findInput();
-    if (!input || input.dataset.searchSuggestionsV5 === "1") return;
-    input.dataset.searchSuggestionsV5 = "1";
+    if (!input || input.dataset.searchSuggestionsV6 === "1") return;
+    input.dataset.searchSuggestionsV6 = "1";
 
     const panel = document.createElement("div");
     panel.className = "archive-search-suggestions-v2";
@@ -175,6 +175,7 @@
 
     let matches = [];
     let active = -1;
+    let suppressSuggestionsUntilNextUserInput = false;
 
     function positionPanel() {
       if (panel.hidden) return;
@@ -192,6 +193,7 @@
     }
 
     function renderSuggestions() {
+      if (suppressSuggestionsUntilNextUserInput) return close();
       const q = input.value.trim();
       if (!q) return close();
 
@@ -229,10 +231,11 @@
     }
 
     function choose(m) {
+      suppressSuggestionsUntilNextUserInput = true;
       input.value = m.label;
-      applyLiveArchiveFilter();
-      input.dispatchEvent(new Event("input",{bubbles:true}));
       close();
+      applyLiveArchiveFilter();
+      input.blur();
 
       if (m.kind === "subject") {
         requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -258,16 +261,19 @@
     }
 
     input.addEventListener("input", () => {
+      suppressSuggestionsUntilNextUserInput = false;
       applyLiveArchiveFilter();
       requestAnimationFrame(renderSuggestions);
     });
-    input.addEventListener("focus", renderSuggestions);
+    input.addEventListener("focus", () => {
+      if (!suppressSuggestionsUntilNextUserInput) renderSuggestions();
+    });
     input.addEventListener("keydown", e => {
       if (panel.hidden || !matches.length) return;
       if (e.key === "ArrowDown") { e.preventDefault(); active=(active+1)%matches.length; updateActive(); }
       else if (e.key === "ArrowUp") { e.preventDefault(); active=(active-1+matches.length)%matches.length; updateActive(); }
       else if (e.key === "Enter" && active>=0) { e.preventDefault(); choose(matches[active]); }
-      else if (e.key === "Escape") close();
+      else if (e.key === "Escape") { close(); input.blur(); }
     });
 
     panel.addEventListener("mousedown",e=>e.preventDefault());
