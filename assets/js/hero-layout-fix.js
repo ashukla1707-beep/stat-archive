@@ -50,13 +50,13 @@ html body .header .hero-probability .axis-mid{
   text-shadow:none !important;
 }
 
-/* Mobile browser in Desktop-site mode: keep the hamburger at the same
-   position visible on the initial refresh frame, so it never jumps. */
+/* Mobile browser in Desktop-site mode: pin the hamburger to the probability
+   card's top-right inset instead of the outer hero edge. */
 @media (pointer:coarse) and (min-width:701px){
   html body .header #mainMenuBtn.main-menu-btn{
     position:absolute !important;
-    top:18px !important;
-    right:18px !important;
+    top:calc(50% - 83px) !important;
+    right:36px !important;
     left:auto !important;
     bottom:auto !important;
     margin:0 !important;
