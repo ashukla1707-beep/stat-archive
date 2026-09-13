@@ -5533,3 +5533,14 @@ body[data-theme="light"] #menuOfflineLibraryCount{
     outline:none!important;
   }
 }
+
+
+/* Keep the hero's decorative grid strictly inside the rounded card. */
+.header::before{
+  border-radius:inherit!important;
+  clip-path:inset(0 round 24px)!important;
+  overflow:hidden!important;
+}
+@media(max-width:700px){
+  .header::before{clip-path:inset(0 round 20px)!important;}
+}
