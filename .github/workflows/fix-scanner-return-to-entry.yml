@@ -1,0 +1,34 @@
+name: Fix scanner return to entry
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-scanner-return-to-entry.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Return to entry form after PDF generation
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('assets/js/scanner.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("<button type=\"button\" class=\"scanner-primary scanner-generate\" id=\"scannerGenerate\" disabled>Generate PDF</button><button type=\"button\" class=\"scanner-primary scanner-generate\" id=\"scannerAddArchive\" style=\"display:none;margin-top:10px\">Add to archive</button>","<button type=\"button\" class=\"scanner-primary scanner-generate\" id=\"scannerGenerate\" disabled>Generate PDF</button>")
+          s=s.replace("$('scannerGenerate').onclick=generate;$('scannerAddArchive').onclick=addGeneratedToArchive;cropGestures();","$('scannerGenerate').onclick=generate;cropGestures();")
+          old="async function generate(){if(state.busy||!state.pages.length)return;var m=meta();state.busy=true;$('scannerGenerate').disabled=true;err('');try{progress(3,'Preparing pages…');var out=await finalPdf(m),f=new File([out.bytes],out.name,{type:'application/pdf'}),input=$('fileInput'),dt=new DataTransfer();dt.items.add(f);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));state.generatedFile=f;progress(100,'PDF ready · '+size(f.size));var add=$('scannerAddArchive');if(add){add.style.display='block';add.disabled=false;}await paint();}catch(x){console.error(x);state.generatedFile=null;var add=$('scannerAddArchive');if(add)add.style.display='none';err(x&&x.message?x.message:'Could not generate the PDF.');}finally{state.busy=false;$('scannerGenerate').disabled=!state.pages.length;}}\nfunction addGeneratedToArchive(){if(state.busy||!state.generatedFile)return;var m=meta();if(question(m.type)&&!/^(19|20)\\d{2}$/.test(m.year)){err('Enter a valid 4-digit year before adding to archive.');return;}var add=$('scannerAddArchive');if(add)add.disabled=true;closeScanner();var form=$('uploadForm');if(form&&form.requestSubmit)form.requestSubmit();else if($('submitBtn'))$('submitBtn').click();}"
+          new="async function generate(){if(state.busy||!state.pages.length)return;var m=meta();state.busy=true;$('scannerGenerate').disabled=true;err('');try{progress(3,'Preparing pages…');var out=await finalPdf(m),f=new File([out.bytes],out.name,{type:'application/pdf'}),input=$('fileInput'),dt=new DataTransfer();dt.items.add(f);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));state.generatedFile=f;progress(100,'PDF ready · '+size(f.size));await paint();state.busy=false;closeScanner();}catch(x){console.error(x);state.generatedFile=null;err(x&&x.message?x.message:'Could not generate the PDF.');}finally{state.busy=false;$('scannerGenerate').disabled=!state.pages.length;}}"
+          if old not in s:
+              raise SystemExit('generate block not found')
+          s=s.replace(old,new,1)
+          s=s.replace(" var a=$('scannerAddArchive');if(a)a.style.display='none';\n","")
+          p.write_text(s,encoding='utf-8')
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/scanner.js
+          git diff --cached --quiet || git commit -m "Return to entry form after generating scanned PDF"
+          git push origin HEAD:main
