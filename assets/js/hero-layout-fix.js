@@ -50,12 +50,12 @@ html body .header .hero-probability .axis-mid{
   text-shadow:none !important;
 }
 
-/* Mobile browser in Desktop-site mode: keep the hamburger visually inside the
-   probability box and remove the refresh-time position transition. */
+/* Mobile browser in Desktop-site mode: keep the hamburger fully inside the
+   probability card with the same inset feel as the APK reference. */
 @media (pointer:coarse) and (min-width:701px){
   html body .header #mainMenuBtn.main-menu-btn{
     position:absolute !important;
-    top:calc(50% - 111px) !important;
+    top:calc(50% - 91px) !important;
     right:96px !important;
     left:auto !important;
     bottom:auto !important;
