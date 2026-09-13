@@ -242,52 +242,51 @@ html body .card .card-actions .offline-btn{
   html body .card .card-actions .action-btn br{
     display:none !important;
   }
+}
 
-  body:not([data-theme="light"]) .card .card-actions .pv-btn{
-    color:#f1f4f8 !important;
-    background:#111722 !important;
-    border:1px solid rgba(255,255,255,.035) !important;
-    box-shadow:none !important;
-  }
+/* Canonical action-button states across normal web, PWA and APK.
+   Preview, Download and Offline are neutral until that action has happened.
+   Offline is selected only after the file is actually saved locally. */
+html body:not([data-theme="light"]) .card .card-actions .pv-btn:not(.is-previewed):not(.sa-preview-used),
+html body:not([data-theme="light"]) .card .card-actions .dl-btn:not(.is-downloaded),
+html body:not([data-theme="light"]) .card .card-actions .download-btn:not(.is-downloaded),
+html body:not([data-theme="light"]) .card .card-actions .offline-btn:not(.is-saved){
+  color:#f1f4f8 !important;
+  background:#111722 !important;
+  border:1px solid rgba(255,255,255,.035) !important;
+  box-shadow:none !important;
+}
 
-  body:not([data-theme="light"]) .card .card-actions .pv-btn.sa-preview-used,
-  body:not([data-theme="light"]) .card .card-actions .offline-btn{
-    color:#63efff !important;
-    background:rgba(18,52,64,.76) !important;
-    border:1px solid rgba(99,239,255,.38) !important;
-    box-shadow:inset 0 0 0 1px rgba(99,239,255,.07) !important;
-  }
+html body:not([data-theme="light"]) .card .card-actions .pv-btn.is-previewed,
+html body:not([data-theme="light"]) .card .card-actions .pv-btn.sa-preview-used,
+html body:not([data-theme="light"]) .card .card-actions .dl-btn.is-downloaded,
+html body:not([data-theme="light"]) .card .card-actions .download-btn.is-downloaded,
+html body:not([data-theme="light"]) .card .card-actions .offline-btn.is-saved{
+  color:#63efff !important;
+  background:rgba(18,52,64,.76) !important;
+  border:1px solid rgba(99,239,255,.38) !important;
+  box-shadow:inset 0 0 0 1px rgba(99,239,255,.07) !important;
+}
 
-  body:not([data-theme="light"]) .card .card-actions .dl-btn,
-  body:not([data-theme="light"]) .card .card-actions .download-btn{
-    color:#f1f4f8 !important;
-    background:#111722 !important;
-    border:1px solid rgba(255,255,255,.035) !important;
-    box-shadow:none !important;
-  }
+html body[data-theme="light"] .card .card-actions .pv-btn:not(.is-previewed):not(.sa-preview-used),
+html body[data-theme="light"] .card .card-actions .dl-btn:not(.is-downloaded),
+html body[data-theme="light"] .card .card-actions .download-btn:not(.is-downloaded),
+html body[data-theme="light"] .card .card-actions .offline-btn:not(.is-saved){
+  color:#27302d !important;
+  background:#eee9f4 !important;
+  border:1px solid #ddd4e4 !important;
+  box-shadow:none !important;
+}
 
-  body[data-theme="light"] .card .card-actions .pv-btn{
-    color:#27302d !important;
-    background:#eee9f4 !important;
-    border:1px solid #ddd4e4 !important;
-    box-shadow:none !important;
-  }
-
-  body[data-theme="light"] .card .card-actions .pv-btn.sa-preview-used,
-  body[data-theme="light"] .card .card-actions .offline-btn{
-    color:#4b365f !important;
-    background:#f1ebf6 !important;
-    border:1px solid #d8cce2 !important;
-    box-shadow:none !important;
-  }
-
-  body[data-theme="light"] .card .card-actions .dl-btn,
-  body[data-theme="light"] .card .card-actions .download-btn{
-    color:#27302d !important;
-    background:#eee9f4 !important;
-    border:1px solid #ddd4e4 !important;
-    box-shadow:none !important;
-  }
+html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,
+html body[data-theme="light"] .card .card-actions .pv-btn.sa-preview-used,
+html body[data-theme="light"] .card .card-actions .dl-btn.is-downloaded,
+html body[data-theme="light"] .card .card-actions .download-btn.is-downloaded,
+html body[data-theme="light"] .card .card-actions .offline-btn.is-saved{
+  color:#2f7f74 !important;
+  background:rgba(52,125,115,.14) !important;
+  border:1px solid rgba(52,125,115,.40) !important;
+  box-shadow:inset 0 0 0 1px rgba(52,125,115,.08) !important;
 }
 
 @media (max-width:380px){
