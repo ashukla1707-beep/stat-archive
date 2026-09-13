@@ -1,0 +1,56 @@
+name: Drive actions v2
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/drive-actions-v2.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('assets/js/archive-ui.js'); s=p.read_text()
+          s=re.sub(r'\$\{entry\.driveUrl\s*\? `<button class="action-btn drive-btn">↗ Open in Drive</button>`\s*: `([\s\S]*?)`\s*\}', r'\1', s, count=1)
+          p.write_text(s)
+
+          p=Path('assets/js/core.js'); s=p.read_text()
+          if 'function googleDriveFileId(url)' not in s:
+              helper='''function googleDriveFileId(url){const raw=String(url||"").trim();const m=raw.match(/\\/file\\/d\\/([A-Za-z0-9_-]+)/i)||raw.match(/[?&]id=([A-Za-z0-9_-]+)/i)||raw.match(/\\/d\\/([A-Za-z0-9_-]+)/i);return m?m[1]:"";}\nfunction googleDrivePreviewUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`:String(raw||"");}\nfunction googleDriveDownloadUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`:String(raw||"");}\n\n'''
+              s=s.replace('function mapDbEntry(e) {',helper+'function mapDbEntry(e) {',1)
+          p.write_text(s)
+
+          p=Path('assets/js/preview.js'); s=p.read_text()
+          needle='''    try {\n      const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;'''
+          repl='''    try {\n      if (entry?.driveUrl) {\n        const previewUrl = typeof googleDrivePreviewUrl === "function" ? googleDrivePreviewUrl(entry) : entry.driveUrl;\n        body.innerHTML = `<iframe src="${escapeHtml(previewUrl)}" title="${escapeHtml(entry?.title || entry?.filename || "Preview")}" style="width:100%;height:100%;border:0;background:#080c12"></iframe>`;\n        return;\n      }\n      const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;'''
+          if needle not in s: raise SystemExit('preview target missing')
+          p.write_text(s.replace(needle,repl,1))
+
+          p=Path('assets/js/download-fix.js'); s=p.read_text()
+          needle='''    try {\n      const workerUrl ='''
+          repl='''    try {\n      if (entry?.driveUrl) {\n        const url = typeof googleDriveDownloadUrl === 'function' ? googleDriveDownloadUrl(entry) : entry.driveUrl;\n        const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.download=entry.filename||entry.title||'stat-archive-file.pdf'; document.body.appendChild(a); a.click(); a.remove();\n        try { incrementActivity('download'); } catch (_) {}\n        return;\n      }\n      const workerUrl ='''
+          if needle not in s: raise SystemExit('download target missing')
+          s=s.replace(needle,repl,1)
+          s=s.replace('''  function reliableDownloadEntry(entry, btn) {\n    /* Preserve the APK's existing native bridge behavior. */''','''  function reliableDownloadEntry(entry, btn) {\n    if (entry?.driveUrl) return browserDownloadEntry(entry, btn);\n    /* Preserve the APK's existing native bridge behavior. */''',1)
+          p.write_text(s)
+
+          p=Path('assets/js/offline.js'); s=p.read_text()
+          s=s.replace('''  if (\n    !entry ||\n    entry.driveUrl\n  ) {\n    return;\n  }''','''  if (!entry) {\n    return;\n  }''',1)
+          old='''    const response =\n      await fetch(\n        `${WORKER_URL}/file?id=${\n          encodeURIComponent(\n            entry.id\n          )\n        }`\n      );'''
+          new='''    const fileUrl = entry.driveUrl\n      ? (typeof googleDriveDownloadUrl === "function" ? googleDriveDownloadUrl(entry) : entry.driveUrl)\n      : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;\n    const response = await fetch(fileUrl,{method:"GET",cache:"no-store",credentials:"omit"});'''
+          if old not in s: raise SystemExit('offline fetch target missing')
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/archive-ui.js assets/js/core.js assets/js/preview.js assets/js/download-fix.js assets/js/offline.js
+          git diff --cached --quiet || git commit -m "Add Preview Download Offline for Drive files"
+          git push
