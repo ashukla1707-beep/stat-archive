@@ -1,0 +1,33 @@
+name: Offline PDFs open externally
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/offline-open-external.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Route APK offline open to Android PDF apps
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('assets/js/download-fix.js')
+          s = p.read_text()
+          old = '''      const normalized = await normalizeRecordBlob(record);\n      await persistNormalizedOfflineRecord(record, normalized);\n\n      if (!normalized.pdf) return originalOpenOfflineFile(id);'''
+          new = '''      const normalized = await normalizeRecordBlob(record);\n      await persistNormalizedOfflineRecord(record, normalized);\n\n      /* In the Android APK, Offline > Open must hand the saved file to\n         Android so the user can choose a PDF app instead of opening Stat\n         Archive's internal reader. */\n      if (isAndroid()) return originalOpenOfflineFile(id);\n\n      if (!normalized.pdf) return originalOpenOfflineFile(id);'''
+          if old not in s:
+              raise SystemExit('target block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/download-fix.js
+          git commit -m "Open offline PDFs with Android apps" || exit 0
+          git push
