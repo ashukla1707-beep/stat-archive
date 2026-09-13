@@ -19,8 +19,14 @@
 
     try {
       if (entry?.driveUrl) {
-        const url = typeof googleDriveDownloadUrl === 'function' ? googleDriveDownloadUrl(entry) : entry.driveUrl;
-        const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.download=entry.filename||entry.title||'stat-archive-file.pdf'; document.body.appendChild(a); a.click(); a.remove();
+        const url = typeof statArchiveDriveStreamUrl === 'function' ? statArchiveDriveStreamUrl(entry, 'download') : entry.driveUrl;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = typeof archiveDownloadName === 'function' ? archiveDownloadName(entry) : (entry.title || entry.filename || 'Stat Archive file.pdf');
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
         try { incrementActivity('download'); } catch (_) {}
         return;
       }

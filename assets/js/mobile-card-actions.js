@@ -48,7 +48,10 @@ html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body
   html[data-authenticated="true"] body .card .card-actions .action-btn{height:32px!important;min-height:32px!important;padding:0 3px!important;font-size:9.5px!important;border-radius:8px!important;gap:2px!important}
   html[data-authenticated="true"] body .card .card-actions .edit-btn{flex-basis:46px!important;width:46px!important;min-width:46px!important;max-width:46px!important;font-size:9.5px!important}
   html[data-authenticated="true"] body .card .card-actions .del-btn{flex-basis:30px!important;width:30px!important;min-width:30px!important;max-width:30px!important}
-}`;
+}
+.card-source-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 7px;border-radius:999px;border:1px solid rgba(99,239,255,.28);background:rgba(99,239,255,.08);color:#75eefa;font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.08em;white-space:nowrap}
+body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#5a3a73}
+`;
 
   document.head.appendChild(style);
   document.querySelectorAll('.card .card-actions .pv-btn').forEach(btn => btn.classList.remove('sa-preview-used'));

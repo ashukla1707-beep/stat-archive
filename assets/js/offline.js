@@ -1195,7 +1195,7 @@ async function saveEntryOffline(
 
   try {
     const fileUrl = entry.driveUrl
-      ? (typeof googleDriveDownloadUrl === "function" ? googleDriveDownloadUrl(entry) : entry.driveUrl)
+      ? (typeof statArchiveDriveStreamUrl === "function" ? statArchiveDriveStreamUrl(entry, "inline") : entry.driveUrl)
       : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
     const response = await fetch(fileUrl,{method:"GET",cache:"no-store",credentials:"omit"});
 

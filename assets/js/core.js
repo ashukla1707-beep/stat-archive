@@ -415,6 +415,20 @@ function googleDriveFileId(url){const raw=String(url||"").trim();const m=raw.mat
 function googleDrivePreviewUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`:String(raw||"");}
 function googleDriveDownloadUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`:String(raw||"");}
 
+function archiveDownloadName(entry) {
+  const raw = String(entry?.title || entry?.filename || "Stat Archive file").trim();
+  const extMatch = String(entry?.filename || "").match(/\.[A-Za-z0-9]{1,8}$/);
+  const ext = extMatch ? extMatch[0] : ".pdf";
+  return /\.[A-Za-z0-9]{1,8}$/.test(raw) ? raw : raw + ext;
+}
+
+function statArchiveDriveStreamUrl(entry, mode = "inline") {
+  const id = typeof googleDriveFileId === "function" ? googleDriveFileId(entry?.driveUrl) : "";
+  if (!id) return "";
+  const name = archiveDownloadName(entry);
+  return `${window.location.origin}/drive-file?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&mode=${mode === "download" ? "download" : "inline"}`;
+}
+
 function mapDbEntry(e) {
   return {
     id: e.id,
