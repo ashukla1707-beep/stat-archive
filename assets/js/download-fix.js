@@ -318,6 +318,11 @@
       const normalized = await normalizeRecordBlob(record);
       await persistNormalizedOfflineRecord(record, normalized);
 
+      /* In the Android APK, Offline > Open must hand the saved file to
+         Android so the user can choose a PDF app instead of opening Stat
+         Archive's internal reader. */
+      if (isAndroid()) return originalOpenOfflineFile(id);
+
       if (!normalized.pdf) return originalOpenOfflineFile(id);
 
       try { window.closeOfflineLibrary?.(); } catch (_) {}
