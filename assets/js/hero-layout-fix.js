@@ -39,7 +39,7 @@ html body #summaryAccess{
   line-height:1.08 !important;
 }
 
-/* Canonical mu appearance. */
+/* Canonical mu appearance for the normal web/APK graph. */
 html body .header .hero-probability .axis-mid{
   font-family:Arial,Helvetica,sans-serif !important;
   font-size:14px !important;
@@ -48,20 +48,6 @@ html body .header .hero-probability .axis-mid{
   line-height:1 !important;
   letter-spacing:0 !important;
   text-shadow:none !important;
-}
-
-/* A phone in browser Desktop-site mode scales the whole desktop canvas down.
-   Give the graph a little more bottom room and use a modestly larger mu so it
-   keeps the same visual proportion without touching the x-axis. */
-@media (pointer:coarse) and (min-width:701px){
-  html body .header .hero-probability .probability-svg{
-    bottom:28px !important;
-  }
-  html body .header .hero-probability .axis-mid{
-    font-size:18px !important;
-    font-weight:500 !important;
-    text-shadow:none !important;
-  }
 }
 
 @media(max-width:700px){
@@ -240,4 +226,232 @@ html body .header .hero-probability .axis-mid{
   });
 })();
 
-/* hero-animation.js owns precise mu positioning and theme colour. */
+/* =========================================================
+   PHONE + BROWSER DESKTOP-SITE HERO GRAPH
+   Rebuilt independently from the normal responsive graph so desktop-site
+   scaling on a phone cannot clip, resize or misplace the curve or mu label.
+   Normal desktop, normal mobile web and the APK layout are untouched.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V1__) return;
+  window.__STAT_ARCHIVE_TOUCH_DESKTOP_GRAPH_V1__ = true;
+
+  const NS = "http://www.w3.org/2000/svg";
+  const CURVE_DURATION = 8000;
+  const DOT_DURATION = 4000;
+  const X_MIN = 18;
+  const X_MAX = 502;
+  let raf = 0;
+  let active = false;
+
+  function isTouchDesktop() {
+    const coarse = !!window.matchMedia?.("(pointer: coarse)").matches;
+    return coarse && window.innerWidth > 700;
+  }
+
+  function easeOutCubic(t) {
+    const c = Math.max(0, Math.min(1, t));
+    return 1 - Math.pow(1 - c, 3);
+  }
+
+  function themeColor() {
+    return document.body?.dataset.theme === "light" ? "#2f8f5b" : "#5ee7f7";
+  }
+
+  function removeTouchGraph() {
+    cancelAnimationFrame(raf);
+    raf = 0;
+    active = false;
+    document.getElementById("statTouchDesktopGraph")?.remove();
+
+    const hero = document.querySelector(".hero-probability");
+    hero?.querySelector(".probability-svg")?.style.removeProperty("display");
+    hero?.querySelector(".axis-mid")?.style.removeProperty("display");
+  }
+
+  function svgEl(name, attrs = {}) {
+    const node = document.createElementNS(NS, name);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+    return node;
+  }
+
+  function buildTouchGraph() {
+    if (!isTouchDesktop()) {
+      removeTouchGraph();
+      return;
+    }
+
+    const hero = document.querySelector(".hero-probability");
+    const sourceSvg = hero?.querySelector(".probability-svg");
+    const sourceCurve = sourceSvg?.querySelector(".gaussian-curve");
+    if (!hero || !sourceSvg || !sourceCurve) return;
+
+    const curveD = sourceCurve.getAttribute("d");
+    if (!curveD) return;
+
+    cancelAnimationFrame(raf);
+    document.getElementById("statTouchDesktopGraph")?.remove();
+
+    sourceSvg.style.setProperty("display", "none", "important");
+    hero.querySelector(".axis-mid")?.style.setProperty("display", "none", "important");
+
+    const svg = svgEl("svg", {
+      id: "statTouchDesktopGraph",
+      viewBox: "0 0 520 300",
+      preserveAspectRatio: "xMidYMid meet",
+      "aria-hidden": "true"
+    });
+    svg.style.cssText = [
+      "position:absolute",
+      "left:8px",
+      "right:8px",
+      "top:28px",
+      "width:calc(100% - 16px)",
+      "height:auto",
+      "max-height:calc(100% - 32px)",
+      "display:block",
+      "overflow:visible",
+      "z-index:3",
+      "pointer-events:none"
+    ].join(";");
+
+    const color = themeColor();
+
+    const baseline = svgEl("line", {
+      x1: 18, y1: 258, x2: 502, y2: 258,
+      stroke: color, "stroke-width": 1.15, opacity: 0.62
+    });
+    svg.appendChild(baseline);
+
+    const mean = svgEl("line", {
+      x1: 260, y1: 40, x2: 260, y2: 258,
+      stroke: color, "stroke-width": 1,
+      "stroke-dasharray": "6 8", opacity: 0.22
+    });
+    svg.appendChild(mean);
+
+    const curve = svgEl("path", {
+      d: curveD,
+      fill: "none",
+      stroke: color,
+      "stroke-width": 7,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    });
+    curve.style.filter = document.body?.dataset.theme === "light"
+      ? "none"
+      : "drop-shadow(0 0 7px rgba(94,231,247,.34))";
+    svg.appendChild(curve);
+
+    let pathLength = 1000;
+    try {
+      const measured = curve.getTotalLength();
+      if (Number.isFinite(measured) && measured > 1) pathLength = measured;
+    } catch (_) {}
+    curve.style.strokeDasharray = `${pathLength} ${pathLength}`;
+    curve.style.strokeDashoffset = String(pathLength);
+
+    const dotStates = Array.from(sourceSvg.querySelectorAll(".data-dot")).map(source => {
+      const cx = parseFloat(source.getAttribute("cx") || "0");
+      const cy = parseFloat(source.getAttribute("cy") || "0");
+      const fall = parseFloat(getComputedStyle(source).getPropertyValue("--fall")) || 0;
+      const dot = svgEl("circle", {
+        cx, cy, r: 3.35,
+        fill: color,
+        stroke: color,
+        "stroke-width": 0.8,
+        opacity: 0
+      });
+      dot.style.transformBox = "fill-box";
+      dot.style.transformOrigin = "center";
+      svg.appendChild(dot);
+      return {
+        dot,
+        fall,
+        xProgress: Math.max(0, Math.min(1, (cx - X_MIN) / (X_MAX - X_MIN)))
+      };
+    });
+
+    const mu = svgEl("text", {
+      x: 260,
+      y: 286,
+      "text-anchor": "middle",
+      fill: color,
+      "font-family": "Arial, Helvetica, sans-serif",
+      "font-size": 22,
+      "font-style": "normal",
+      "font-weight": 500
+    });
+    mu.textContent = "μ";
+    svg.appendChild(mu);
+
+    hero.appendChild(svg);
+    active = true;
+
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      curve.style.strokeDasharray = "none";
+      curve.style.strokeDashoffset = "0";
+      dotStates.forEach(({ dot, fall }) => {
+        dot.style.opacity = ".95";
+        dot.style.transform = `translateY(${fall}px)`;
+      });
+      return;
+    }
+
+    const startedAt = performance.now();
+    function frame(now) {
+      if (!active || !document.getElementById("statTouchDesktopGraph")) return;
+      const elapsed = now - startedAt;
+      const curveRaw = Math.max(0, Math.min(1, elapsed / CURVE_DURATION));
+      const dotRaw = Math.max(0, Math.min(1, elapsed / DOT_DURATION));
+      const curveProgress = easeOutCubic(curveRaw);
+      const dotProgress = easeOutCubic(dotRaw);
+
+      curve.style.strokeDashoffset = String(pathLength * (1 - curveProgress));
+
+      dotStates.forEach(({ dot, fall, xProgress }) => {
+        const start = Math.max(0, xProgress - 0.18);
+        const local = Math.max(0, Math.min(1, (dotProgress - start) / Math.max(0.0001, xProgress - start)));
+        if (dotProgress < start) {
+          dot.style.opacity = "0";
+          dot.style.transform = "translateY(0px)";
+          return;
+        }
+        dot.style.opacity = String(Math.min(0.95, local * 4));
+        dot.style.transform = `translateY(${fall * easeOutCubic(local)}px)`;
+      });
+
+      if (curveRaw < 1) {
+        raf = requestAnimationFrame(frame);
+      } else {
+        curve.style.strokeDasharray = "none";
+        curve.style.strokeDashoffset = "0";
+        dotStates.forEach(({ dot, fall }) => {
+          dot.style.opacity = ".95";
+          dot.style.transform = `translateY(${fall}px)`;
+        });
+      }
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function syncTouchGraph() {
+    if (isTouchDesktop()) buildTouchGraph();
+    else removeTouchGraph();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => requestAnimationFrame(syncTouchGraph), { once:true });
+  } else {
+    requestAnimationFrame(syncTouchGraph);
+  }
+
+  window.addEventListener("load", syncTouchGraph, { once:true });
+  window.addEventListener("pageshow", syncTouchGraph);
+  window.addEventListener("resize", () => requestAnimationFrame(syncTouchGraph));
+  window.visualViewport?.addEventListener("resize", () => requestAnimationFrame(syncTouchGraph));
+  document.addEventListener("statarchive:theme-change", () => requestAnimationFrame(syncTouchGraph));
+})();
