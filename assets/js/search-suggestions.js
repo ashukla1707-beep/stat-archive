@@ -1,4 +1,212 @@
 (() => {
+  if (window.__statArchiveSharedBooksLoadedV1) return;
+  window.__statArchiveSharedBooksLoadedV1 = true;
+
+  const normalizeText = value => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const isBook = value => /^books?$/i.test(String(value || "").trim());
+  const otherLevelFor = level => level === "bsc" ? "msc" : "bsc";
+  const bundleCache = new Map();
+
+  function currentSubjectsList(data) {
+    return Array.isArray(data?.subjects) ? data.subjects : [];
+  }
+
+  function entrySignature(entry) {
+    return `${normalizeText(entry?.title)}|${normalizeText(entry?.filename || entry?.file_name)}`;
+  }
+
+  async function crossLevelBundle(level) {
+    const key = level === "bsc" ? "bsc" : "msc";
+    const cached = bundleCache.get(key);
+    if (cached && Date.now() - cached.at < 5000) return cached.promise;
+
+    const other = otherLevelFor(key);
+    const promise = (async () => {
+      const [currentSubjectsData, otherSubjectsData, otherEntriesData] = await Promise.all([
+        workerFetch(`/subjects?level=${encodeURIComponent(key)}`),
+        workerFetch(`/subjects?level=${encodeURIComponent(other)}`),
+        workerFetch(`/entries?level=${encodeURIComponent(other)}`)
+      ]);
+
+      const currentSubjectsRaw = currentSubjectsList(currentSubjectsData);
+      const otherSubjectsRaw = currentSubjectsList(otherSubjectsData);
+      const otherEntriesRaw = Array.isArray(otherEntriesData?.entries) ? otherEntriesData.entries : [];
+
+      const currentNameToCode = new Map();
+      currentSubjectsRaw.forEach(subject => {
+        const name = normalizeText(subject?.name);
+        const code = String(subject?.code || "").trim();
+        if (name && code && !currentNameToCode.has(name)) currentNameToCode.set(name, code);
+      });
+
+      const otherCodeToName = new Map();
+      otherSubjectsRaw.forEach(subject => {
+        const code = String(subject?.code || "").trim();
+        const name = String(subject?.name || code || "Other").trim();
+        if (code) otherCodeToName.set(code, name);
+      });
+
+      const syntheticSubjects = new Map();
+      const foreignBooks = otherEntriesRaw
+        .filter(raw => isBook(raw?.type))
+        .map(raw => {
+          const mapped = mapDbEntry(raw);
+          const originalCode = String(raw?.subjects?.code || raw?.subject || mapped.subject || "MISC").trim();
+          const originalName = String(
+            raw?.subjects?.name || otherCodeToName.get(originalCode) || originalCode || "Other"
+          ).trim();
+
+          const matchingCurrentCode = currentNameToCode.get(normalizeText(originalName));
+          let displayCode = matchingCurrentCode;
+
+          if (!displayCode) {
+            const safeCode = (originalCode || "MISC").replace(/[^a-z0-9_-]/gi, "_");
+            displayCode = `__shared_${other}_${safeCode}`;
+            if (!syntheticSubjects.has(displayCode)) {
+              syntheticSubjects.set(displayCode, {
+                id: displayCode,
+                code: displayCode,
+                name: originalName,
+                created_by: null,
+                builtin: true,
+                sharedOnly: true,
+                sharedSourceLevel: other
+              });
+            }
+          }
+
+          mapped.subject = displayCode;
+          mapped.level = raw?.level || other;
+          mapped.contributorEditable = false;
+          mapped.sharedAcrossLevels = true;
+          mapped.sharedSourceLevel = other;
+          return mapped;
+        });
+
+      return {
+        other,
+        foreignBooks,
+        syntheticSubjects: [...syntheticSubjects.values()]
+      };
+    })();
+
+    bundleCache.set(key, { at: Date.now(), promise });
+    try {
+      return await promise;
+    } catch (error) {
+      bundleCache.delete(key);
+      throw error;
+    }
+  }
+
+  function mergeSharedBooks(ownEntries, foreignBooks) {
+    const own = Array.isArray(ownEntries) ? ownEntries.filter(entry => !entry?.sharedAcrossLevels) : [];
+    const ids = new Set(own.map(entry => String(entry?.id ?? "")));
+    const bookSignatures = new Set(
+      own.filter(entry => isBook(entry?.type)).map(entrySignature).filter(sig => sig !== "|")
+    );
+
+    const shared = [];
+    for (const book of foreignBooks || []) {
+      const id = String(book?.id ?? "");
+      const signature = entrySignature(book);
+      if (id && ids.has(id)) continue;
+      if (signature !== "|" && bookSignatures.has(signature)) continue;
+      if (id) ids.add(id);
+      if (signature !== "|") bookSignatures.add(signature);
+      shared.push(book);
+    }
+    return [...own, ...shared];
+  }
+
+  if (typeof loadEntries === "function") {
+    const baseLoadEntries = loadEntries;
+    loadEntries = async function sharedBooksLoadEntries(...args) {
+      const ownEntries = await baseLoadEntries.apply(this, args);
+      try {
+        const bundle = await crossLevelBundle(currentLevel);
+        return mergeSharedBooks(ownEntries, bundle.foreignBooks);
+      } catch (error) {
+        console.warn("Could not load shared books from the other course level:", error);
+        return ownEntries;
+      }
+    };
+  }
+
+  if (typeof loadSubjectsFromWorker === "function") {
+    const baseLoadSubjects = loadSubjectsFromWorker;
+    loadSubjectsFromWorker = async function sharedBooksLoadSubjects(...args) {
+      await baseLoadSubjects.apply(this, args);
+      try {
+        const bundle = await crossLevelBundle(currentLevel);
+        const nativeSubjects = Array.isArray(subjects)
+          ? subjects.filter(subject => !subject?.sharedOnly)
+          : [];
+        const existingCodes = new Set(nativeSubjects.map(subject => String(subject?.code || "")));
+        const additions = bundle.syntheticSubjects.filter(subject => !existingCodes.has(String(subject.code)));
+        subjects = [...nativeSubjects, ...additions].sort((a, b) =>
+          String(a?.name || "").localeCompare(String(b?.name || ""), undefined, { sensitivity: "base" })
+        );
+        try { subjectIndexCacheSource = null; } catch (_) {}
+      } catch (error) {
+        console.warn("Could not load shared-book subject metadata:", error);
+      }
+    };
+  }
+
+  if (typeof renderSubjectOptions === "function") {
+    const baseRenderSubjectOptions = renderSubjectOptions;
+    renderSubjectOptions = function renderNativeSubjectOptionsOnly(...args) {
+      if (!Array.isArray(subjects) || !subjects.some(subject => subject?.sharedOnly)) {
+        return baseRenderSubjectOptions.apply(this, args);
+      }
+      const allSubjects = subjects;
+      subjects = allSubjects.filter(subject => !subject?.sharedOnly);
+      try {
+        try { subjectIndexCacheSource = null; } catch (_) {}
+        return baseRenderSubjectOptions.apply(this, args);
+      } finally {
+        subjects = allSubjects;
+        try { subjectIndexCacheSource = null; } catch (_) {}
+      }
+    };
+  }
+
+  async function reconcileIfInitialLoadAlreadyFinished() {
+    try {
+      if (typeof entries === "undefined" || !Array.isArray(entries) || !entries.length) return;
+      if (entries.some(entry => entry?.sharedAcrossLevels)) return;
+      const bundle = await crossLevelBundle(currentLevel);
+      if (!bundle.foreignBooks.length) return;
+
+      entries = mergeSharedBooks(entries, bundle.foreignBooks);
+      const nativeSubjects = Array.isArray(subjects)
+        ? subjects.filter(subject => !subject?.sharedOnly)
+        : [];
+      const existingCodes = new Set(nativeSubjects.map(subject => String(subject?.code || "")));
+      subjects = [
+        ...nativeSubjects,
+        ...bundle.syntheticSubjects.filter(subject => !existingCodes.has(String(subject.code)))
+      ].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""), undefined, { sensitivity: "base" }));
+      try { subjectIndexCacheSource = null; } catch (_) {}
+      try {
+        totalStorageBytes = entries.reduce((sum, entry) =>
+          sum + (Number.isFinite(Number(entry?.size)) && Number(entry.size) > 0 ? Number(entry.size) : 0), 0
+        );
+      } catch (_) {}
+      try { if (typeof renderSubjectFilters === "function") renderSubjectFilters(); } catch (_) {}
+      try { if (typeof renderTypeFilters === "function") renderTypeFilters(); } catch (_) {}
+      try { if (typeof renderSubjectOptions === "function") renderSubjectOptions(); } catch (_) {}
+      try { if (typeof render === "function") render(); } catch (_) {}
+    } catch (error) {
+      console.warn("Could not reconcile shared books after startup:", error);
+    }
+  }
+
+  setTimeout(reconcileIfInitialLoadAlreadyFinished, 1200);
+})();
+
+(() => {
   if (window.__statArchiveSearchSuggestionsLoadedV6) return;
   window.__statArchiveSearchSuggestionsLoadedV6 = true;
 
