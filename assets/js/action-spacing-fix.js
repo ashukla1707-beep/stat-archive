@@ -334,4 +334,43 @@ html body .subject-mobile-scroll-range{
     if (!isTouchLike() || !target?.closest?.('#mainMenuBtn,#mainMenuCloseBtn,#mainMenuBackdrop')) return;
     setTimeout(releaseMenuButtonState, 0);
   }, true);
+
+  /* Archive Entries More/Show less must expand from the user's current point.
+     The old inline handler kept the More button itself fixed; when new subject
+     rows were inserted above that button, this pushed the viewport all the way
+     down to the new end of the list. Intercept that click and anchor the last
+     visible subject row instead, so the next subjects continue directly below. */
+  document.addEventListener('click', event => {
+    const btn = event.target instanceof Element
+      ? event.target.closest('.entry-subject-more-btn')
+      : null;
+    if (!btn) return;
+
+    const grid = document.getElementById('grid');
+    if (!grid || typeof render !== 'function') return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const rows = grid.querySelectorAll('.subject-row[data-subject-code]');
+    const anchorRow = rows.length ? rows[rows.length - 1] : null;
+    const anchorCode = anchorRow?.dataset.subjectCode || '';
+    const anchorTop = anchorRow ? anchorRow.getBoundingClientRect().top : null;
+
+    try { btn.blur(); } catch (_) {}
+    showAllEntrySubjects = !showAllEntrySubjects;
+    render();
+
+    if (!anchorCode || !Number.isFinite(anchorTop)) return;
+    requestAnimationFrame(() => {
+      const replacement = Array.from(
+        grid.querySelectorAll('.subject-row[data-subject-code]')
+      ).find(row => row.dataset.subjectCode === anchorCode);
+      if (!replacement) return;
+      const delta = replacement.getBoundingClientRect().top - anchorTop;
+      if (Math.abs(delta) > 0.5) {
+        window.scrollBy({ top:delta, left:0, behavior:'auto' });
+      }
+    });
+  }, true);
 })();
