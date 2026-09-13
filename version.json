@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "1.5.16",
+  "versionCode": 24,
+  "versionName": "1.5.17",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.16 improves app startup so the splash hands off cleanly to the loaded archive without a blank transition."
+  "message": "Stat Archive 1.5.17 fixes the Android launch crash and keeps the splash visible until the archive is ready."
 }
