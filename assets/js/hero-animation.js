@@ -177,6 +177,38 @@
     svg.style.removeProperty("height");
     svg.style.removeProperty("transform");
 
+    /* On the normal phone layout the stylesheet already places mu correctly
+       from the first paint. Do not replace that stable bottom-based position
+       with a later SVG-CTM top coordinate, which causes a visible refresh jump. */
+    if (window.innerWidth <= 700) {
+      const isLight = document.body?.dataset.theme === "light";
+      label.textContent = "μ";
+      label.style.setProperty("display", "block", "important");
+      label.style.setProperty("visibility", "visible", "important");
+      label.style.setProperty("opacity", "1", "important");
+      label.style.setProperty("position", "absolute", "important");
+      label.style.setProperty("left", "50%", "important");
+      label.style.setProperty("right", "auto", "important");
+      label.style.setProperty("top", "auto", "important");
+      label.style.setProperty("bottom", "4px", "important");
+      label.style.setProperty("transform", "translateX(-50%)", "important");
+      label.style.setProperty("z-index", "30", "important");
+      label.style.setProperty("width", "auto", "important");
+      label.style.setProperty("height", "auto", "important");
+      label.style.setProperty("margin", "0", "important");
+      label.style.setProperty("padding", "0", "important");
+      label.style.setProperty("font-family", MU_STYLE.fontFamily, "important");
+      label.style.setProperty("font-size", `${MU_STYLE.normalFontSize}px`, "important");
+      label.style.setProperty("font-style", MU_STYLE.fontStyle, "important");
+      label.style.setProperty("font-weight", MU_STYLE.fontWeight, "important");
+      label.style.setProperty("line-height", MU_STYLE.lineHeight, "important");
+      label.style.setProperty("letter-spacing", "0", "important");
+      label.style.setProperty("color", isLight ? MU_STYLE.lightColor : MU_STYLE.darkColor, "important");
+      label.style.setProperty("text-shadow", "none", "important");
+      label.style.setProperty("pointer-events", "none", "important");
+      return;
+    }
+
     const heroRect = hero.getBoundingClientRect();
     const ctm = svg.getScreenCTM?.();
     if (!ctm) return;
