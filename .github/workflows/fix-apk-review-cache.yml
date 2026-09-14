@@ -10,19 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Bypass service worker cache for reviews
+      - name: Force latest public review runtime
         shell: python
         run: |
           from pathlib import Path
           p = Path('sw.js')
           s = p.read_text()
-          s = s.replace('const CACHE = "stat-archive-shell-v20260914-public-reviews-v1";', 'const CACHE = "stat-archive-shell-v20260914-public-reviews-v2";')
-          old = """  if (url.origin !== self.location.origin) {\n    const cacheableExternal ="""
-          new = """  if (url.origin === self.location.origin && url.pathname.startsWith('/api/reviews')) {\n    event.respondWith(fetch(new Request(request, { cache: 'no-store' })));\n    return;\n  }\n\n  if (url.origin !== self.location.origin) {\n    const cacheableExternal ="""
-          if old not in s:
-              raise SystemExit('fetch insertion point not found')
-          s = s.replace(old, new, 1)
-          s = s.replace("const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-public-v1\"></script>';", "const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-public-v2\"></script>';")
+          s = s.replace('const CACHE = "stat-archive-shell-v20260914-public-reviews-v2";', 'const CACHE = "stat-archive-shell-v20260914-public-reviews-v3";')
+          s = s.replace("const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-public-v2\"></script>';", "const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-public-v3\"></script>';")
           p.write_text(s)
       - name: Commit fix
         run: |
@@ -30,5 +25,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add sw.js
           git diff --cached --quiet && exit 0
-          git commit -m "Fix public reviews visibility in APK"
+          git commit -m "Force latest public review layout in APK"
           git push
