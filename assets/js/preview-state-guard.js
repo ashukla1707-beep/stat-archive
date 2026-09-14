@@ -29,9 +29,19 @@
     if (snapshot) return;
 
     const meta = getViewportMeta();
+    const scrollX = window.scrollX || document.documentElement.scrollLeft || 0;
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
     snapshot = {
-      viewportContent: meta.getAttribute("content") || "width=device-width, initial-scale=1.0"
+      viewportContent: meta.getAttribute("content") || "width=device-width, initial-scale=1.0",
+      scrollX,
+      scrollY
     };
+
+    /* Capture the true archive position before changing viewport metadata.
+       The global scroll coordinator consumes this value when Preview acquires
+       its page lock, so closing returns to the exact same entry. */
+    window.__statArchivePreviewReturnPosition = { x: scrollX, y: scrollY };
 
     /* Android/WebView must not use browser-level pinch zoom here.
        The PDF viewer already implements its own pinch zoom. */
@@ -48,26 +58,16 @@
     const meta = getViewportMeta();
 
     /* Keep browser zoom fixed while the shared scroll coordinator releases
-       the fixed-body lock. Do not restore body/html overflow or scroll here:
-       doing so would race the global coordinator and visibly move the page. */
+       the fixed-body lock. Do not restore body/html overflow or scroll here. */
     meta.setAttribute("content", LOCKED_VIEWPORT);
     document.documentElement.classList.remove("sa-preview-viewport-locked");
     document.querySelector("#previewOverlay .preview-card")?.classList.remove("sa-reader-active");
 
     try { window.statArchiveSyncGlobalScrollLock?.(); } catch (_) {}
 
-    /* releaseGlobalLock() restores the archive position on its own rAF. Our
-       rAF is queued after it, so capture that now-stable position, restore the
-       normal viewport metadata, and pin the same coordinates once more only
-       to neutralize any WebView reflow caused by the viewport-meta change. */
     requestAnimationFrame(() => {
-      const stableX = window.scrollX || document.documentElement.scrollLeft || 0;
-      const stableY = window.scrollY || document.documentElement.scrollTop || 0;
-
       meta.setAttribute("content", saved.viewportContent);
-
       requestAnimationFrame(() => {
-        window.scrollTo({ left: stableX, top: stableY, behavior: "auto" });
         try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
         restoring = false;
       });
@@ -123,7 +123,6 @@
     watchPreviewOverlay();
     bindCloseSafety();
 
-    /* Re-wrap if preview.js is replaced by the app shell at runtime. */
     let last = window.previewEntry;
     setInterval(() => {
       if (window.previewEntry !== last) {
