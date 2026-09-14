@@ -85,13 +85,14 @@ html.${ROOT_CLASS} body .header .hero-copy,html.${ROOT_CLASS} body .header .hero
   window.visualViewport?.addEventListener("resize", schedule, { passive:true });
 })();
 
-/* Stat Archive — Android app integration v5
-   The Android App section is anchored immediately after Library. */
+/* Stat Archive — Android app integration v6
+   The Android App section is anchored immediately after Library in browsers,
+   and is not shown inside the installed Android APK/WebView. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V5__) return;
-  window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V5__ = true;
+  if (window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V6__) return;
+  window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V6__ = true;
 
   const FALLBACK_APK = "./downloads/stat-archive.apk";
   const VERSION_URL = "./version.json";
@@ -101,6 +102,10 @@ html.${ROOT_CLASS} body .header .hero-copy,html.${ROOT_CLASS} body .header .hero
   const androidIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 8.1h9.6c1.1 0 2 .9 2 2v7.2c0 .7-.6 1.3-1.3 1.3h-.8v2.1c0 .7-.5 1.3-1.2 1.3s-1.2-.6-1.2-1.3v-2.1H9.7v2.1c0 .7-.5 1.3-1.2 1.3s-1.2-.6-1.2-1.3v-2.1h-.8c-.7 0-1.3-.6-1.3-1.3v-7.2c0-1.1.9-2 2-2Z"></path><path d="M8.2 7.7 6.8 5.3M15.8 7.7l1.4-2.4M8 8c.3-2 1.9-3.4 4-3.4S15.7 6 16 8M9 11.4h.01M15 11.4h.01"></path></svg>`;
 
   function isAndroid(){ return /Android/i.test(String(navigator.userAgent || "")); }
+  function isInstalledApkRuntime(){
+    const ua=String(navigator.userAgent||"");
+    return /Android/i.test(ua) && /(?:;\s*wv\)|\bwv\b|Version\/4\.0)/i.test(ua);
+  }
   function formatBytes(bytes){ const n=Number(bytes); return Number.isFinite(n)&&n>0 ? `${(n/1000000).toFixed(2)} MB` : "—"; }
 
   async function resolveApkSizeBytes(url){
@@ -217,6 +222,7 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
   }
 
   async function openOverlay(event){
+    if(isInstalledApkRuntime()) return;
     event?.preventDefault?.(); event?.stopPropagation?.(); closeMainMenu();
     const overlay=ensureOverlay(); syncOverlayMeta(overlay); overlay.classList.add("is-open"); overlay.setAttribute("aria-hidden","false"); document.body.classList.add("no-scroll");
     await loadVersion(); syncOverlayMeta(overlay); await refreshApkSize(); requestAnimationFrame(()=>overlay.querySelector("#statAndroidClose")?.focus());
@@ -250,6 +256,12 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
   }
 
   function installMenuEntry(){
+    if(isInstalledApkRuntime()){
+      document.getElementById("statAndroidSection")?.remove();
+      document.getElementById("statAndroidAppOverlay")?.remove();
+      return true;
+    }
+
     let section=document.getElementById("statAndroidSection");
     if(section){ placeAndroidSection(section); return true; }
 
@@ -268,12 +280,22 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
   }
 
   function enforceMenuOrder(){
+    if(isInstalledApkRuntime()){
+      document.getElementById("statAndroidSection")?.remove();
+      return;
+    }
     const section=document.getElementById("statAndroidSection");
     if(section) placeAndroidSection(section);
   }
 
   function init(){
-    installStyles(); ensureOverlay(); installMenuEntry();
+    installStyles();
+    if(isInstalledApkRuntime()){
+      document.getElementById("statAndroidSection")?.remove();
+      document.getElementById("statAndroidAppOverlay")?.remove();
+      return;
+    }
+    ensureOverlay(); installMenuEntry();
     const menu=document.getElementById("mainSideMenu");
     if(menu && menu.dataset.statAndroidOrderObserver!=="1"){
       menu.dataset.statAndroidOrderObserver="1";
