@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "1.5.18",
+  "versionCode": 26,
+  "versionName": "1.5.19",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.18 adds Android Save As for Drive downloads and memory-safe streaming for offline open, share, and save."
+  "message": "Stat Archive 1.5.19 fixes intermittent splash-screen squeezing by keeping the splash artwork in portrait geometry while preserving normal app rotation after launch."
 }
