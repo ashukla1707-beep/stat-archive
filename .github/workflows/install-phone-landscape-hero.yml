@@ -1,0 +1,74 @@
+name: Install phone landscape hero guard
+
+on:
+  push:
+    paths:
+      - '.github/workflows/install-phone-landscape-hero.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add landscape guard to app shell
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('index.html')
+          s = index.read_text(encoding='utf-8')
+          tag = '<script src="assets/js/phone-landscape-hero.js?v=20260914-1"></script>'
+          if 'assets/js/phone-landscape-hero.js' not in s:
+              s = s.replace('</body>', tag + '\n</body>', 1)
+          index.write_text(s, encoding='utf-8')
+
+          sw = Path('sw.js')
+          w = sw.read_text(encoding='utf-8')
+          w = re.sub(r'const CACHE = "[^"]+";', 'const CACHE = "stat-archive-shell-v20260914-phone-landscape-v1";', w, count=1)
+
+          if '"./assets/js/phone-landscape-hero.js"' not in w:
+              needle = '"./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",'
+              w = w.replace(needle, '"./assets/js/hero-layout-fix.js","./assets/js/phone-landscape-hero.js","./assets/js/action-spacing-fix.js",', 1)
+
+          inject = 'const PHONE_LANDSCAPE_HERO_TAG = \'<script src="./assets/js/phone-landscape-hero.js?v=20260914-1"></script>\';'
+          if 'PHONE_LANDSCAPE_HERO_TAG' not in w:
+              anchor = "const HERO_FIX_SCRIPT_TAG ="
+              pos = w.find(anchor)
+              if pos == -1:
+                  raise SystemExit('hero tag anchor not found')
+              line_end = w.find('\n', pos)
+              w = w[:line_end+1] + inject + '\n' + w[line_end+1:]
+
+          if "if (!out.includes('assets/js/phone-landscape-hero.js'))" not in w:
+              anchor = "if (!out.includes('assets/js/hero-layout-fix.js')) out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\\n</body>`);"
+              if anchor not in w:
+                  raise SystemExit('hero injection anchor not found')
+              w = w.replace(anchor, anchor + "\n  if (!out.includes('assets/js/phone-landscape-hero.js')) out = out.replace('</body>', `${PHONE_LANDSCAPE_HERO_TAG}\\n</body>`);", 1)
+
+          if "url.pathname.endsWith('/assets/js/phone-landscape-hero.js')" not in w:
+              anchor = "url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||"
+              if anchor in w:
+                  w = w.replace(anchor, anchor + "\n    url.pathname.endsWith('/assets/js/phone-landscape-hero.js') ||", 1)
+
+          sw.write_text(w, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- index.html sw.js; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Install phone landscape hero guard"
+          git push
