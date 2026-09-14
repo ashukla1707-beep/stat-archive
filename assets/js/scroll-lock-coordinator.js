@@ -18,6 +18,7 @@
   let intentionalOfflineBack = false;
   let lockOwned = false;
   let lockedY = 0;
+  let lockedX = 0;
   let syncQueued = false;
 
   function visible(el) {
@@ -43,13 +44,13 @@
     return visible(document.getElementById("offlineLibraryOverlay"));
   }
 
+  function previewOpen() {
+    return visible(document.getElementById("previewOverlay"));
+  }
+
   function offlineChildState() {
     const nav = window.__statArchiveNavigation;
     return nav?.state?.() === "child" && nav?.child?.() === "offline-library";
-  }
-
-  function manualOpen() {
-    return visible(document.getElementById("manualChooserOverlay"));
   }
 
   function explicitBlockingModalOpen() {
@@ -96,18 +97,24 @@
     const r = root();
     if (!b || !r || lockOwned) return;
 
-    lockedY = currentScrollY();
+    const previewReturn = previewOpen() ? window.__statArchivePreviewReturnPosition : null;
+    if (previewReturn && Number.isFinite(Number(previewReturn.y))) {
+      lockedY = Math.max(0, Number(previewReturn.y));
+      lockedX = Number.isFinite(Number(previewReturn.x)) ? Math.max(0, Number(previewReturn.x)) : 0;
+    } else {
+      lockedY = currentScrollY();
+      lockedX = window.scrollX || window.pageXOffset || 0;
+    }
+
     lockOwned = true;
 
     b.dataset.statGlobalScrollLock = "1";
     r.classList.add("stat-global-scroll-locked");
     b.classList.add("stat-global-scroll-locked");
 
-    /* position:fixed is required for reliable touch-scroll locking on mobile.
-       Keep the saved offset in top so closing restores the exact position. */
     b.style.position = "fixed";
     b.style.top = `-${lockedY}px`;
-    b.style.left = "0";
+    b.style.left = `-${lockedX}px`;
     b.style.right = "0";
     b.style.width = "100%";
     b.style.overflow = "hidden";
@@ -121,14 +128,13 @@
     if (!b || !r || !lockOwned || blockerOpen()) return;
 
     const restoreY = lockedY;
+    const restoreX = lockedX;
     lockOwned = false;
 
     delete b.dataset.statGlobalScrollLock;
     r.classList.remove("stat-global-scroll-locked");
     b.classList.remove("stat-global-scroll-locked");
 
-    /* Clear only the global lock values. Other components can immediately
-       reapply their own styles if they need them. */
     b.style.position = "";
     b.style.top = "";
     b.style.left = "";
@@ -139,7 +145,8 @@
     if (r.style.overscrollBehavior === "none") r.style.overscrollBehavior = "";
 
     requestAnimationFrame(() => {
-      window.scrollTo({ top: restoreY, left: 0, behavior: "auto" });
+      window.scrollTo({ top: restoreY, left: restoreX, behavior: "auto" });
+      delete window.__statArchivePreviewReturnPosition;
     });
   }
 
@@ -157,9 +164,6 @@
     });
   }
 
-  /* menu-alignment-fix.js has a legacy child-close observer. On Android Back,
-     native code can hide Offline Library and then call WebView.goBack().
-     Suppress only the obsolete second JS back. */
   history.back = function(...args) {
     if (offlineChildState() && !offlineOpen() && !intentionalOfflineBack) return;
     return nativeHistoryBack(...args);
@@ -233,8 +237,6 @@
   function init() {
     wrapOfflineFunctions();
 
-    /* Catch every current and future overlay without requiring each feature to
-       remember to call lock/unlock. Class/style/aria changes are enough. */
     const observer = new MutationObserver(queueGlobalLockSync);
     observer.observe(document.documentElement, {
       subtree: true,
