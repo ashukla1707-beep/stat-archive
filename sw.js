@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260915-pwa-branding-v1";
+const CACHE = "stat-archive-shell-v20260915-menu-v6";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -23,7 +23,7 @@ const MENU_FLASH_GUARD = `
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260910-bugfix-2"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu12-consistent-2"></script>';
-const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260914-1"></script>';
+const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260915-menu-v6"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260910-mobile-reference-1"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
@@ -34,7 +34,7 @@ const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=202
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260914-rate-routing-v5"></script>';
 const PUBLIC_REVIEWS_TAG = '<script src="./assets/js/public-reviews.js?v=20260914-rate-routing-v5"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
-const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-5"></script>';
+const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260915-6"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
 const OFFLINE_HYBRID_TAG = '<script src="./assets/js/offline-library-hybrid.js?v=20260910-canonical-15"></script>';
 const SCROLL_LOCK_COORDINATOR_TAG = '<script src="./assets/js/scroll-lock-coordinator.js?v=20260910-2"></script>';
@@ -62,12 +62,6 @@ function decorateNavigationHtml(html) {
     );
   }
 
-  /* In a phone browser with Desktop site enabled, the independent replacement
-     graph is built by hero-layout-fix.js. Keep the legacy SVG completely hidden
-     from the very first painted frame so refresh never shows only the baseline,
-     mean line, or mu before the replacement graph is ready. This guard is
-     intentionally separate from statHeroPreloadGuard because hero-animation.js
-     removes that temporary preload guard when its animation starts. */
   if (!out.includes('id="statTouchDesktopFirstPaintGuard"')) {
     out = out.replace(
       '</head>',
