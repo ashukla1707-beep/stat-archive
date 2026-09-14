@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260914-public-reviews-v1";
+const CACHE = "stat-archive-shell-v20260914-public-reviews-v2";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -31,7 +31,7 @@ const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
 const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
-const PUBLIC_REVIEWS_TAG = '<script src="./assets/js/public-reviews.js?v=20260914-public-v1"></script>';
+const PUBLIC_REVIEWS_TAG = '<script src="./assets/js/public-reviews.js?v=20260914-public-v2"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
 const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-5"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';
@@ -240,6 +240,11 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/reviews')) {
+    event.respondWith(fetch(new Request(request, { cache: 'no-store' })));
+    return;
+  }
 
   if (url.origin !== self.location.origin) {
     const cacheableExternal =
