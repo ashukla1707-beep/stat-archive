@@ -98,11 +98,22 @@ export class ReviewsStore {
     const action = parts[1] || "";
     const childId = parts[2] || "";
     const clientId = cleanClientId(request.headers.get("X-Review-Client"));
+    const adminRequest = request.headers.get("X-Stat-Admin") === "1";
 
     if (method === "GET" && !reviewId) {
       const map = await this.state.storage.list({ prefix: "review:" });
       const reviews = [...map.values()]
-        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .sort((a, b) => {
+          const aAdmin = String(a?.adminRepliedAt || "");
+          const bAdmin = String(b?.adminRepliedAt || "");
+          if (aAdmin || bAdmin) {
+            if (!aAdmin) return 1;
+            if (!bAdmin) return -1;
+            const adminOrder = bAdmin.localeCompare(aAdmin);
+            if (adminOrder) return adminOrder;
+          }
+          return String(b.createdAt).localeCompare(String(a.createdAt));
+        })
         .slice(0, 100)
         .map(item => publicReview(item, clientId));
       return json({ reviews });
@@ -141,16 +152,17 @@ export class ReviewsStore {
     if (method === "POST" && reviewId && action === "reply") {
       let body;
       try { body = await request.json(); } catch (_) { return json({ error: "Invalid reply data." }, 400); }
-      const name = String(body?.name || "").trim().slice(0, 50);
+      const name = adminRequest ? "Admin" : String(body?.name || "").trim().slice(0, 50);
       const text = String(body?.reply || "").trim().slice(0, 500);
       if (name.length < 2) return json({ error: "Please enter your name." }, 400);
       if (!text) return json({ error: "Please enter a reply." }, 400);
       const found = await this.findReview(reviewId);
       if (!found) return json({ error: "Review not found." }, 404);
       const replies = Array.isArray(found.item.replies) ? [...found.item.replies] : [];
-      const reply = { id: crypto.randomUUID(), name, reply: text, createdAt: new Date().toISOString() };
+      const reply = { id: crypto.randomUUID(), name, reply: text, createdAt: new Date().toISOString(), isAdmin: adminRequest };
       replies.push(reply);
       found.item.replies = replies.slice(-50);
+      if (adminRequest) found.item.adminRepliedAt = reply.createdAt;
       await this.state.storage.put(found.key, found.item);
       return json({ reply }, 201);
     }
@@ -162,6 +174,8 @@ export class ReviewsStore {
       const replies = before.filter(r => r?.id !== childId);
       if (replies.length === before.length) return json({ error: "Reply not found." }, 404);
       found.item.replies = replies;
+      const remainingAdminReplies = replies.filter(r => r?.isAdmin);
+      found.item.adminRepliedAt = remainingAdminReplies.length ? remainingAdminReplies[remainingAdminReplies.length - 1].createdAt : "";
       await this.state.storage.put(found.key, found.item);
       return json({ ok: true });
     }
@@ -182,11 +196,13 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/reviews" || url.pathname.startsWith("/api/reviews/")) {
-      if (request.method === "DELETE" && !(await isAdminRequest(request))) return json({ error: "Admin permission required." }, 403);
+      const isAdmin = await isAdminRequest(request);
+      if (request.method === "DELETE" && !isAdmin) return json({ error: "Admin permission required." }, 403);
       const id = env.REVIEWS.idFromName("public-stat-archive-reviews");
       const stub = env.REVIEWS.get(id);
       const headers = new Headers(request.headers);
       headers.set("X-Stat-Client", request.headers.get("CF-Connecting-IP") || "unknown");
+      headers.set("X-Stat-Admin", isAdmin ? "1" : "0");
       return stub.fetch(new Request(request.url, { method: request.method, headers, body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body }));
     }
 
