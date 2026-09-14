@@ -1,8 +1,9 @@
-/* Stat Archive — startup + interaction polish v2
+/* Stat Archive — startup + interaction polish v3
    Coordinates the first Home paint without owning archive rendering.
    - suppresses the legacy service-worker takeover reload
    - keeps summary metrics visually stable until the first data pass settles
    - signals the hero to start only after that first settled render
+   - prevents the legacy Menu shell from flashing before final menu composition
    - restores the intended right-side Menu on web/desktop layouts
    - keeps About -> close as one Back level to Menu
    - standardizes close controls across Stat Archive dialogs
@@ -10,14 +11,55 @@
 (() => {
   "use strict";
 
-  /* Keep the v1 guard name so an older cached copy and this v2 copy can never
+  /* Keep the v1 guard name so older cached copies and this version can never
      both install listeners/styles in the same page instance. */
   if (window.__STAT_ARCHIVE_STARTUP_POLISH_V1__) return;
-  window.__STAT_ARCHIVE_STARTUP_POLISH_V1__ = "2";
+  window.__STAT_ARCHIVE_STARTUP_POLISH_V1__ = "3";
 
   const READY_EVENT = "statarchive:startup-ready";
   const SUMMARY_CACHE_PREFIX = "statArchiveHomeSummaryV1:";
   const READY_TIMEOUT_MS = 3200;
+
+  /*
+   * FIRST-PAINT MENU GUARD
+   *
+   * On a restored /?menu=1 navigation, service-worker-register.js can reopen
+   * the legacy server HTML before menu-polish.js and menu-header-reference.js
+   * have finished composing the final Menu. That creates a visible old-menu ->
+   * new-menu flash on refresh.
+   *
+   * startup-polish.js is injected immediately before the navigation core, so
+   * install this guard synchronously (not on DOMContentLoaded). The guard only
+   * affects an OPEN menu/backdrop, therefore normal Home rendering is untouched.
+   * menu-header-reference.js adds .stat-menu-reference-ready only after the
+   * final fixed header + scroll body exist, which releases the guard atomically.
+   */
+  function installMenuFirstPaintGuard() {
+    if (document.getElementById("statArchiveMenuFirstPaintGuard")) return;
+
+    const style = document.createElement("style");
+    style.id = "statArchiveMenuFirstPaintGuard";
+    style.textContent = `
+html:not(.stat-menu-reference-ready) #mainSideMenu.is-open,
+html:not(.stat-menu-reference-ready) #mainMenuBackdrop.is-open{
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+  transition:none !important;
+}
+`;
+    document.head.appendChild(style);
+
+    /* Fail-safe only: if an unrelated script/network failure prevents the
+       reference header from initializing, never leave Menu inaccessible. */
+    window.setTimeout(() => {
+      if (!document.documentElement.classList.contains("stat-menu-reference-ready")) {
+        document.documentElement.classList.add("stat-menu-reference-ready");
+      }
+    }, 3500);
+  }
+
+  installMenuFirstPaintGuard();
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.addEventListener("controllerchange", event => {
@@ -42,7 +84,7 @@
 
     const style = document.createElement("style");
     style.id = "statArchiveStartupPolishStyle";
-    style.dataset.version = "2";
+    style.dataset.version = "3";
     style.textContent = `
 html{background:#070a0f;}
 html[data-theme="light"]{background:#f6f2e9;}
