@@ -308,6 +308,10 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
   banner.innerHTML=`<span class="stat-android-auto-icon" aria-hidden="true">${androidIcon}</span><span class="stat-android-auto-copy"><strong>Get Stat Archive app</strong><small>Install the Android APK</small></span><a class="stat-android-auto-install" href="${appMeta.apkUrl||FALLBACK_APK}" download="stat-archive.apk">Install</a><button type="button" class="stat-android-auto-close" aria-label="Dismiss">×</button>`;
   document.body.appendChild(banner);
   banner.querySelector(".stat-android-auto-close")?.addEventListener("click",()=>banner.remove());
+  banner.querySelector(".stat-android-auto-install")?.addEventListener("click",()=>{
+    banner.classList.remove("is-visible");
+    window.setTimeout(()=>banner.remove(),180);
+  });
   return banner;
 }
 
