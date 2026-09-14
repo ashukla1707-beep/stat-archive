@@ -1,0 +1,75 @@
+name: Fix Rate Stat Archive routing
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-rate-dialog-routing.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Route Rate Stat Archive only to public reviews
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('assets/js/menu-polish.js')
+          s = p.read_text()
+          old = "    feedbackSection.querySelector('#menuLocalFeedbackBtn')?.addEventListener('click', openFeedback);"
+          new = r'''    feedbackSection.querySelector('#menuLocalFeedbackBtn')?.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+
+      if (typeof window.openStatArchiveReview === 'function') {
+        window.openStatArchiveReview();
+        return;
+      }
+
+      /* Some APK/PWA shells may still have an older cached page. Load the
+         canonical public-review module on demand instead of ever opening the
+         retired local-feedback dialog. */
+      try {
+        let loader = document.querySelector('script[data-stat-public-reviews-loader="1"]');
+        if (!loader) {
+          loader = document.createElement('script');
+          loader.dataset.statPublicReviewsLoader = '1';
+          loader.src = './assets/js/public-reviews.js?v=20260914-rate-routing-v3';
+          document.head.appendChild(loader);
+        }
+        if (typeof window.openStatArchiveReview !== 'function') {
+          await new Promise((resolve) => {
+            if (loader.dataset.loaded === '1') return resolve();
+            const done = () => { loader.dataset.loaded = '1'; resolve(); };
+            loader.addEventListener('load', done, { once:true });
+            loader.addEventListener('error', done, { once:true });
+            setTimeout(done, 2500);
+          });
+        }
+      } catch (_) {}
+
+      if (typeof window.openStatArchiveReview === 'function') {
+        window.openStatArchiveReview();
+      }
+    });'''
+          if old not in s:
+              raise SystemExit('Rate button binding target not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('sw.js')
+          s = p.read_text()
+          s = s.replace('const CACHE = "stat-archive-shell-v20260914-public-reviews-v2";', 'const CACHE = "stat-archive-shell-v20260914-rate-routing-v3";')
+          s = s.replace("const MENU_POLISH_TAG = '<script src=\"./assets/js/menu-polish.js?v=20260909-websync-1\"></script>';", "const MENU_POLISH_TAG = '<script src=\"./assets/js/menu-polish.js?v=20260914-rate-routing-v3\"></script>';" )
+          s = s.replace("const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-public-v2\"></script>';", "const PUBLIC_REVIEWS_TAG = '<script src=\"./assets/js/public-reviews.js?v=20260914-rate-routing-v3\"></script>';" )
+          p.write_text(s)
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/menu-polish.js sw.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Route Rate Stat Archive to public reviews everywhere"
+          git push
