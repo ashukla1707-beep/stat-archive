@@ -219,12 +219,12 @@ html.${ROOT_CLASS} body .header .probability-svg{
   window.visualViewport?.addEventListener("resize", schedule, { passive:true });
 })();
 
-/* Stat Archive — Android app integration v3 */
+/* Stat Archive — Android app integration v4 */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V3__) return;
-  window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V3__ = true;
+  if (window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V4__) return;
+  window.__STAT_ARCHIVE_ANDROID_WEB_INTEGRATION_V4__ = true;
 
   const FALLBACK_APK = "./downloads/stat-archive.apk";
   const VERSION_URL = "./version.json";
@@ -232,13 +232,55 @@ html.${ROOT_CLASS} body .header .probability-svg{
   let appMeta = {
     versionName: "1.5.19",
     versionCode: 26,
-    apkUrl: FALLBACK_APK
+    apkUrl: FALLBACK_APK,
+    apkSizeBytes: null
   };
 
   const androidIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 8.1h9.6c1.1 0 2 .9 2 2v7.2c0 .7-.6 1.3-1.3 1.3h-.8v2.1c0 .7-.5 1.3-1.2 1.3s-1.2-.6-1.2-1.3v-2.1H9.7v2.1c0 .7-.5 1.3-1.2 1.3s-1.2-.6-1.2-1.3v-2.1h-.8c-.7 0-1.3-.6-1.3-1.3v-7.2c0-1.1.9-2 2-2Z"></path><path d="M8.2 7.7 6.8 5.3M15.8 7.7l1.4-2.4M8 8c.3-2 1.9-3.4 4-3.4S15.7 6 16 8M9 11.4h.01M15 11.4h.01"></path></svg>`;
 
   function isAndroid() {
     return /Android/i.test(String(navigator.userAgent || ""));
+  }
+
+  function formatBytes(bytes) {
+    const value = Number(bytes);
+    if (!Number.isFinite(value) || value <= 0) return "—";
+    const mb = value / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  }
+
+  async function resolveApkSizeBytes(url) {
+    const target = String(url || "").trim();
+    if (!target) return null;
+
+    try {
+      const raw = new URL(target, location.href);
+      const match = raw.hostname === "raw.githubusercontent.com"
+        ? raw.pathname.match(/^\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/)
+        : null;
+
+      if (match) {
+        const [, owner, repo, ref, path] = match;
+        const apiUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`;
+        const response = await fetch(apiUrl, {
+          cache: "no-store",
+          headers: { Accept: "application/vnd.github+json" }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const size = Number(data?.size);
+          if (Number.isFinite(size) && size > 0) return size;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const response = await fetch(target, { method: "HEAD", cache: "no-store" });
+      const size = Number(response.headers.get("content-length"));
+      if (response.ok && Number.isFinite(size) && size > 0) return size;
+    } catch (_) {}
+
+    return null;
   }
 
   function installStyles() {
@@ -320,6 +362,14 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
     } catch (_) {}
   }
 
+  async function refreshApkSize() {
+    const bytes = await resolveApkSizeBytes(appMeta.apkUrl || FALLBACK_APK);
+    if (bytes) appMeta.apkSizeBytes = bytes;
+    document.querySelectorAll("[data-stat-apk-size]").forEach(el => {
+      el.textContent = formatBytes(appMeta.apkSizeBytes);
+    });
+  }
+
   function ensureOverlay() {
     let overlay = document.getElementById("statAndroidAppOverlay");
     if (overlay) return overlay;
@@ -339,7 +389,7 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
         <div class="stat-android-meta">
           <div><span>Version</span><strong id="statAndroidVersion">—</strong></div>
           <div><span>Platform</span><strong>Android</strong></div>
-          <div><span>APK size</span><strong>1.68 MB</strong></div>
+          <div><span>APK size</span><strong data-stat-apk-size>Checking…</strong></div>
         </div>
         <div class="stat-android-features">
           <div class="stat-android-feature">Dedicated Stat Archive app experience on Android.</div>
@@ -364,8 +414,10 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
     const version = overlay.querySelector("#statAndroidVersion");
     const link = overlay.querySelector("#statAndroidDownload");
     const subtitle = overlay.querySelector("#statAndroidSubtitle");
+    const size = overlay.querySelector("[data-stat-apk-size]");
     if (version) version.textContent = `v${appMeta.versionName}`;
     if (subtitle) subtitle.textContent = isAndroid() ? "Ready to install on this Android device" : "Official Android build";
+    if (size) size.textContent = appMeta.apkSizeBytes ? formatBytes(appMeta.apkSizeBytes) : "Checking…";
     if (link) {
       link.href = appMeta.apkUrl || FALLBACK_APK;
       link.setAttribute("download", "stat-archive.apk");
@@ -383,6 +435,7 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
     document.body.classList.add("no-scroll");
     await loadVersion();
     syncOverlayMeta(overlay);
+    await refreshApkSize();
     requestAnimationFrame(() => overlay.querySelector("#statAndroidClose")?.focus());
   }
 
@@ -423,6 +476,7 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
     loadVersion().then(() => {
       const meta = document.getElementById("menuAndroidAppMeta");
       if (meta) meta.textContent = `Official APK · v${appMeta.versionName}`;
+      refreshApkSize();
     });
     return true;
   }
