@@ -169,6 +169,19 @@
 #offlineLibraryOverlay .sa-offline-group.open .sa-offline-group-body{
   overscroll-behavior-y:auto!important;
 }
+
+/* Keep the three-dot Offline Library utility menu centered like a modal,
+   instead of presenting it as a bottom sheet. */
+#offlineLibraryOverlay .sa-offline-utility{
+  align-items:center!important;
+  justify-content:center!important;
+  padding:16px!important;
+}
+#offlineLibraryOverlay .sa-offline-utility-card{
+  width:min(420px,calc(100vw - 32px))!important;
+  max-width:420px!important;
+  margin:auto!important;
+}
 `;
     document.head.appendChild(style);
 
