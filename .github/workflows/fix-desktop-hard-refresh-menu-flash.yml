@@ -1,0 +1,92 @@
+name: Fix desktop hard refresh menu flash
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-desktop-hard-refresh-menu-flash.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch first-paint menu startup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          guard = '''<style id="statMenuHardRefreshGuard">
+          /* First-paint guard: never paint legacy menu markup during a restored
+             /?menu=1 hard refresh. Released atomically by menu-header-reference.js. */
+          html:not(.stat-menu-reference-ready) #mainSideMenu.is-open,
+          html:not(.stat-menu-reference-ready) #mainMenuBackdrop.is-open{
+            visibility:hidden!important;
+            opacity:0!important;
+            pointer-events:none!important;
+            transition:none!important;
+          }
+          </style>'''
+
+          if 'id="statMenuHardRefreshGuard"' not in s:
+              s = s.replace('</head>', guard + '\n</head>', 1)
+
+          # Make startup protection available even when a desktop hard refresh
+          # bypasses the currently controlling service-worker response cache.
+          startup_tag = '<script data-stat-startup-polish="1" src="assets/js/startup-polish.js?v=20260914-hard-refresh-v1"></script>'
+          if 'data-stat-startup-polish="1"' not in s:
+              s = s.replace(
+                  '<script src="assets/js/service-worker-register.js"></script>',
+                  startup_tag + '\n<script src="assets/js/service-worker-register.js"></script>',
+                  1
+              )
+
+          # These are the canonical final Menu composition layers. Keep them in
+          # raw HTML as well; sw.js already de-duplicates/injects its controlled path.
+          direct = [
+              ('assets/js/menu-polish.js', '<script src="assets/js/menu-polish.js?v=20260914-hard-refresh-v1"></script>'),
+              ('assets/js/menu-alignment-fix.js', '<script src="assets/js/menu-alignment-fix.js?v=20260914-hard-refresh-v1"></script>'),
+              ('assets/js/menu-header-reference.js', '<script src="assets/js/menu-header-reference.js?v=20260914-hard-refresh-v1"></script>'),
+          ]
+          anchor = '<script src="assets/js/public-reviews.js?v=20260914-public-v1"></script>'
+          for needle, tag in direct:
+              if needle not in s:
+                  s = s.replace(anchor, anchor + '\n' + tag, 1)
+                  anchor = tag
+
+          p.write_text(s, encoding='utf-8')
+
+          # Force a new shell generation so installed/PWA clients cannot keep the
+          # previous document shell after this structural startup change.
+          sw = Path('sw.js')
+          w = sw.read_text(encoding='utf-8')
+          w = re.sub(
+              r'const CACHE = "[^"]+";',
+              'const CACHE = "stat-archive-shell-v20260914-hard-refresh-menu-v1";',
+              w,
+              count=1
+          )
+          sw.write_text(w, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- index.html sw.js; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Fix desktop hard-refresh menu first paint"
+          git push
