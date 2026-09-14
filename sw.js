@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260914-hard-refresh-menu-v1";
+const CACHE = "stat-archive-shell-v20260914-phone-landscape-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -9,7 +9,7 @@ const APP_SHELL = [
   "./assets/js/search-suggestions.js","./assets/js/search-filter-fix.js","./assets/js/runtime.js",
   "./assets/js/tooltips.js","./assets/js/startup-polish.js","./assets/js/service-worker-register.js","./assets/js/hero-animation.js",
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
-  "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",
+  "./assets/js/feature-polish.js","./assets/js/hero-layout-fix.js","./assets/js/phone-landscape-hero.js","./assets/js/action-spacing-fix.js",
   "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/public-reviews.js","./assets/js/menu-alignment-fix.js",
   "./assets/js/menu-header-reference.js","./assets/js/offline-library-hybrid.js","./assets/js/scroll-lock-coordinator.js",
   "./assets/js/offline-library-handoff.js","./manuals/reader.html","./manuals/contributor.html",
@@ -23,6 +23,7 @@ const MENU_FLASH_GUARD = `
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260910-bugfix-2"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu12-consistent-2"></script>';
+const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260914-1"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260910-mobile-reference-1"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
@@ -99,6 +100,7 @@ function decorateNavigationHtml(html) {
 
   if (!out.includes('assets/js/feature-polish.js')) out = out.replace('</body>', `${FEATURE_SCRIPT_TAG}\n</body>`);
   if (!out.includes('assets/js/hero-layout-fix.js')) out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\n</body>`);
+  if (!out.includes('assets/js/phone-landscape-hero.js')) out = out.replace('</body>', `${PHONE_LANDSCAPE_HERO_TAG}\n</body>`);
   if (!out.includes('assets/js/hero-selection-guard.js')) out = out.replace('</body>', `${HERO_SELECTION_GUARD_TAG}\n</body>`);
   if (!out.includes('assets/js/action-spacing-fix.js')) out = out.replace('</body>', `${ACTION_SPACING_FIX_TAG}\n</body>`);
   if (!out.includes('assets/js/download-fix.js')) out = out.replace('</body>', `${DOWNLOAD_FIX_TAG}\n</body>`);
@@ -280,6 +282,7 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('/assets/js/startup-polish.js') ||
     url.pathname.endsWith('/assets/js/hero-animation.js') ||
     url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||
+    url.pathname.endsWith('/assets/js/phone-landscape-hero.js') ||
     url.pathname.endsWith('/assets/js/action-spacing-fix.js') ||
     url.pathname.endsWith('/assets/js/tooltips.js') ||
     url.pathname.endsWith('/assets/js/service-worker-register.js') ||
