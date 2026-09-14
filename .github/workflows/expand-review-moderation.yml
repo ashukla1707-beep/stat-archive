@@ -1,0 +1,62 @@
+name: Expand review moderation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/expand-review-moderation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expand abusive-language filtering
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('worker.js')
+          s = p.read_text()
+          old = '''    /\\bh+a+r+a+m+i+s?\\b/,
+    /\\br+a+n+d+i+s?\\b/,'''
+          new = '''    /\\bh+a+r+a+m+i+s?\\b/,
+    /\\bk+u+t+t+i+y+a+s?\\b/,
+    /\\bk+u+t+i+y+a+s?\\b/,
+    /\\bk+u+t+t+i+s?\\b/,
+    /\\br+a+n+d+i+s?\\b/,'''
+          if old not in s:
+              raise SystemExit('word pattern target not found')
+          s = s.replace(old, new, 1)
+
+          old2 = '''    /g+a+n+d+u/,
+    /r+a+n+d+i/,'''
+          new2 = '''    /g+a+n+d+u/,
+    /k+u+t+t+i+y+a/,
+    /k+u+t+i+y+a/,
+    /k+u+t+t+i/,
+    /r+a+n+d+i/,'''
+          if old2 not in s:
+              raise SystemExit('compact pattern target not found')
+          s = s.replace(old2, new2, 1)
+
+          old3 = '''    /गांडू/u,
+    /रंडी/u'''
+          new3 = '''    /गांडू/u,
+    /कुतिया/u,
+    /कुत्ती/u,
+    /रंडी/u'''
+          if old3 not in s:
+              raise SystemExit('Hindi pattern target not found')
+          s = s.replace(old3, new3, 1)
+          p.write_text(s)
+          PY
+      - name: Commit moderation fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Expand abusive review filtering"
+          git push
