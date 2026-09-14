@@ -245,7 +245,7 @@ html.${ROOT_CLASS} body .header .probability-svg{
   function formatBytes(bytes) {
     const value = Number(bytes);
     if (!Number.isFinite(value) || value <= 0) return "—";
-    const mb = value / (1024 * 1024);
+    const mb = value / 1000000;
     return `${mb.toFixed(2)} MB`;
   }
 
