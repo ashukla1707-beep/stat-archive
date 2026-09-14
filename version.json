@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "1.5.16",
+  "versionCode": 24,
+  "versionName": "1.5.17",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.16 fixes Google Drive PDF downloads in the APK, offline PDF opening, and PDF sharing/file type handling."
+  "message": "Stat Archive 1.5.17 includes the latest offline PDF app chooser fix and aligns Google Drive PDF downloads with the native Android download bridge."
 }
