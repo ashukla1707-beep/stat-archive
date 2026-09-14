@@ -115,6 +115,73 @@ html body .subject-mobile-scroll-range{
   display:none !important;
 }
 
+/* Entry action row is a strict single line. Never allow Preview / Download /
+   Offline / Edit / Delete to wrap to a second row on phones, APK, PWA, or
+   narrow desktop-site viewports. Buttons shrink proportionally instead. */
+html body .card-actions{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:5px !important;
+  width:100% !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+html body .card-actions > *{
+  min-width:0 !important;
+  flex-shrink:1 !important;
+}
+html body .card-actions .action-btn{
+  white-space:nowrap !important;
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  max-width:none !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+}
+html body .card-actions .edit-btn,
+html body .card-actions .del-btn{
+  flex:0 1 auto !important;
+}
+
+@media(max-width:700px){
+  html body .card-actions{
+    gap:4px !important;
+  }
+  html body .card-actions .action-btn{
+    padding-left:4px !important;
+    padding-right:4px !important;
+    font-size:clamp(9.5px,2.75vw,11.5px) !important;
+    gap:3px !important;
+  }
+  html body .card-actions .edit-btn{
+    flex-basis:56px !important;
+  }
+  html body .card-actions .del-btn{
+    flex:0 1 42px !important;
+  }
+}
+
+@media(max-width:390px){
+  html body .card-actions{
+    gap:3px !important;
+  }
+  html body .card-actions .action-btn{
+    padding-left:3px !important;
+    padding-right:3px !important;
+    font-size:9.5px !important;
+    letter-spacing:-.01em !important;
+  }
+  html body .card-actions .edit-btn{
+    flex-basis:50px !important;
+  }
+  html body .card-actions .del-btn{
+    flex-basis:36px !important;
+  }
+}
+
 /* On touch/coarse-pointer devices the hamburger must not retain a sticky
    hover/pressed/focus effect after a tap. Real desktop mouse hover remains
    untouched because these rules only apply where hover is unavailable. */
@@ -136,10 +203,6 @@ html body .subject-mobile-scroll-range{
     margin-bottom:12px !important;
   }
 }
-
-/* IMPORTANT: card action buttons are intentionally NOT styled here anymore.
-   mobile-card-actions.js is the only final owner of Preview / Download /
-   Offline / Edit / Delete sizing and visibility. */
 `;
   document.head.appendChild(style);
 
@@ -176,8 +239,6 @@ html body .subject-mobile-scroll-range{
       mu.style.setProperty('fill', color, 'important');
     });
 
-    /* The alternate graph used by a coarse-pointer desktop viewport is still
-       kept in sync, but it is only one rendering path of the same global rule. */
     const touchGraph = document.getElementById('statTouchDesktopGraph');
     touchGraph?.querySelectorAll('[data-stat-touch-color]').forEach(node => {
       if (node.hasAttribute('stroke')) node.setAttribute('stroke', color);
@@ -208,10 +269,6 @@ html body .subject-mobile-scroll-range{
   themeObserver.observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
   syncThemeAndMu();
 
-  /* ---------- Atomic M.Sc / B.Sc switch: common to every runtime ----------
-     Keep the current archive on screen while the new level is fetched, then
-     replace it once. This avoids an empty/loading rebuild and page jump on the
-     normal website, installed PWA and APK alike. */
   try {
     if (typeof switchLevel === 'function' && !window.__statArchiveAtomicLevelSwitchV1) {
       window.__statArchiveAtomicLevelSwitchV1 = true;
@@ -311,9 +368,6 @@ html body .subject-mobile-scroll-range{
     console.warn('Could not install atomic level switching:', err);
   }
 
-  /* Clear the hamburger's sticky focus/pressed state after touch interaction.
-     This prevents the visual effect seen after opening/closing the menu in
-     touch browsers, PWA and the Android WebView without changing desktop hover. */
   const releaseMenuButtonState = () => {
     const btn = document.getElementById('mainMenuBtn');
     if (!btn) return;
@@ -335,11 +389,6 @@ html body .subject-mobile-scroll-range{
     setTimeout(releaseMenuButtonState, 0);
   }, true);
 
-  /* Archive Entries More/Show less must expand from the user's current point.
-     The old inline handler kept the More button itself fixed; when new subject
-     rows were inserted above that button, this pushed the viewport all the way
-     down to the new end of the list. Intercept that click and anchor the last
-     visible subject row instead, so the next subjects continue directly below. */
   document.addEventListener('click', event => {
     const btn = event.target instanceof Element
       ? event.target.closest('.entry-subject-more-btn')
