@@ -290,6 +290,23 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
     if(section) placeAndroidSection(section);
   }
 
+  function scheduleAndroidAutoSuggestion(){
+    if(!isAndroid() || isInstalledApkRuntime()) return;
+    const key="statArchiveAndroidAutoPromptShown";
+    try{
+      if(sessionStorage.getItem(key)==="1") return;
+      sessionStorage.setItem(key,"1");
+    }catch(_){}
+
+    window.setTimeout(()=>{
+      if(isInstalledApkRuntime()) return;
+      if(document.visibilityState!=="visible") return;
+      const blockingOverlay=document.querySelector(".is-open[role='dialog'], .manual-chooser-overlay.is-open, #offlineLibraryOverlay.is-open, #statLocalFeedbackOverlay.is-open");
+      if(blockingOverlay) return;
+      openOverlay();
+    },1200);
+  }
+
   function init(){
     installStyles();
     if(isInstalledApkRuntime()){
@@ -297,7 +314,7 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
       document.getElementById("statAndroidAppOverlay")?.remove();
       return;
     }
-    ensureOverlay(); installMenuEntry();
+    ensureOverlay(); installMenuEntry(); scheduleAndroidAutoSuggestion();
     const menu=document.getElementById("mainSideMenu");
     if(menu && menu.dataset.statAndroidOrderObserver!=="1"){
       menu.dataset.statAndroidOrderObserver="1";
