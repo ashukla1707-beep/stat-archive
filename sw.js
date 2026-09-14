@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260914-phone-landscape-v1";
+const CACHE = "stat-archive-shell-v20260915-pwa-branding-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -13,7 +13,7 @@ const APP_SHELL = [
   "./assets/js/entry-method-fix.js","./assets/js/menu-polish.js","./assets/js/public-reviews.js","./assets/js/menu-alignment-fix.js",
   "./assets/js/menu-header-reference.js","./assets/js/offline-library-hybrid.js","./assets/js/scroll-lock-coordinator.js",
   "./assets/js/offline-library-handoff.js","./manuals/reader.html","./manuals/contributor.html",
-  "./manifest.json","./icons/icon-192.png","./icons/icon-512.png"
+  "./manifest.json","./launch.html","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-512-maskable.png","./icons/pwa-splash.webp"
 ];
 
 const MENU_FLASH_GUARD = `
