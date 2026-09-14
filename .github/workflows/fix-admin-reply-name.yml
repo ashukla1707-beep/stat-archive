@@ -1,0 +1,46 @@
+name: Fix admin reply identity
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-reply-name.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch admin reply form and authentication
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('assets/js/public-reviews.js')
+          s = p.read_text()
+
+          old = '''const replyForm=openReplyId===item.id?`<div class="stat-public-reply-form"><input data-reply-name="${esc(item.id)}" maxlength="50" placeholder="Your name" value="${esc(localStorage.getItem(NAME_KEY)||'')}"><textarea data-reply-text="${esc(item.id)}" maxlength="500" placeholder="Write a reply…"></textarea><div class="stat-public-reply-form-actions"><button class="stat-public-reply-cancel" data-cancel-reply="${esc(item.id)}" type="button">Cancel</button><button class="stat-public-reply-submit" data-submit-reply="${esc(item.id)}" type="button">Post reply</button></div></div>`:'';'''
+          new = '''const replyName=isAdmin()?'Admin':(localStorage.getItem(NAME_KEY)||'');
+      const replyNameInput=isAdmin()?`<input data-reply-name="${esc(item.id)}" value="Admin" readonly aria-label="Replying as Admin">`:`<input data-reply-name="${esc(item.id)}" maxlength="50" placeholder="Your name" value="${esc(replyName)}">`;
+      const replyForm=openReplyId===item.id?`<div class="stat-public-reply-form">${replyNameInput}<textarea data-reply-text="${esc(item.id)}" maxlength="500" placeholder="Write a reply…"></textarea><div class="stat-public-reply-form-actions"><button class="stat-public-reply-cancel" data-cancel-reply="${esc(item.id)}" type="button">Cancel</button><button class="stat-public-reply-submit" data-submit-reply="${esc(item.id)}" type="button">Post reply</button></div></div>`:'';'''
+          if old not in s:
+              raise SystemExit('reply form target not found')
+          s = s.replace(old, new, 1)
+
+          old2 = '''async function submitReply(id,b){const name=String(document.querySelector(`[data-reply-name="${CSS.escape(id)}"]`)?.value||'').trim(),reply=String(document.querySelector(`[data-reply-text="${CSS.escape(id)}"]`)?.value||'').trim();if(name.length<2)return setStatus('Please enter your name for the reply.');if(!reply)return setStatus('Please write a reply.');b.disabled=true;b.textContent='Posting…';try{const r=await fetch(`/api/reviews/${encodeURIComponent(id)}/reply`,{method:'POST',headers:headers({'Content-Type':'application/json'}),body:JSON.stringify({name,reply})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not post reply.');localStorage.setItem(NAME_KEY,name);const item=reviews.find(x=>x.id===id);if(item){item.replies=Array.isArray(item.replies)?item.replies:[];item.replies.push(d.reply);}openReplyId='';renderReviews();}catch(e){setStatus(e.message||'Could not post reply.');b.disabled=false;b.textContent='Post reply';}}'''
+          new2 = '''async function submitReply(id,b){const admin=isAdmin(),name=admin?'Admin':String(document.querySelector(`[data-reply-name="${CSS.escape(id)}"]`)?.value||'').trim(),reply=String(document.querySelector(`[data-reply-text="${CSS.escape(id)}"]`)?.value||'').trim();if(!admin&&name.length<2)return setStatus('Please enter your name for the reply.');if(!reply)return setStatus('Please write a reply.');b.disabled=true;b.textContent='Posting…';try{const ah=admin?await authHeaders():{},r=await fetch(`/api/reviews/${encodeURIComponent(id)}/reply`,{method:'POST',headers:Object.assign(headers({'Content-Type':'application/json'}),ah),body:JSON.stringify({name,reply})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not post reply.');if(!admin)localStorage.setItem(NAME_KEY,name);const item=reviews.find(x=>x.id===id);if(item){item.replies=Array.isArray(item.replies)?item.replies:[];item.replies.push(d.reply);item.replies.sort((a,b)=>(b?.isAdmin?1:0)-(a?.isAdmin?1:0));}openReplyId='';renderReviews();}catch(e){setStatus(e.message||'Could not post reply.');b.disabled=false;b.textContent='Post reply';}}'''
+          if old2 not in s:
+              raise SystemExit('submitReply target not found')
+          s = s.replace(old2, new2, 1)
+
+          p.write_text(s)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/public-reviews.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix admin reply identity and auth"
+          git push
