@@ -167,7 +167,7 @@
       /* APK downloads must behave like every other Stat Archive file: open
          Android's Save As / folder picker first. Newer APKs stream the URL
          straight into the chosen document; older APKs fall back to saveFile. */
-      if (isAndroid() && typeof window.AndroidBridge.saveUrl === "function") {
+      if (isAndroid() && typeof window.AndroidBridge.downloadUrl === "function") {
         let nativeName = "";
         try {
           if (typeof window.archiveDownloadName === "function") {
@@ -177,7 +177,7 @@
         if (!nativeName) nativeName = entry.title || entry.filename || "Stat Archive file.pdf";
         nativeName = cleanName(nativeName);
         if (!/\.pdf$/i.test(nativeName)) nativeName += ".pdf";
-        window.AndroidBridge.saveUrl(inlineUrl, nativeName, "application/pdf");
+        window.AndroidBridge.downloadUrl(inlineUrl, nativeName, "application/pdf");
         try { window.incrementActivity?.("download"); } catch (_) {}
         return;
       }
