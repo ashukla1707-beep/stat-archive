@@ -69,6 +69,16 @@ function cleanClientId(value) {
 
 function publicReview(item, clientId = "") {
   const likedBy = Array.isArray(item?.likedBy) ? item.likedBy : [];
+  const replies = Array.isArray(item?.replies) ? item.replies : [];
+  const orderedReplies = replies
+    .map((reply, index) => ({ reply, index }))
+    .sort((a, b) => {
+      const aAdmin = !!a.reply?.isAdmin;
+      const bAdmin = !!b.reply?.isAdmin;
+      if (aAdmin !== bAdmin) return aAdmin ? -1 : 1;
+      return a.index - b.index;
+    })
+    .map(({ reply }) => reply);
   return {
     id: item.id,
     name: item.name,
@@ -77,7 +87,7 @@ function publicReview(item, clientId = "") {
     createdAt: item.createdAt,
     likes: likedBy.length,
     likedByMe: !!clientId && likedBy.includes(clientId),
-    replies: Array.isArray(item.replies) ? item.replies : []
+    replies: orderedReplies
   };
 }
 
@@ -103,17 +113,7 @@ export class ReviewsStore {
     if (method === "GET" && !reviewId) {
       const map = await this.state.storage.list({ prefix: "review:" });
       const reviews = [...map.values()]
-        .sort((a, b) => {
-          const aAdmin = String(a?.adminRepliedAt || "");
-          const bAdmin = String(b?.adminRepliedAt || "");
-          if (aAdmin || bAdmin) {
-            if (!aAdmin) return 1;
-            if (!bAdmin) return -1;
-            const adminOrder = bAdmin.localeCompare(aAdmin);
-            if (adminOrder) return adminOrder;
-          }
-          return String(b.createdAt).localeCompare(String(a.createdAt));
-        })
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
         .slice(0, 100)
         .map(item => publicReview(item, clientId));
       return json({ reviews });
@@ -162,7 +162,6 @@ export class ReviewsStore {
       const reply = { id: crypto.randomUUID(), name, reply: text, createdAt: new Date().toISOString(), isAdmin: adminRequest };
       replies.push(reply);
       found.item.replies = replies.slice(-50);
-      if (adminRequest) found.item.adminRepliedAt = reply.createdAt;
       await this.state.storage.put(found.key, found.item);
       return json({ reply }, 201);
     }
@@ -174,8 +173,6 @@ export class ReviewsStore {
       const replies = before.filter(r => r?.id !== childId);
       if (replies.length === before.length) return json({ error: "Reply not found." }, 404);
       found.item.replies = replies;
-      const remainingAdminReplies = replies.filter(r => r?.isAdmin);
-      found.item.adminRepliedAt = remainingAdminReplies.length ? remainingAdminReplies[remainingAdminReplies.length - 1].createdAt : "";
       await this.state.storage.put(found.key, found.item);
       return json({ ok: true });
     }
