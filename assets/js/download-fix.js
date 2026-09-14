@@ -5,6 +5,7 @@
  * - Drive-backed downloads work inside the Android WebView too.
  * - Offline PDFs are type/filename-normalized so Android sees a PDF, not .bin.
  * - Offline PDFs open with the platform/browser PDF handler instead of Stat Archive's reader.
+ * - Android file actions stream in small chunks instead of building one huge Base64 string.
  */
 (() => {
   "use strict";
@@ -24,6 +25,11 @@
   const isAndroid = () => !!(
     window.AndroidBridge &&
     typeof window.AndroidBridge === "object"
+  );
+
+  const hasStreamBridge = () => !!(
+    window.AndroidStreamBridge &&
+    typeof window.AndroidStreamBridge === "object"
   );
 
   function nativeFetch() {
@@ -58,7 +64,7 @@
       const bytes = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
       return bytes.length >= 5 &&
         bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 &&
-        bytes[3] === 0x46 && bytes[4] === 0x2d; // %PDF-
+        bytes[3] === 0x46 && bytes[4] === 0x2d;
     } catch (_) {
       return false;
     }
@@ -126,8 +132,56 @@
     }
   }
 
+  function blobSliceToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error("Could not read file chunk."));
+      reader.onload = () => {
+        const value = String(reader.result || "");
+        const comma = value.indexOf(",");
+        resolve(comma >= 0 ? value.slice(comma + 1) : value);
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function transferBlobWithAndroid(blob, filename, mime, action) {
+    const bridge = window.AndroidStreamBridge;
+    if (!hasStreamBridge()
+        || typeof bridge.beginBlobTransfer !== "function"
+        || typeof bridge.appendBlobChunk !== "function"
+        || typeof bridge.finishBlobTransfer !== "function") {
+      return false;
+    }
+
+    const started = bridge.beginBlobTransfer(filename, mime, action);
+    if (!started) throw new Error("Android file transfer could not be started.");
+
+    const CHUNK_BYTES = 256 * 1024;
+    for (let offset = 0; offset < blob.size; offset += CHUNK_BYTES) {
+      const chunk = blob.slice(offset, Math.min(offset + CHUNK_BYTES, blob.size));
+      const base64 = await blobSliceToBase64(chunk);
+      if (!bridge.appendBlobChunk(base64)) {
+        throw new Error("Android file transfer was interrupted.");
+      }
+    }
+
+    if (!bridge.finishBlobTransfer()) {
+      throw new Error("Android file transfer could not be completed.");
+    }
+    return true;
+  }
+
   async function saveBlobWithAndroid(blob, filename, mime) {
-    if (!isAndroid() || typeof window.AndroidBridge.saveFile !== "function") {
+    if (!isAndroid()) {
+      throw new Error("Android file saving is unavailable.");
+    }
+
+    if (await transferBlobWithAndroid(blob, filename, mime, "save")) {
+      return;
+    }
+
+    if (typeof window.AndroidBridge.saveFile !== "function") {
       throw new Error("Android file saving is unavailable.");
     }
     if (typeof window.blobToBase64 !== "function") {
@@ -164,19 +218,28 @@
         ? window.statArchiveDriveStreamUrl(entry, "inline")
         : entry.driveUrl;
 
-      /* APK downloads must behave like every other Stat Archive file: open
-         Android's Save As / folder picker first. Newer APKs stream the URL
-         straight into the chosen document; older APKs fall back to saveFile. */
+      let nativeName = "";
+      try {
+        if (typeof window.archiveDownloadName === "function") {
+          nativeName = window.archiveDownloadName(entry);
+        }
+      } catch (_) {}
+      if (!nativeName) nativeName = entry.title || entry.filename || "Stat Archive file.pdf";
+      nativeName = cleanName(nativeName);
+      if (!/\.pdf$/i.test(nativeName)) nativeName += ".pdf";
+
+      /* Current APK: open Android's Save As picker first, then stream the URL
+         directly into the selected document without loading the PDF into JS. */
+      if (isAndroid()
+          && hasStreamBridge()
+          && typeof window.AndroidStreamBridge.saveUrl === "function"
+          && window.AndroidStreamBridge.saveUrl(inlineUrl, nativeName, "application/pdf")) {
+        try { window.incrementActivity?.("download"); } catch (_) {}
+        return;
+      }
+
+      /* Compatibility fallback for APKs before the streaming bridge. */
       if (isAndroid() && typeof window.AndroidBridge.downloadUrl === "function") {
-        let nativeName = "";
-        try {
-          if (typeof window.archiveDownloadName === "function") {
-            nativeName = window.archiveDownloadName(entry);
-          }
-        } catch (_) {}
-        if (!nativeName) nativeName = entry.title || entry.filename || "Stat Archive file.pdf";
-        nativeName = cleanName(nativeName);
-        if (!/\.pdf$/i.test(nativeName)) nativeName += ".pdf";
         window.AndroidBridge.downloadUrl(inlineUrl, nativeName, "application/pdf");
         try { window.incrementActivity?.("download"); } catch (_) {}
         return;
@@ -247,10 +310,6 @@
 
     if (entry?.driveUrl) return downloadDriveEntry(entry, btn);
 
-    if (isAndroid() && originalDownloadEntry) {
-      return originalDownloadEntry(entry, btn);
-    }
-
     const originalHtml = btn ? btn.innerHTML : "";
     const originalText = btn ? btn.textContent : "";
     if (btn) { btn.disabled = true; btn.textContent = "Downloading…"; }
@@ -268,10 +327,17 @@
       if (!response.ok) throw new Error(`Download failed (${response.status})`);
       const blob = await response.blob();
       const filename = cleanName(entry.filename || entry.title || "stat-archive-file.pdf");
-      await browserDownloadBlob(blob, filename);
+      const mime = blob.type || "application/octet-stream";
+
+      if (isAndroid()) await saveBlobWithAndroid(blob, filename, mime);
+      else await browserDownloadBlob(blob, filename);
+
       try { window.incrementActivity?.("download"); } catch (_) {}
     } catch (err) {
       console.error("Download failed:", err);
+      if (isAndroid() && originalDownloadEntry && !hasStreamBridge()) {
+        try { return originalDownloadEntry(entry, btn); } catch (_) {}
+      }
       try { window.showError?.(err?.message || "Couldn't download that file."); }
       catch (_) { alert("Couldn't download that file."); }
     } finally {
@@ -285,8 +351,6 @@
 
   window.downloadEntry = reliableDownloadEntry;
 
-  /* Repair metadata immediately after a Drive file is saved offline. This also
-     repairs a previously-saved Drive record the next time its Offline button is tapped. */
   if (originalSaveEntryOffline) {
     window.saveEntryOffline = async function repairedSaveEntryOffline(entry, btn) {
       await originalSaveEntryOffline(entry, btn);
@@ -303,9 +367,6 @@
     };
   }
 
-  /* Offline > Open should never use Stat Archive's internal PDF reader.
-     APK delegates to Android's PDF app chooser. Web/PWA delegates to the
-     browser/device's normal PDF handling through the original offline opener. */
   if (originalOpenOfflineFile) {
     window.openOfflineFile = async function repairedOpenOfflineFile(id) {
       if (typeof window.getOfflineFile !== "function") {
@@ -317,12 +378,20 @@
       const normalized = await normalizeRecordBlob(record);
       await persistNormalizedOfflineRecord(record, normalized);
 
+      if (isAndroid() && hasStreamBridge()) {
+        await transferBlobWithAndroid(
+          normalized.blob,
+          normalized.filename,
+          normalized.mime,
+          "open"
+        );
+        return;
+      }
+
       return originalOpenOfflineFile(id);
     };
   }
 
-  /* Repair old .bin/octet-stream records before sharing. The existing share
-     implementation can then hand Android a real .pdf filename + application/pdf. */
   if (originalShareOfflineFile) {
     window.shareOfflineFile = async function repairedShareOfflineFile(id) {
       if (typeof window.getOfflineFile !== "function") return originalShareOfflineFile(id);
@@ -332,13 +401,20 @@
       const normalized = await normalizeRecordBlob(record);
       await persistNormalizedOfflineRecord(record, normalized);
 
+      if (isAndroid() && hasStreamBridge()) {
+        await transferBlobWithAndroid(
+          normalized.blob,
+          normalized.filename,
+          normalized.mime,
+          "share"
+        );
+        return;
+      }
+
       return originalShareOfflineFile(id);
     };
   }
 
-  /* The card grid already has a delegated listener. In browser/PWA, intercept
-     Download in capture phase so only this path runs. Android is intentionally
-     left to the normal card listener, which now resolves to reliableDownloadEntry. */
   document.addEventListener("click", event => {
     if (isAndroid()) return;
 
