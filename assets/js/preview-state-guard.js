@@ -57,20 +57,36 @@
     snapshot = null;
     const meta = getViewportMeta();
 
-    /* Keep browser zoom fixed while the shared scroll coordinator releases
-       the fixed-body lock. Do not restore body/html overflow or scroll here. */
-    meta.setAttribute("content", LOCKED_VIEWPORT);
     document.documentElement.classList.remove("sa-preview-viewport-locked");
     document.querySelector("#previewOverlay .preview-card")?.classList.remove("sa-reader-active");
 
+    /* First let the shared coordinator release fixed-body locking. It now
+       restores the saved coordinates synchronously with smooth scrolling
+       temporarily disabled. */
     try { window.statArchiveSyncGlobalScrollLock?.(); } catch (_) {}
 
+    /* Restoring viewport metadata can reflow Android WebView. Do it in the
+       same turn and immediately pin the exact pre-preview coordinates again,
+       so no intermediate top/scrolling frame can ever be painted. */
+    meta.setAttribute("content", saved.viewportContent);
+    try {
+      if (typeof window.statArchiveRestoreScrollInstantly === "function") {
+        window.statArchiveRestoreScrollInstantly(saved.scrollX, saved.scrollY);
+      } else {
+        const root = document.documentElement;
+        const previous = root.style.scrollBehavior;
+        root.style.setProperty("scroll-behavior", "auto", "important");
+        window.scrollTo(saved.scrollX, saved.scrollY);
+        requestAnimationFrame(() => {
+          if (previous) root.style.scrollBehavior = previous;
+          else root.style.removeProperty("scroll-behavior");
+        });
+      }
+    } catch (_) {}
+
     requestAnimationFrame(() => {
-      meta.setAttribute("content", saved.viewportContent);
-      requestAnimationFrame(() => {
-        try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
-        restoring = false;
-      });
+      try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
+      restoring = false;
     });
   }
 
