@@ -2,11 +2,11 @@
   "name": "Stat Archive",
   "short_name": "StatArchive",
   "description": "A statistical archive and reference platform.",
-  "start_url": "/",
+  "start_url": "/launch.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#070a0f",
-  "theme_color": "#070a0f",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "/icons/icon-192.png",
