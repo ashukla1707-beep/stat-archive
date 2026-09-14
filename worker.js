@@ -3,18 +3,14 @@ const SUPABASE_ANON_KEY = "sb_publishable_AiJVlfLg2zrT2S4Fv3Ha5Q_tL-SvZxH";
 const ADMIN_EMAILS = new Set(["admin@statarchive.local", "admin-bsc@statarchive.local"]);
 
 function cleanFilename(value) {
-  const raw = String(value || "Stat Archive file.pdf")
-    .replace(/[\\/:*?"<>|\r\n]+/g, "_")
-    .trim();
+  const raw = String(value || "Stat Archive file.pdf").replace(/[\\/:*?"<>|\r\n]+/g, "_").trim();
   return raw || "Stat Archive file.pdf";
 }
 
 function driveId(raw) {
   const value = String(raw || "").trim();
   if (/^[A-Za-z0-9_-]{10,}$/.test(value)) return value;
-  const match = value.match(/\/file\/d\/([A-Za-z0-9_-]+)/i)
-    || value.match(/[?&]id=([A-Za-z0-9_-]+)/i)
-    || value.match(/\/d\/([A-Za-z0-9_-]+)/i);
+  const match = value.match(/\/file\/d\/([A-Za-z0-9_-]+)/i) || value.match(/[?&]id=([A-Za-z0-9_-]+)/i) || value.match(/\/d\/([A-Za-z0-9_-]+)/i);
   return match ? match[1] : "";
 }
 
@@ -60,40 +56,63 @@ async function isAdminRequest(request) {
   const auth = request.headers.get("Authorization") || "";
   if (!auth.startsWith("Bearer ")) return false;
   try {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: auth, apikey: SUPABASE_ANON_KEY }
-    });
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: auth, apikey: SUPABASE_ANON_KEY } });
     if (!response.ok) return false;
     const user = await response.json();
     return ADMIN_EMAILS.has(String(user?.email || "").toLowerCase());
-  } catch (_) {
-    return false;
-  }
+  } catch (_) { return false; }
+}
+
+function cleanClientId(value) {
+  return String(value || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
+}
+
+function publicReview(item, clientId = "") {
+  const likedBy = Array.isArray(item?.likedBy) ? item.likedBy : [];
+  return {
+    id: item.id,
+    name: item.name,
+    rating: item.rating,
+    review: item.review,
+    createdAt: item.createdAt,
+    likes: likedBy.length,
+    likedByMe: !!clientId && likedBy.includes(clientId),
+    replies: Array.isArray(item.replies) ? item.replies : []
+  };
 }
 
 export class ReviewsStore {
-  constructor(state) {
-    this.state = state;
+  constructor(state) { this.state = state; }
+
+  async findReview(id) {
+    const map = await this.state.storage.list({ prefix: "review:" });
+    const pair = [...map.entries()].find(([, value]) => value?.id === id);
+    return pair ? { key: pair[0], item: pair[1] } : null;
   }
 
   async fetch(request) {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
+    const parts = url.pathname.replace(/^\/api\/reviews\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+    const reviewId = parts[0] || "";
+    const action = parts[1] || "";
+    const childId = parts[2] || "";
+    const clientId = cleanClientId(request.headers.get("X-Review-Client"));
 
-    if (method === "GET") {
+    if (method === "GET" && !reviewId) {
       const map = await this.state.storage.list({ prefix: "review:" });
       const reviews = [...map.values()]
         .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-        .slice(0, 100);
+        .slice(0, 100)
+        .map(item => publicReview(item, clientId));
       return json({ reviews });
     }
 
-    if (method === "POST") {
+    if (method === "POST" && !reviewId) {
       const ip = request.headers.get("X-Stat-Client") || "unknown";
       const throttleKey = `throttle:${ip}`;
       const last = Number(await this.state.storage.get(throttleKey) || 0);
       if (Date.now() - last < 30000) return json({ error: "Please wait a few seconds before posting another review." }, 429);
-
       let body;
       try { body = await request.json(); } catch (_) { return json({ error: "Invalid review data." }, 400); }
       const name = String(body?.name || "").trim().slice(0, 50);
@@ -101,20 +120,56 @@ export class ReviewsStore {
       const rating = Number(body?.rating || 0);
       if (name.length < 2) return json({ error: "Please enter your name." }, 400);
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) return json({ error: "Choose a rating from 1 to 5 stars." }, 400);
-
-      const item = { id: crypto.randomUUID(), name, rating, review, createdAt: new Date().toISOString() };
+      const item = { id: crypto.randomUUID(), name, rating, review, createdAt: new Date().toISOString(), likedBy: [], replies: [] };
       await this.state.storage.put(`review:${item.createdAt}:${item.id}`, item);
       await this.state.storage.put(throttleKey, Date.now(), { expirationTtl: 120 });
-      return json({ review: item }, 201);
+      return json({ review: publicReview(item, clientId) }, 201);
     }
 
-    if (method === "DELETE") {
-      const id = decodeURIComponent(url.pathname.split("/").pop() || "");
-      if (!id) return json({ error: "Review id required." }, 400);
-      const map = await this.state.storage.list({ prefix: "review:" });
-      const pair = [...map.entries()].find(([, value]) => value?.id === id);
-      if (!pair) return json({ error: "Review not found." }, 404);
-      await this.state.storage.delete(pair[0]);
+    if (method === "POST" && reviewId && action === "like") {
+      if (!clientId) return json({ error: "Unable to identify this device." }, 400);
+      const found = await this.findReview(reviewId);
+      if (!found) return json({ error: "Review not found." }, 404);
+      const likedBy = Array.isArray(found.item.likedBy) ? [...found.item.likedBy] : [];
+      const index = likedBy.indexOf(clientId);
+      if (index >= 0) likedBy.splice(index, 1); else likedBy.push(clientId);
+      found.item.likedBy = likedBy;
+      await this.state.storage.put(found.key, found.item);
+      return json({ likes: likedBy.length, liked: index < 0 });
+    }
+
+    if (method === "POST" && reviewId && action === "reply") {
+      let body;
+      try { body = await request.json(); } catch (_) { return json({ error: "Invalid reply data." }, 400); }
+      const name = String(body?.name || "").trim().slice(0, 50);
+      const text = String(body?.reply || "").trim().slice(0, 500);
+      if (name.length < 2) return json({ error: "Please enter your name." }, 400);
+      if (!text) return json({ error: "Please enter a reply." }, 400);
+      const found = await this.findReview(reviewId);
+      if (!found) return json({ error: "Review not found." }, 404);
+      const replies = Array.isArray(found.item.replies) ? [...found.item.replies] : [];
+      const reply = { id: crypto.randomUUID(), name, reply: text, createdAt: new Date().toISOString() };
+      replies.push(reply);
+      found.item.replies = replies.slice(-50);
+      await this.state.storage.put(found.key, found.item);
+      return json({ reply }, 201);
+    }
+
+    if (method === "DELETE" && reviewId && action === "reply" && childId) {
+      const found = await this.findReview(reviewId);
+      if (!found) return json({ error: "Review not found." }, 404);
+      const before = Array.isArray(found.item.replies) ? found.item.replies : [];
+      const replies = before.filter(r => r?.id !== childId);
+      if (replies.length === before.length) return json({ error: "Reply not found." }, 404);
+      found.item.replies = replies;
+      await this.state.storage.put(found.key, found.item);
+      return json({ ok: true });
+    }
+
+    if (method === "DELETE" && reviewId) {
+      const found = await this.findReview(reviewId);
+      if (!found) return json({ error: "Review not found." }, 404);
+      await this.state.storage.delete(found.key);
       return json({ ok: true });
     }
 
@@ -127,9 +182,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/reviews" || url.pathname.startsWith("/api/reviews/")) {
-      if (request.method === "DELETE" && !(await isAdminRequest(request))) {
-        return json({ error: "Admin permission required." }, 403);
-      }
+      if (request.method === "DELETE" && !(await isAdminRequest(request))) return json({ error: "Admin permission required." }, 403);
       const id = env.REVIEWS.idFromName("public-stat-archive-reviews");
       const stub = env.REVIEWS.get(id);
       const headers = new Headers(request.headers);
