@@ -67,16 +67,25 @@ function cleanClientId(value) {
   return String(value || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
 }
 
-function isProtectedReviewName(value) {
-  const normalized = String(value || "")
+function normalizeIdentityName(value) {
+  return String(value || "")
+    .normalize("NFKC")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
+}
+
+function isProtectedReviewName(value) {
+  const normalized = normalizeIdentityName(value);
+  const compact = normalized.replace(/\s+/g, "");
   return normalized === "admin" ||
     normalized === "administrator" ||
     normalized === "stat archive admin" ||
     normalized === "statarchive admin" ||
-    normalized === "stat archive";
+    normalized === "stat archive" ||
+    normalized === "adarsh shukla" ||
+    compact === "adarshshukla";
 }
 
 function normalizeModerationText(value) {
@@ -97,7 +106,9 @@ function normalizeModerationText(value) {
 function hasAbusiveContent(value) {
   const text = normalizeModerationText(value);
   if (!text) return false;
-  const patterns = [
+  const compact = text.replace(/\s+/g, "");
+
+  const wordPatterns = [
     /\bf+u+c+k+(?:er|ing|ed|s)?\b/,
     /\bsh+i+t+(?:ty|ting|s)?\b/,
     /\bb+i+t+c+h+(?:es)?\b/,
@@ -106,16 +117,47 @@ function hasAbusiveContent(value) {
     /\bc+u+n+t+s?\b/,
     /\bd+i+c+k+h+e+a+d+s?\b/,
     /\bm+o+t+h+e+r+f+u+c+k+e+r+s?\b/,
-    /\bchutiya+s?\b/,
-    /\bchutiye\b/,
-    /\bmadarchod+s?\b/,
-    /\bbhenchod+s?\b/,
-    /\bbahenchod+s?\b/,
-    /\bgandu+s?\b/,
-    /\bharami+s?\b/,
-    /\brandi+s?\b/
+    /\bch+u+t+i+y+a+s?\b/,
+    /\bch+u+t+i+y+e\b/,
+    /\bm+a+d+a+r+c+h+o+d+s?\b/,
+    /\bb+a+h+e+n+c+h+o+d+s?\b/,
+    /\bb+h+e+n+c+h+o+d+s?\b/,
+    /\bg+a+n+d+u+s?\b/,
+    /\bh+a+r+a+m+i+s?\b/,
+    /\br+a+n+d+i+s?\b/,
+    /\bb+h+o+s+d+i+k+e+s?\b/,
+    /\bb+h+o+s+d+i+k+a+s?\b/,
+    /\bb+h+o+s+d+i+w+a+l[ae]\b/,
+    /\bbs+d+k+e?\b/,
+    /\bbh+o+s+d+k+e?\b/,
+    /\bbsh+d+k+e?\b/,
+    /चू+तिया/u,
+    /मादरचोद/u,
+    /मदरचोद/u,
+    /बहनचोद/u,
+    /भोसड़ी/u,
+    /भोसडी/u,
+    /गांडू/u,
+    /रंडी/u
   ];
-  return patterns.some(pattern => pattern.test(text));
+
+  if (wordPatterns.some(pattern => pattern.test(text))) return true;
+
+  const compactPatterns = [
+    /b+h+o+s+d+i+k+e/,
+    /b+h+o+s+d+k+e?/,
+    /b+s+d+k+e?/,
+    /b+s+h+d+k+e?/,
+    /m+a+d+a+r+c+h+o+d/,
+    /b+a+h+e+n+c+h+o+d/,
+    /b+h+e+n+c+h+o+d/,
+    /c+h+u+t+i+y+[ae]/,
+    /g+a+n+d+u/,
+    /r+a+n+d+i/,
+    /m+o+t+h+e+r+f+u+c+k+e+r/,
+    /a+s+s+h+o+l+e/
+  ];
+  return compactPatterns.some(pattern => pattern.test(compact));
 }
 
 function moderationError() {
@@ -126,7 +168,8 @@ function moderationError() {
 
 function publicReview(item, clientId = "") {
   const likedBy = Array.isArray(item?.likedBy) ? item.likedBy : [];
-  const replies = Array.isArray(item?.replies) ? item.replies : [];
+  const replies = (Array.isArray(item?.replies) ? item.replies : [])
+    .filter(reply => !hasAbusiveContent(reply?.name) && !hasAbusiveContent(reply?.reply));
   const orderedReplies = replies
     .map((reply, index) => ({ reply, index }))
     .sort((a, b) => {
@@ -171,6 +214,7 @@ export class ReviewsStore {
     if (method === "GET" && !reviewId) {
       const map = await this.state.storage.list({ prefix: "review:" });
       const reviews = [...map.values()]
+        .filter(item => !hasAbusiveContent(item?.name) && !hasAbusiveContent(item?.review))
         .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
         .slice(0, 100)
         .map(item => publicReview(item, clientId));
