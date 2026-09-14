@@ -2,7 +2,11 @@ name: Refresh PWA icons from splash
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/change-preview-more-icon.yml']
+    paths:
+      - '.github/workflows/change-preview-more-icon.yml'
+      - 'manifest.json'
+      - 'launch.html'
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -10,73 +14,74 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install image tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y poppler-utils
-          python3 -m pip install --quiet pillow
+      - name: Install Pillow
+        run: python3 -m pip install --quiet pillow
       - name: Reconstruct approved Android splash
         run: |
-          mkdir -p /tmp/stat-splash-parts
-          for part in aa ab ac ad ae af ag ah ai; do
+          : > /tmp/splash_exact.b64
+          for file in \
+            .splash_exact_png/part01.b64 \
+            .splash_exact_png/part02.b64 \
+            .splash_exact_png/part03.b64 \
+            .splash_exact_png/part04.b64 \
+            .splash_exact_png/part05.b64 \
+            .splash_exact_png/part06.b64 \
+            .splash_exact_png/part07.b64 \
+            .splash_exact_webp/part08a.b64 \
+            .splash_exact_webp/part08b1a.b64 \
+            .splash_exact_webp/part08b1b1.b64 \
+            .splash_exact_webp/part08b1b2a.b64 \
+            .splash_exact_webp/part08b1b2b1.b64 \
+            .splash_exact_webp/part08b1b2b2.b64 \
+            .splash_exact_webp/part08b2.b64 \
+            .splash_exact_webp/part08c.b64 \
+            .splash_exact_webp/part08d.b64 \
+            .splash_exact_png/part09.b64; do
             curl -L --fail --retry 3 \
-              -o "/tmp/stat-splash-parts/.splash_exact_${part}" \
-              "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/app/src/main/res/.splash_exact_${part}"
+              "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/${file}" \
+              >> /tmp/splash_exact.b64
           done
-          cat \
-            /tmp/stat-splash-parts/.splash_exact_aa \
-            /tmp/stat-splash-parts/.splash_exact_ab \
-            /tmp/stat-splash-parts/.splash_exact_ac \
-            /tmp/stat-splash-parts/.splash_exact_ad \
-            /tmp/stat-splash-parts/.splash_exact_ae \
-            /tmp/stat-splash-parts/.splash_exact_af \
-            /tmp/stat-splash-parts/.splash_exact_ag \
-            /tmp/stat-splash-parts/.splash_exact_ah \
-            /tmp/stat-splash-parts/.splash_exact_ai \
-            | base64 --decode > /tmp/splash_exact.pdf
-          pdftoppm -singlefile -png -r 200 /tmp/splash_exact.pdf /tmp/splash_exact
+          test "$(stat -c%s /tmp/splash_exact.b64)" = "132276"
+          base64 --decode /tmp/splash_exact.b64 > /tmp/splash_exact.webp
+          test "$(stat -c%s /tmp/splash_exact.webp)" = "99206"
+          echo "a0c152dadc7e9e95a932627c75f7d011ed04b3899b6c30d3e9fbb0d57a7e6018  /tmp/splash_exact.webp" | sha256sum -c -
       - name: Build exact PWA branding
         run: |
           python3 - <<'PY'
           from PIL import Image
           from pathlib import Path
 
-          src = Image.open('/tmp/splash_exact.png').convert('RGBA')
-          bbox = src.getbbox()
-          if bbox:
-              src = src.crop(bbox)
-
+          source = Image.open('/tmp/splash_exact.webp').convert('RGB')
           out = Path('icons')
           out.mkdir(exist_ok=True)
 
-          # Match the Android release workflow's launcher-icon algorithm.
-          side = max(src.size)
-          canvas = Image.new('RGBA', (side, side), (255, 255, 255, 255))
-          x = (side - src.width) // 2
-          y = (side - src.height) // 2
-          canvas.alpha_composite(src, (x, y))
+          # Use the exact same centered-square crop as the Android release build.
+          w, h = source.size
+          side = min(w, h)
+          left = (w - side) // 2
+          top = (h - side) // 2
+          icon = source.crop((left, top, left + side, top + side))
 
-          canvas.resize((192, 192), Image.Resampling.LANCZOS).convert('RGB').save(
+          icon.resize((192, 192), Image.Resampling.LANCZOS).save(
               out / 'icon-192.png', 'PNG', optimize=True
           )
-          canvas.resize((512, 512), Image.Resampling.LANCZOS).convert('RGB').save(
+          icon.resize((512, 512), Image.Resampling.LANCZOS).save(
               out / 'icon-512.png', 'PNG', optimize=True
           )
 
-          # Maskable variant: preserve the same artwork inside the platform safe zone.
-          mask = Image.new('RGBA', (512, 512), (255, 255, 255, 255))
-          art = canvas.copy()
-          art.thumbnail((410, 410), Image.Resampling.LANCZOS)
-          mask.alpha_composite(art, ((512 - art.width)//2, (512 - art.height)//2))
-          mask.convert('RGB').save(out / 'icon-512-maskable.png', 'PNG', optimize=True)
+          # Maskable icon keeps the same artwork with safe padding.
+          mask = Image.new('RGB', (512, 512), (0, 0, 0))
+          safe = icon.resize((410, 410), Image.Resampling.LANCZOS)
+          mask.paste(safe, ((512 - 410) // 2, (512 - 410) // 2))
+          mask.save(out / 'icon-512-maskable.png', 'PNG', optimize=True)
 
-          # Same exact approved artwork for the in-app PWA splash screen.
-          src.convert('RGB').save(out / 'pwa-splash.png', 'PNG', optimize=True)
+          # Full approved artwork for the custom PWA splash.
+          source.save(out / 'pwa-splash.webp', 'WEBP', quality=100, method=6)
           PY
       - name: Commit refreshed PWA branding
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add icons/icon-192.png icons/icon-512.png icons/icon-512-maskable.png icons/pwa-splash.png
+          git add icons/icon-192.png icons/icon-512.png icons/icon-512-maskable.png icons/pwa-splash.webp
           git commit -m "Use approved splash artwork for PWA branding" || exit 0
           git push
