@@ -67,6 +67,18 @@ function cleanClientId(value) {
   return String(value || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
 }
 
+function isProtectedReviewName(value) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return normalized === "admin" ||
+    normalized === "administrator" ||
+    normalized === "stat archive admin" ||
+    normalized === "statarchive admin" ||
+    normalized === "stat archive";
+}
+
 function publicReview(item, clientId = "") {
   const likedBy = Array.isArray(item?.likedBy) ? item.likedBy : [];
   const replies = Array.isArray(item?.replies) ? item.replies : [];
@@ -85,6 +97,7 @@ function publicReview(item, clientId = "") {
     rating: item.rating,
     review: item.review,
     createdAt: item.createdAt,
+    isAdmin: !!item.isAdmin,
     likes: likedBy.length,
     likedByMe: !!clientId && likedBy.includes(clientId),
     replies: orderedReplies
@@ -126,12 +139,14 @@ export class ReviewsStore {
       if (Date.now() - last < 30000) return json({ error: "Please wait a few seconds before posting another review." }, 429);
       let body;
       try { body = await request.json(); } catch (_) { return json({ error: "Invalid review data." }, 400); }
-      const name = String(body?.name || "").trim().slice(0, 50);
+      const submittedName = String(body?.name || "").trim().slice(0, 50);
+      const name = adminRequest ? "Admin" : submittedName;
       const review = String(body?.review || "").trim().slice(0, 500);
       const rating = Number(body?.rating || 0);
       if (name.length < 2) return json({ error: "Please enter your name." }, 400);
+      if (!adminRequest && isProtectedReviewName(name)) return json({ error: "This name is reserved for the verified Stat Archive Admin." }, 403);
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) return json({ error: "Choose a rating from 1 to 5 stars." }, 400);
-      const item = { id: crypto.randomUUID(), name, rating, review, createdAt: new Date().toISOString(), likedBy: [], replies: [] };
+      const item = { id: crypto.randomUUID(), name, rating, review, createdAt: new Date().toISOString(), isAdmin: adminRequest, likedBy: [], replies: [] };
       await this.state.storage.put(`review:${item.createdAt}:${item.id}`, item);
       await this.state.storage.put(throttleKey, Date.now(), { expirationTtl: 120 });
       return json({ review: publicReview(item, clientId) }, 201);
@@ -155,6 +170,7 @@ export class ReviewsStore {
       const name = adminRequest ? "Admin" : String(body?.name || "").trim().slice(0, 50);
       const text = String(body?.reply || "").trim().slice(0, 500);
       if (name.length < 2) return json({ error: "Please enter your name." }, 400);
+      if (!adminRequest && isProtectedReviewName(name)) return json({ error: "This name is reserved for the verified Stat Archive Admin." }, 403);
       if (!text) return json({ error: "Please enter a reply." }, 400);
       const found = await this.findReview(reviewId);
       if (!found) return json({ error: "Review not found." }, 404);
