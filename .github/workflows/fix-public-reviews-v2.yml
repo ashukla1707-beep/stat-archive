@@ -1,0 +1,113 @@
+name: Fix public reviews reliability v2
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair reviews backend and UI reliability
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Backend: Durable Object storage does not use KV expiration options.
+          p = Path('worker.js')
+          s = p.read_text()
+          s = s.replace(
+              'await this.state.storage.put(throttleKey, Date.now(), { expirationTtl: 120 });',
+              'await this.state.storage.put(throttleKey, Date.now());'
+          )
+          # Keep throttle keys bounded by deleting stale ones when encountered.
+          s = s.replace(
+              'const last = Number(await this.state.storage.get(throttleKey) || 0);\n      if (Date.now() - last < 30000) return json({ error: "Please wait a few seconds before posting another review." }, 429);',
+              'const last = Number(await this.state.storage.get(throttleKey) || 0);\n      if (last && Date.now() - last > 120000) await this.state.storage.delete(throttleKey);\n      if (last && Date.now() - last < 30000) return json({ error: "Please wait a few seconds before posting another review." }, 429);'
+          )
+          # Always return JSON for API failures instead of leaving the UI hanging on an opaque 500.
+          old = '''      const id = env.REVIEWS.idFromName("public-stat-archive-reviews");
+      const stub = env.REVIEWS.get(id);
+      const headers = new Headers(request.headers);
+      headers.set("X-Stat-Client", request.headers.get("CF-Connecting-IP") || "unknown");
+      return stub.fetch(new Request(request.url, { method: request.method, headers, body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body }));'''
+          new = '''      try {
+        const id = env.REVIEWS.idFromName("public-stat-archive-reviews");
+        const stub = env.REVIEWS.get(id);
+        const headers = new Headers(request.headers);
+        headers.set("X-Stat-Client", request.headers.get("CF-Connecting-IP") || "unknown");
+        const forwarded = new Request(request, { headers });
+        return await stub.fetch(forwarded);
+      } catch (error) {
+        return json({ error: "Reviews service is temporarily unavailable.", detail: String(error?.message || error || "") }, 503);
+      }'''
+          if old in s:
+              s = s.replace(old, new)
+          p.write_text(s)
+
+          # Frontend: timeout requests, show the submitted review immediately, then refresh from server.
+          p = Path('assets/js/public-reviews.js')
+          s = p.read_text()
+          if 'function fetchWithTimeout' not in s:
+              marker = "  function setStatus(text) {"
+              helper = '''  async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+'''
+              s = s.replace(marker, helper + marker)
+          s = s.replace("const res = await fetch('/api/reviews', { cache:'no-store' });", "const res = await fetchWithTimeout('/api/reviews', { cache:'no-store' });")
+          s = s.replace("const res = await fetch('/api/reviews', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,rating,review}) });", "const res = await fetchWithTimeout('/api/reviews', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,rating,review}) }, 15000);")
+          old = '''      try { localStorage.setItem(NAME_KEY, name); } catch (_) {}
+      document.getElementById('statPublicReviewText').value = '';
+      rating = 0;
+      syncStars();
+      setStatus('Published — your review is now public.');
+      await loadReviews();'''
+          new = '''      try { localStorage.setItem(NAME_KEY, name); } catch (_) {}
+      if (data.review) {
+        reviews = [data.review, ...reviews.filter(item => item.id !== data.review.id)];
+        renderReviews();
+      }
+      document.getElementById('statPublicReviewText').value = '';
+      rating = 0;
+      syncStars();
+      setStatus('✓ Published — your review is visible below.');
+      loadReviews().catch(() => {});'''
+          if old in s:
+              s = s.replace(old, new)
+          s = s.replace("setStatus(err.message || 'Could not publish review.');", "setStatus(err?.name === 'AbortError' ? 'Publishing timed out. Please check your connection and try again.' : (err.message || 'Could not publish review.'));", 1)
+          s = s.replace("const res = await fetch(`/api/reviews/${encodeURIComponent(id)}`, { method:'DELETE', headers: token ? {Authorization:`Bearer ${token}`} : {} });", "const res = await fetchWithTimeout(`/api/reviews/${encodeURIComponent(id)}`, { method:'DELETE', headers: token ? {Authorization:`Bearer ${token}`} : {} });")
+          p.write_text(s)
+
+          # Force the latest review JS through the service worker immediately.
+          p = Path('sw.js')
+          s = p.read_text()
+          s = s.replace('const CACHE = "stat-archive-shell-v20260914-drive-save-picker-v1";', 'const CACHE = "stat-archive-shell-v20260914-public-reviews-v2";')
+          needle = "    url.pathname.endsWith('/assets/js/download-fix.js') ||\n"
+          add = "    url.pathname.endsWith('/assets/js/public-reviews.js') ||\n"
+          if add not in s:
+              s = s.replace(needle, needle + add)
+          p.write_text(s)
+          PY
+      - name: Commit repair
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker.js assets/js/public-reviews.js sw.js
+          git commit -m "Fix public review publishing and refresh"
+          git push
