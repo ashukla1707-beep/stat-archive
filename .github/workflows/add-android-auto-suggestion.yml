@@ -1,0 +1,39 @@
+name: Add Android APK auto suggestion
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-android-auto-suggestion.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add Android browser APK suggestion
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('assets/js/phone-landscape-hero.js')
+          s = p.read_text(encoding='utf-8')
+          marker = 'function scheduleAndroidAutoSuggestion()'
+          if marker not in s:
+              needle = '  function init(){\n'
+              insert = '''  function scheduleAndroidAutoSuggestion(){\n    if(!isAndroid() || isInstalledApkRuntime()) return;\n    const key=\"statArchiveAndroidAutoPromptShown\";\n    try{\n      if(sessionStorage.getItem(key)===\"1\") return;\n      sessionStorage.setItem(key,\"1\");\n    }catch(_){}\n\n    window.setTimeout(()=>{\n      if(isInstalledApkRuntime()) return;\n      if(document.visibilityState!==\"visible\") return;\n      const blockingOverlay=document.querySelector(\".is-open[role='dialog'], .manual-chooser-overlay.is-open, #offlineLibraryOverlay.is-open, #statLocalFeedbackOverlay.is-open\");\n      if(blockingOverlay) return;\n      openOverlay();\n    },1200);\n  }\n\n'''
+              if needle not in s:
+                  raise SystemExit('init marker not found')
+              s = s.replace(needle, insert + needle, 1)
+
+              old = '    ensureOverlay(); installMenuEntry();\n'
+              new = '    ensureOverlay(); installMenuEntry(); scheduleAndroidAutoSuggestion();\n'
+              if old not in s:
+                  raise SystemExit('init body marker not found')
+              s = s.replace(old, new, 1)
+              p.write_text(s, encoding='utf-8')
+      - name: Commit source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/phone-landscape-hero.js
+          git diff --cached --quiet || git commit -m "Auto-suggest Android APK in Android browsers"
+          git push origin HEAD:main
