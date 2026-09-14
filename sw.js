@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260914-public-reviews-v3";
+const CACHE = "stat-archive-shell-v20260914-rate-routing-v5";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -30,8 +30,8 @@ const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260914-dr
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260910-bugfix-1"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
-const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260909-websync-1"></script>';
-const PUBLIC_REVIEWS_TAG = '<script src="./assets/js/public-reviews.js?v=20260914-public-v3"></script>';
+const MENU_POLISH_TAG = '<script src="./assets/js/menu-polish.js?v=20260914-rate-routing-v5"></script>';
+const PUBLIC_REVIEWS_TAG = '<script src="./assets/js/public-reviews.js?v=20260914-rate-routing-v5"></script>';
 const MENU_ALIGNMENT_FIX_TAG = '<script src="./assets/js/menu-alignment-fix.js?v=20260909-navigation-fix-v2"></script>';
 const MENU_HEADER_REFERENCE_TAG = '<script src="./assets/js/menu-header-reference.js?v=20260910-5"></script>';
 const PREVIEW_STATE_GUARD_TAG = '<script src="./assets/js/preview-state-guard.js?v=20260909-1"></script>';

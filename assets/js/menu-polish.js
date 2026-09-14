@@ -163,7 +163,39 @@ body[data-theme='light'] .stat-feedback-save{color:#4b365f;border-color:rgba(75,
       </button>`;
 
     supportSection.insertAdjacentElement('afterend', feedbackSection);
-    feedbackSection.querySelector('#menuLocalFeedbackBtn')?.addEventListener('click', openFeedback);
+    feedbackSection.querySelector('#menuLocalFeedbackBtn')?.addEventListener('click', async (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  closeMenu();
+
+  if (typeof window.openStatArchiveReview === 'function') {
+    window.openStatArchiveReview();
+    return;
+  }
+
+  try {
+    let loader = document.querySelector('script[data-stat-public-reviews-loader="1"]');
+    if (!loader) {
+      loader = document.createElement('script');
+      loader.dataset.statPublicReviewsLoader = '1';
+      loader.src = './assets/js/public-reviews.js?v=20260914-rate-routing-v5';
+      document.head.appendChild(loader);
+    }
+    if (typeof window.openStatArchiveReview !== 'function') {
+      await new Promise((resolve) => {
+        if (loader.dataset.loaded === '1') return resolve();
+        const done = () => { loader.dataset.loaded = '1'; resolve(); };
+        loader.addEventListener('load', done, { once:true });
+        loader.addEventListener('error', done, { once:true });
+        setTimeout(done, 2500);
+      });
+    }
+  } catch (_) {}
+
+  if (typeof window.openStatArchiveReview === 'function') {
+    window.openStatArchiveReview();
+  }
+});
   }
 
   function closeMenu() {
