@@ -5544,3 +5544,35 @@ body[data-theme="light"] #menuOfflineLibraryCount{
 @media(max-width:700px){
   .header::before{clip-path:inset(0 round 20px)!important;}
 }
+
+
+/* Consistent menu card hover feedback: match the Android installer card. */
+@media (hover:hover) and (pointer:fine){
+  html body #mainSideMenu .main-menu-action:hover,
+  html body #mainSideMenu .main-menu-theme-btn:hover,
+  html body #mainSideMenu .mobile-menu-level-btn:hover,
+  html body #mainSideMenu #menuOfflineLibraryBtn:hover,
+  html body #mainSideMenu #menuManualsBtn:hover,
+  html body #mainSideMenu #menuAboutBtn:hover,
+  html body #mainSideMenu #menuLocalFeedbackBtn:hover,
+  html body #mainSideMenu #menuAndroidAppBtn:hover{
+    background:rgba(94,231,247,.045)!important;
+    border-color:rgba(94,231,247,.24)!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+
+  html body[data-theme="light"] #mainSideMenu .main-menu-action:hover,
+  html body[data-theme="light"] #mainSideMenu .main-menu-theme-btn:hover,
+  html body[data-theme="light"] #mainSideMenu .mobile-menu-level-btn:hover,
+  html body[data-theme="light"] #mainSideMenu #menuOfflineLibraryBtn:hover,
+  html body[data-theme="light"] #mainSideMenu #menuManualsBtn:hover,
+  html body[data-theme="light"] #mainSideMenu #menuAboutBtn:hover,
+  html body[data-theme="light"] #mainSideMenu #menuLocalFeedbackBtn:hover,
+  html body[data-theme="light"] #mainSideMenu #menuAndroidAppBtn:hover{
+    background:rgba(75,54,95,.055)!important;
+    border-color:rgba(75,54,95,.20)!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+}
