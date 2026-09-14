@@ -10,30 +10,90 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Add Android browser APK suggestion
+      - name: Replace Android auto modal with compact banner
         shell: python
         run: |
           from pathlib import Path
           p = Path('assets/js/phone-landscape-hero.js')
           s = p.read_text(encoding='utf-8')
-          marker = 'function scheduleAndroidAutoSuggestion()'
-          if marker not in s:
-              needle = '  function init(){\n'
-              insert = '''  function scheduleAndroidAutoSuggestion(){\n    if(!isAndroid() || isInstalledApkRuntime()) return;\n    const key=\"statArchiveAndroidAutoPromptShown\";\n    try{\n      if(sessionStorage.getItem(key)===\"1\") return;\n      sessionStorage.setItem(key,\"1\");\n    }catch(_){}\n\n    window.setTimeout(()=>{\n      if(isInstalledApkRuntime()) return;\n      if(document.visibilityState!==\"visible\") return;\n      const blockingOverlay=document.querySelector(\".is-open[role='dialog'], .manual-chooser-overlay.is-open, #offlineLibraryOverlay.is-open, #statLocalFeedbackOverlay.is-open\");\n      if(blockingOverlay) return;\n      openOverlay();\n    },1200);\n  }\n\n'''
-              if needle not in s:
-                  raise SystemExit('init marker not found')
-              s = s.replace(needle, insert + needle, 1)
 
-              old = '    ensureOverlay(); installMenuEntry();\n'
-              new = '    ensureOverlay(); installMenuEntry(); scheduleAndroidAutoSuggestion();\n'
-              if old not in s:
-                  raise SystemExit('init body marker not found')
-              s = s.replace(old, new, 1)
-              p.write_text(s, encoding='utf-8')
+          old = '''  function scheduleAndroidAutoSuggestion(){
+    if(!isAndroid() || isInstalledApkRuntime()) return;
+    const key="statArchiveAndroidAutoPromptShown";
+    try{
+      if(sessionStorage.getItem(key)==="1") return;
+      sessionStorage.setItem(key,"1");
+    }catch(_){}
+
+    window.setTimeout(()=>{
+      if(isInstalledApkRuntime()) return;
+      if(document.visibilityState!=="visible") return;
+      const blockingOverlay=document.querySelector(".is-open[role='dialog'], .manual-chooser-overlay.is-open, #offlineLibraryOverlay.is-open, #statLocalFeedbackOverlay.is-open");
+      if(blockingOverlay) return;
+      openOverlay();
+    },1200);
+  }
+'''
+
+          new = '''  function ensureAndroidAutoBanner(){
+    let banner=document.getElementById("statAndroidAutoBanner");
+    if(banner) return banner;
+    banner=document.createElement("div");
+    banner.id="statAndroidAutoBanner";
+    banner.className="stat-android-auto-banner";
+    banner.setAttribute("role","status");
+    banner.innerHTML=`<span class="stat-android-auto-icon" aria-hidden="true">${androidIcon}</span><span class="stat-android-auto-copy"><strong>Get Stat Archive app</strong><small>Install the Android APK</small></span><a class="stat-android-auto-install" href="${appMeta.apkUrl||FALLBACK_APK}" download="stat-archive.apk">Install</a><button type="button" class="stat-android-auto-close" aria-label="Dismiss">×</button>`;
+    document.body.appendChild(banner);
+    banner.querySelector(".stat-android-auto-close")?.addEventListener("click",()=>banner.remove());
+    return banner;
+  }
+
+  function scheduleAndroidAutoSuggestion(){
+    if(!isAndroid() || isInstalledApkRuntime()) return;
+    const key="statArchiveAndroidAutoPromptShown";
+    try{
+      if(sessionStorage.getItem(key)==="1") return;
+      sessionStorage.setItem(key,"1");
+    }catch(_){}
+
+    window.setTimeout(async()=>{
+      if(isInstalledApkRuntime() || document.visibilityState!=="visible") return;
+      const blockingOverlay=document.querySelector(".is-open[role='dialog'], .manual-chooser-overlay.is-open, #offlineLibraryOverlay.is-open, #statLocalFeedbackOverlay.is-open");
+      if(blockingOverlay) return;
+      await loadVersion();
+      const banner=ensureAndroidAutoBanner();
+      const install=banner.querySelector(".stat-android-auto-install");
+      if(install) install.href=appMeta.apkUrl||FALLBACK_APK;
+      requestAnimationFrame(()=>banner.classList.add("is-visible"));
+    },1200);
+  }
+'''
+
+          if old not in s:
+              raise SystemExit('auto suggestion function not found')
+          s = s.replace(old, new, 1)
+
+          css_anchor = "body[data-theme='light'] #menuAndroidAppBtn .stat-android-icon{background:rgba(40,130,100,.08);color:#347f67;}\n"
+          css = '''.stat-android-auto-banner{position:fixed;z-index:10110;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;width:min(520px,calc(100vw - 20px));min-height:58px;padding:8px 9px 8px 10px;display:grid;grid-template-columns:36px minmax(0,1fr) auto 30px;align-items:center;gap:9px;border:1px solid rgba(148,163,184,.20);border-radius:16px;background:rgba(13,20,30,.96);color:#eef3f8;box-shadow:0 12px 34px rgba(0,0,0,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);opacity:0;transform:translate(-50%,-12px);pointer-events:none;transition:opacity .18s ease,transform .18s ease;}
+.stat-android-auto-banner.is-visible{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+.stat-android-auto-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(74,222,165,.10);color:#64e8b3;}.stat-android-auto-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.stat-android-auto-copy{min-width:0;display:flex;flex-direction:column;gap:2px;}.stat-android-auto-copy strong{font:700 12px/1.25 Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.stat-android-auto-copy small{color:#8d9aaa;font:500 10px/1.25 Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-android-auto-install{min-width:62px;height:34px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(94,231,247,.28);border-radius:10px;background:rgba(94,231,247,.10);color:#dffcff;text-decoration:none;font:800 10.5px/1 Inter,sans-serif;-webkit-tap-highlight-color:transparent;}
+.stat-android-auto-close{width:30px;height:30px;border:0;background:transparent;color:#8793a3;font-size:20px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;outline:none;box-shadow:none;}
+.stat-android-auto-close:hover,.stat-android-auto-close:active,.stat-android-auto-close:focus,.stat-android-auto-close:focus-visible{background:transparent!important;color:#8793a3!important;outline:none!important;box-shadow:none!important;transform:none!important;}
+body[data-theme='light'] .stat-android-auto-banner{background:rgba(251,250,247,.97);color:#27302d;border-color:rgba(75,54,95,.14);box-shadow:0 12px 30px rgba(72,60,48,.16);}body[data-theme='light'] .stat-android-auto-copy small{color:#7b7771;}body[data-theme='light'] .stat-android-auto-install{color:#3d3150;border-color:rgba(75,54,95,.20);background:rgba(75,54,95,.07);}body[data-theme='light'] .stat-android-auto-close{color:#77716d;}
+@media(max-width:520px){.stat-android-auto-banner{top:calc(env(safe-area-inset-top,0px) + 8px);width:calc(100vw - 16px);grid-template-columns:34px minmax(0,1fr) auto 28px;gap:7px;padding:7px 7px 7px 9px;border-radius:14px;}.stat-android-auto-install{min-width:58px;height:32px;padding:0 10px;}.stat-android-auto-close{width:28px;height:28px;}}
+'''
+          if 'stat-android-auto-banner' not in s:
+              if css_anchor not in s:
+                  raise SystemExit('CSS anchor not found')
+              s = s.replace(css_anchor, css_anchor + css, 1)
+
+          p.write_text(s, encoding='utf-8')
       - name: Commit source change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
           git add assets/js/phone-landscape-hero.js
-          git diff --cached --quiet || git commit -m "Auto-suggest Android APK in Android browsers"
+          git diff --cached --quiet || git commit -m "Use compact Android install suggestion"
           git push origin HEAD:main
