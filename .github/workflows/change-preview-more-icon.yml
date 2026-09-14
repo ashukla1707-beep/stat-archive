@@ -83,5 +83,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
           git add icons/icon-192.png icons/icon-512.png icons/icon-512-maskable.png icons/pwa-splash.webp
-          git commit -m "Use approved splash artwork for PWA branding" || exit 0
-          git push
+          if git diff --cached --quiet; then
+            echo "PWA branding is already current."
+            exit 0
+          fi
+          git commit -m "Use approved splash artwork for PWA branding"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
