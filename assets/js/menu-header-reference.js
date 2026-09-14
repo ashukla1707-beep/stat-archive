@@ -1,21 +1,16 @@
-/* Stat Archive — compact fixed Menu header v5
+/* Stat Archive — compact fixed Menu header v6
    Header is fixed inside the Menu panel; only the body below it scrolls.
-   A startup guard prevents the legacy menu markup from flashing on refresh. */
+   Any menu sections injected later are automatically moved into the scroll body. */
 (() => {
   "use strict";
 
-  /* Install this before any DOM reshaping. Because this script is parsed before
-     the browser gets a chance to show an opened menu in normal startup, direct
-     legacy children stay invisible until they have been wrapped into the final
-     reference header + scroll body. */
   function installStartupGuard() {
     if (document.getElementById("statArchiveMenuStartupGuard")) return;
     const guard = document.createElement("style");
     guard.id = "statArchiveMenuStartupGuard";
     guard.textContent = `
 #mainSideMenu > *:not(.stat-menu-reference-head):not(.stat-menu-scroll-body){
-  visibility:hidden !important;
-  opacity:0 !important;
+  display:none !important;
 }
 #mainSideMenu > .stat-menu-reference-head,
 #mainSideMenu > .stat-menu-scroll-body{
@@ -28,8 +23,8 @@
 
   installStartupGuard();
 
-  if (window.__STAT_ARCHIVE_MENU_HEADER_V5__) return;
-  window.__STAT_ARCHIVE_MENU_HEADER_V5__ = "5";
+  if (window.__STAT_ARCHIVE_MENU_HEADER_V6__) return;
+  window.__STAT_ARCHIVE_MENU_HEADER_V6__ = "6";
 
   function installStyle() {
     document.getElementById("statArchiveReferenceMenuHeaderStyle")?.remove();
@@ -37,8 +32,6 @@
     const style = document.createElement("style");
     style.id = "statArchiveReferenceMenuHeaderStyle";
     style.textContent = `
-/* Remove the old Menu padding from around the fixed header. The spacing now
-   belongs to the scroll body, exactly like Offline Library. */
 #mainSideMenu{
   display:flex !important;
   flex-direction:column !important;
@@ -179,9 +172,6 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
   color:#726c67 !important;
 }
 
-/* Web / desktop-site mode: keep the same Menu card and functionality, but
-   center the panel in the visible viewport. It still fits its real content and
-   scrolls internally only when the available screen height is smaller. */
 @media(min-width:701px){
   html body #mainSideMenu.main-side-menu,
   html body #mainSideMenu.main-side-menu.stat-menu-polished{
@@ -252,11 +242,22 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     if (!body) {
       body = document.createElement("div");
       body.className = "stat-menu-scroll-body";
-      const content = Array.from(menu.children).filter(el => el !== head && el !== body);
-      content.forEach(el => body.appendChild(el));
       menu.appendChild(body);
     }
+
+    const strayChildren = Array.from(menu.children).filter(el => el !== head && el !== body);
+    strayChildren.forEach(el => body.appendChild(el));
     return body;
+  }
+
+  function watchForLateMenuSections(menu, head) {
+    if (menu.dataset.statScrollBodyObserver === "1") return;
+    menu.dataset.statScrollBodyObserver = "1";
+
+    const observer = new MutationObserver(() => {
+      ensureScrollBody(menu, head);
+    });
+    observer.observe(menu, { childList:true });
   }
 
   function markReady() {
@@ -280,7 +281,7 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     });
 
     head.className = "stat-menu-reference-head";
-    head.dataset.statReferenceHeader = "5";
+    head.dataset.statReferenceHeader = "6";
 
     const brand = document.createElement("div");
     brand.className = "stat-menu-reference-brand";
@@ -293,6 +294,7 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
 
     if (menu.firstElementChild !== head) menu.insertBefore(head, menu.firstElementChild);
     ensureScrollBody(menu, head);
+    watchForLateMenuSections(menu, head);
     markReady();
     return true;
   }
@@ -317,13 +319,6 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
 
 /* =========================================================
    MANUAL CHOICE — WINDOW CAPTURE OWNER
-
-   The Manual chooser can be followed by several legacy document-level
-   navigation listeners. Capture the Reader/Contributor choice at window level
-   so it runs before every document/button handler, normalize the current
-   chooser history entry to Home, and navigate immediately.
-
-   Result: Menu -> Manual -> Reader/Contributor Manual -> Back -> Home.
    ========================================================= */
 (() => {
   "use strict";
