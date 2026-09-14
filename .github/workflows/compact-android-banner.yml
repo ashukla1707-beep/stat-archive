@@ -71,3 +71,4 @@ body[data-theme='light'] .stat-android-auto-banner{background:rgba(251,250,247,.
           git add assets/js/phone-landscape-hero.js
           git diff --cached --quiet || git commit -m 'Use compact Android install suggestion'
           git push
+# trigger v2
