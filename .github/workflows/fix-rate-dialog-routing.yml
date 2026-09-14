@@ -1,3 +1,4 @@
+# Triggered after workflow registration so the routing patch runs on main.
 name: Fix Rate Stat Archive routing
 on:
   push:
