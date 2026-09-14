@@ -1,0 +1,42 @@
+name: Fix Android close impression
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-android-close-impression.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Match Android close button to Library close behaviour
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('assets/js/phone-landscape-hero.js')
+          s = p.read_text(encoding='utf-8')
+
+          old = ".stat-android-close{width:38px;height:38px;flex:0 0 38px;border:1px solid rgba(148,163,184,.18);border-radius:50%;background:#111a25;color:#eef3f8;font-size:21px;cursor:pointer;}"
+          new = ".stat-android-close{width:38px;height:38px;flex:0 0 38px;border:1px solid rgba(148,163,184,.18);border-radius:50%;background:#111a25;color:#eef3f8;font-size:21px;cursor:pointer;-webkit-tap-highlight-color:transparent!important;-webkit-touch-callout:none!important;outline:none!important;box-shadow:none!important;filter:none!important;transition:none!important;user-select:none!important;}\n.stat-android-close:hover,.stat-android-close:active,.stat-android-close:focus,.stat-android-close:focus-visible{background:#111a25!important;color:#eef3f8!important;border-color:rgba(148,163,184,.18)!important;outline:none!important;box-shadow:none!important;filter:none!important;transform:none!important;}"
+          if old in s:
+              s = s.replace(old, new, 1)
+
+          light_old = "body[data-theme='light'] .stat-android-close{background:rgba(255,255,255,.8);color:#27302d;border-color:rgba(75,54,95,.14);}"
+          light_new = "body[data-theme='light'] .stat-android-close,body[data-theme='light'] .stat-android-close:hover,body[data-theme='light'] .stat-android-close:active,body[data-theme='light'] .stat-android-close:focus,body[data-theme='light'] .stat-android-close:focus-visible{background:rgba(255,255,255,.8)!important;color:#27302d!important;border-color:rgba(75,54,95,.14)!important;outline:none!important;box-shadow:none!important;filter:none!important;transform:none!important;}"
+          if light_old in s:
+              s = s.replace(light_old, light_new, 1)
+
+          close_old = '    const close=()=>closeOverlay(true);'
+          close_new = '    const close=()=>{ overlay.querySelector("#statAndroidClose")?.blur(); closeOverlay(true); };'
+          if close_old in s:
+              s = s.replace(close_old, close_new, 1)
+
+          p.write_text(s, encoding='utf-8')
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/phone-landscape-hero.js
+          git diff --cached --quiet || git commit -m "Remove Android popup close impression"
+          git push origin HEAD:main
