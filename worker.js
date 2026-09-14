@@ -79,6 +79,51 @@ function isProtectedReviewName(value) {
     normalized === "stat archive";
 }
 
+function normalizeModerationText(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[0@]/g, "o")
+    .replace(/[1!|]/g, "i")
+    .replace(/[3]/g, "e")
+    .replace(/[4]/g, "a")
+    .replace(/[5$]/g, "s")
+    .replace(/[7]/g, "t")
+    .replace(/[^a-z0-9\u0900-\u097f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasAbusiveContent(value) {
+  const text = normalizeModerationText(value);
+  if (!text) return false;
+  const patterns = [
+    /\bf+u+c+k+(?:er|ing|ed|s)?\b/,
+    /\bsh+i+t+(?:ty|ting|s)?\b/,
+    /\bb+i+t+c+h+(?:es)?\b/,
+    /\ba+s+s+h+o+l+e+s?\b/,
+    /\bb+a+s+t+a+r+d+s?\b/,
+    /\bc+u+n+t+s?\b/,
+    /\bd+i+c+k+h+e+a+d+s?\b/,
+    /\bm+o+t+h+e+r+f+u+c+k+e+r+s?\b/,
+    /\bchutiya+s?\b/,
+    /\bchutiye\b/,
+    /\bmadarchod+s?\b/,
+    /\bbhenchod+s?\b/,
+    /\bbahenchod+s?\b/,
+    /\bgandu+s?\b/,
+    /\bharami+s?\b/,
+    /\brandi+s?\b/
+  ];
+  return patterns.some(pattern => pattern.test(text));
+}
+
+function moderationError() {
+  return json({
+    error: "Please keep reviews respectful. Constructive criticism is welcome, but abusive or offensive language is not allowed."
+  }, 400);
+}
+
 function publicReview(item, clientId = "") {
   const likedBy = Array.isArray(item?.likedBy) ? item.likedBy : [];
   const replies = Array.isArray(item?.replies) ? item.replies : [];
@@ -146,6 +191,7 @@ export class ReviewsStore {
       if (name.length < 2) return json({ error: "Please enter your name." }, 400);
       if (!adminRequest && isProtectedReviewName(name)) return json({ error: "This name is reserved for the verified Stat Archive Admin." }, 403);
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) return json({ error: "Choose a rating from 1 to 5 stars." }, 400);
+      if (hasAbusiveContent(name) || hasAbusiveContent(review)) return moderationError();
       const item = { id: crypto.randomUUID(), name, rating, review, createdAt: new Date().toISOString(), isAdmin: adminRequest, likedBy: [], replies: [] };
       await this.state.storage.put(`review:${item.createdAt}:${item.id}`, item);
       await this.state.storage.put(throttleKey, Date.now(), { expirationTtl: 120 });
@@ -172,6 +218,7 @@ export class ReviewsStore {
       if (name.length < 2) return json({ error: "Please enter your name." }, 400);
       if (!adminRequest && isProtectedReviewName(name)) return json({ error: "This name is reserved for the verified Stat Archive Admin." }, 403);
       if (!text) return json({ error: "Please enter a reply." }, 400);
+      if (hasAbusiveContent(name) || hasAbusiveContent(text)) return moderationError();
       const found = await this.findReview(reviewId);
       if (!found) return json({ error: "Review not found." }, 404);
       const replies = Array.isArray(found.item.replies) ? [...found.item.replies] : [];
