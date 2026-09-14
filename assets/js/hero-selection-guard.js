@@ -114,7 +114,14 @@ html body .header .hero-line .sub *::-moz-selection{
 #statArchiveActionStatus.has-progress .sa-status-track{display:block}
 #statArchiveActionStatus .sa-status-bar{display:block;width:0%;height:100%;border-radius:inherit;background:currentColor;color:#5ee7f7;transition:width .12s linear}
 @keyframes saStatusSpin{to{transform:rotate(360deg)}}
-body[data-theme="light"] #statArchiveActionStatus{background:rgba(251,250,247,.97);color:#27302d;border-color:rgba(75,54,95,.15);box-shadow:0 16px 36px rgba(50,40,30,.18)}
+body[data-theme="light"] #statArchiveActionStatus{background:rgba(251,249,247,.98);color:#332b38;border-color:rgba(92,55,120,.18);box-shadow:0 16px 36px rgba(68,45,84,.16)}
+body[data-theme="light"] #statArchiveActionStatus .sa-status-icon{border-color:rgba(108,62,143,.32);color:#70428f}
+body[data-theme="light"] #statArchiveActionStatus[data-state="loading"] .sa-status-icon{border-color:rgba(108,62,143,.24);border-top-color:#70428f;color:transparent}
+body[data-theme="light"] #statArchiveActionStatus[data-state="success"] .sa-status-icon{border-color:rgba(72,138,96,.36);color:#4c8f64}
+body[data-theme="light"] #statArchiveActionStatus[data-state="error"] .sa-status-icon{border-color:rgba(184,76,76,.34);color:#b34d4d}
+body[data-theme="light"] #statArchiveActionStatus .sa-status-percent{color:#70428f}
+body[data-theme="light"] #statArchiveActionStatus .sa-status-track{background:rgba(92,55,120,.12)}
+body[data-theme="light"] #statArchiveActionStatus .sa-status-bar{color:#70428f}
 @media(max-width:700px){#statArchiveActionStatus{min-width:calc(100vw - 24px);max-width:calc(100vw - 24px);bottom:max(12px,calc(env(safe-area-inset-bottom,0px) + 10px));padding:12px}}
 @media(prefers-reduced-motion:reduce){#statArchiveActionStatus{transition:none}#statArchiveActionStatus[data-state="loading"] .sa-status-icon{animation:none}#statArchiveActionStatus .sa-status-bar{transition:none}}
 `;
