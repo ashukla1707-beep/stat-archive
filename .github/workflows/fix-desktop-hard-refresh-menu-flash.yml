@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Patch first-paint menu startup
+      - name: Patch first-paint menu startup and phone landscape hero
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -41,8 +41,6 @@ jobs:
           if 'id="statMenuHardRefreshGuard"' not in s:
               s = s.replace('</head>', guard + '\n</head>', 1)
 
-          # Make startup protection available even when a desktop hard refresh
-          # bypasses the currently controlling service-worker response cache.
           startup_tag = '<script data-stat-startup-polish="1" src="assets/js/startup-polish.js?v=20260914-hard-refresh-v1"></script>'
           if 'data-stat-startup-polish="1"' not in s:
               s = s.replace(
@@ -51,8 +49,6 @@ jobs:
                   1
               )
 
-          # These are the canonical final Menu composition layers. Keep them in
-          # raw HTML as well; sw.js already de-duplicates/injects its controlled path.
           direct = [
               ('assets/js/menu-polish.js', '<script src="assets/js/menu-polish.js?v=20260914-hard-refresh-v1"></script>'),
               ('assets/js/menu-alignment-fix.js', '<script src="assets/js/menu-alignment-fix.js?v=20260914-hard-refresh-v1"></script>'),
@@ -64,18 +60,46 @@ jobs:
                   s = s.replace(anchor, anchor + '\n' + tag, 1)
                   anchor = tag
 
+          landscape_tag = '<script src="assets/js/phone-landscape-hero.js?v=20260914-1"></script>'
+          if 'assets/js/phone-landscape-hero.js' not in s:
+              s = s.replace('</body>', landscape_tag + '\n</body>', 1)
+
           p.write_text(s, encoding='utf-8')
 
-          # Force a new shell generation so installed/PWA clients cannot keep the
-          # previous document shell after this structural startup change.
           sw = Path('sw.js')
           w = sw.read_text(encoding='utf-8')
           w = re.sub(
               r'const CACHE = "[^"]+";',
-              'const CACHE = "stat-archive-shell-v20260914-hard-refresh-menu-v1";',
+              'const CACHE = "stat-archive-shell-v20260914-phone-landscape-v1";',
               w,
               count=1
           )
+
+          if '"./assets/js/phone-landscape-hero.js"' not in w:
+              needle = '"./assets/js/hero-layout-fix.js","./assets/js/action-spacing-fix.js",'
+              replacement = '"./assets/js/hero-layout-fix.js","./assets/js/phone-landscape-hero.js","./assets/js/action-spacing-fix.js",'
+              if needle in w:
+                  w = w.replace(needle, replacement, 1)
+
+          phone_const = 'const PHONE_LANDSCAPE_HERO_TAG = \'<script src="./assets/js/phone-landscape-hero.js?v=20260914-1"></script>\';'
+          if 'PHONE_LANDSCAPE_HERO_TAG' not in w:
+              hero_const = re.search(r"const HERO_FIX_SCRIPT_TAG = .*?;\n", w)
+              if hero_const:
+                  pos = hero_const.end()
+                  w = w[:pos] + phone_const + '\n' + w[pos:]
+
+          phone_inject = "  if (!out.includes('assets/js/phone-landscape-hero.js')) out = out.replace('</body>', `${PHONE_LANDSCAPE_HERO_TAG}\\n</body>`);"
+          if "if (!out.includes('assets/js/phone-landscape-hero.js'))" not in w:
+              anchor_text = "  if (!out.includes('assets/js/hero-layout-fix.js')) out = out.replace('</body>', `${HERO_FIX_SCRIPT_TAG}\\n</body>`);"
+              if anchor_text in w:
+                  w = w.replace(anchor_text, anchor_text + '\n' + phone_inject, 1)
+
+          live_line = "    url.pathname.endsWith('/assets/js/phone-landscape-hero.js') ||"
+          if "url.pathname.endsWith('/assets/js/phone-landscape-hero.js')" not in w:
+              anchor_text = "    url.pathname.endsWith('/assets/js/hero-layout-fix.js') ||"
+              if anchor_text in w:
+                  w = w.replace(anchor_text, anchor_text + '\n' + live_line, 1)
+
           sw.write_text(w, encoding='utf-8')
           PY
 
@@ -88,5 +112,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html sw.js
-          git commit -m "Fix desktop hard-refresh menu first paint"
+          git commit -m "Install phone landscape hero guard"
           git push
