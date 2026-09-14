@@ -10,45 +10,73 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Pillow
-        run: python3 -m pip install --quiet pillow
-      - name: Build PWA icons from current Android splash
+      - name: Install image tools
         run: |
-          curl -L --fail --retry 3 \
-            -o /tmp/stat-archive-splash.webp \
-            https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/app/src/main/res/drawable-nodpi/splash_exact.webp
+          sudo apt-get update -qq
+          sudo apt-get install -y poppler-utils
+          python3 -m pip install --quiet pillow
+      - name: Reconstruct approved Android splash
+        run: |
+          mkdir -p /tmp/stat-splash-parts
+          for part in aa ab ac ad ae af ag ah ai; do
+            curl -L --fail --retry 3 \
+              -o "/tmp/stat-splash-parts/.splash_exact_${part}" \
+              "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/app/src/main/res/.splash_exact_${part}"
+          done
+          cat \
+            /tmp/stat-splash-parts/.splash_exact_aa \
+            /tmp/stat-splash-parts/.splash_exact_ab \
+            /tmp/stat-splash-parts/.splash_exact_ac \
+            /tmp/stat-splash-parts/.splash_exact_ad \
+            /tmp/stat-splash-parts/.splash_exact_ae \
+            /tmp/stat-splash-parts/.splash_exact_af \
+            /tmp/stat-splash-parts/.splash_exact_ag \
+            /tmp/stat-splash-parts/.splash_exact_ah \
+            /tmp/stat-splash-parts/.splash_exact_ai \
+            | base64 --decode > /tmp/splash_exact.pdf
+          pdftoppm -singlefile -png -r 200 /tmp/splash_exact.pdf /tmp/splash_exact
+      - name: Build exact PWA branding
+        run: |
           python3 - <<'PY'
-          from PIL import Image, ImageOps
+          from PIL import Image
           from pathlib import Path
 
-          src = Image.open('/tmp/stat-archive-splash.webp').convert('RGBA')
+          src = Image.open('/tmp/splash_exact.png').convert('RGBA')
+          bbox = src.getbbox()
+          if bbox:
+              src = src.crop(bbox)
+
           out = Path('icons')
           out.mkdir(exist_ok=True)
 
-          def cover(size):
-              # Home-screen icon: use the current splash artwork itself, cropped
-              # centrally to a square so it is large enough to be recognisable.
-              return ImageOps.fit(src, (size, size), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+          # Match the Android release workflow's launcher-icon algorithm.
+          side = max(src.size)
+          canvas = Image.new('RGBA', (side, side), (255, 255, 255, 255))
+          x = (side - src.width) // 2
+          y = (side - src.height) // 2
+          canvas.alpha_composite(src, (x, y))
 
-          def maskable(size):
-              # Keep artwork inside the maskable safe zone and preserve aspect ratio.
-              canvas = Image.new('RGBA', (size, size), (0, 0, 0, 255))
-              inner = int(size * 0.80)
-              art = src.copy()
-              art.thumbnail((inner, inner), Image.Resampling.LANCZOS)
-              x = (size - art.width) // 2
-              y = (size - art.height) // 2
-              canvas.alpha_composite(art, (x, y))
-              return canvas
+          canvas.resize((192, 192), Image.Resampling.LANCZOS).convert('RGB').save(
+              out / 'icon-192.png', 'PNG', optimize=True
+          )
+          canvas.resize((512, 512), Image.Resampling.LANCZOS).convert('RGB').save(
+              out / 'icon-512.png', 'PNG', optimize=True
+          )
 
-          cover(192).convert('RGB').save(out / 'icon-192-splash.png', 'PNG', optimize=True)
-          cover(512).convert('RGB').save(out / 'icon-512-splash.png', 'PNG', optimize=True)
-          maskable(512).convert('RGB').save(out / 'icon-512-splash-maskable.png', 'PNG', optimize=True)
+          # Maskable variant: preserve the same artwork inside the platform safe zone.
+          mask = Image.new('RGBA', (512, 512), (255, 255, 255, 255))
+          art = canvas.copy()
+          art.thumbnail((410, 410), Image.Resampling.LANCZOS)
+          mask.alpha_composite(art, ((512 - art.width)//2, (512 - art.height)//2))
+          mask.convert('RGB').save(out / 'icon-512-maskable.png', 'PNG', optimize=True)
+
+          # Same exact approved artwork for the in-app PWA splash screen.
+          src.convert('RGB').save(out / 'pwa-splash.png', 'PNG', optimize=True)
           PY
-      - name: Commit refreshed PWA icons
+      - name: Commit refreshed PWA branding
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add icons/icon-192-splash.png icons/icon-512-splash.png icons/icon-512-splash-maskable.png
-          git commit -m "Use current splash artwork for PWA icons" || exit 0
+          git add icons/icon-192.png icons/icon-512.png icons/icon-512-maskable.png icons/pwa-splash.png
+          git commit -m "Use approved splash artwork for PWA branding" || exit 0
           git push
