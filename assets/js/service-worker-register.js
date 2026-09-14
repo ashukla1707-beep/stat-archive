@@ -1,6 +1,27 @@
 /* application section */
 
 /* =========================================================
+   DESKTOP-ONLY PWA INSTALL PROMPT
+
+   Chrome on Android may expose the PWA install prompt even when the user
+   switches the browser to "Desktop site". Detect the underlying mobile OS,
+   not the viewport width, so phones/tablets never receive the PWA suggestion
+   while genuine desktop/laptop browsers remain eligible.
+   ========================================================= */
+(() => {
+  const ua = String(navigator.userAgent || "");
+  const uaDataMobile = navigator.userAgentData?.mobile === true;
+  const mobileOS = /Android|iPhone|iPad|iPod/i.test(ua);
+  const isMobileDevice = uaDataMobile || mobileOS;
+
+  if (!isMobileDevice) return;
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+  });
+})();
+
+/* =========================================================
    SERVICE WORKER REGISTRATION
 
    updateViaCache:none + controllerchange reload are important for the
