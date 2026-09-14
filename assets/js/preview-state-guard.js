@@ -1,5 +1,6 @@
-/* Stat Archive preview state guard.
-   Keeps PDF pinch zoom inside the reader and restores the archive viewport after close. */
+/* Stat Archive preview viewport guard.
+   Keeps PDF pinch zoom inside the reader.
+   Page scroll position is owned exclusively by scroll-lock-coordinator.js. */
 (() => {
   "use strict";
 
@@ -29,15 +30,7 @@
 
     const meta = getViewportMeta();
     snapshot = {
-      viewportContent: meta.getAttribute("content") || "width=device-width, initial-scale=1.0",
-      scrollX: window.scrollX || document.documentElement.scrollLeft || 0,
-      scrollY: window.scrollY || document.documentElement.scrollTop || 0,
-      bodyOverflow: document.body?.style.overflow || "",
-      bodyOverflowX: document.body?.style.overflowX || "",
-      bodyOverflowY: document.body?.style.overflowY || "",
-      htmlOverflow: document.documentElement.style.overflow || "",
-      htmlOverflowX: document.documentElement.style.overflowX || "",
-      htmlOverflowY: document.documentElement.style.overflowY || ""
+      viewportContent: meta.getAttribute("content") || "width=device-width, initial-scale=1.0"
     };
 
     /* Android/WebView must not use browser-level pinch zoom here.
@@ -54,29 +47,28 @@
     snapshot = null;
     const meta = getViewportMeta();
 
-    /* Force the visual viewport back to 1:1 before restoring the page's
-       normal viewport settings. */
+    /* Keep browser zoom fixed while the shared scroll coordinator releases
+       the fixed-body lock. Do not restore body/html overflow or scroll here:
+       doing so would race the global coordinator and visibly move the page. */
     meta.setAttribute("content", LOCKED_VIEWPORT);
-
-    document.body?.classList.remove("no-scroll");
     document.documentElement.classList.remove("sa-preview-viewport-locked");
-
-    if (document.body) {
-      document.body.style.overflow = saved.bodyOverflow;
-      document.body.style.overflowX = saved.bodyOverflowX;
-      document.body.style.overflowY = saved.bodyOverflowY;
-    }
-    document.documentElement.style.overflow = saved.htmlOverflow;
-    document.documentElement.style.overflowX = saved.htmlOverflowX;
-    document.documentElement.style.overflowY = saved.htmlOverflowY;
-
     document.querySelector("#previewOverlay .preview-card")?.classList.remove("sa-reader-active");
 
+    try { window.statArchiveSyncGlobalScrollLock?.(); } catch (_) {}
+
+    /* releaseGlobalLock() restores the archive position on its own rAF. Our
+       rAF is queued after it, so capture that now-stable position, restore the
+       normal viewport metadata, and pin the same coordinates once more only
+       to neutralize any WebView reflow caused by the viewport-meta change. */
     requestAnimationFrame(() => {
-      window.scrollTo(saved.scrollX, saved.scrollY);
+      const stableX = window.scrollX || document.documentElement.scrollLeft || 0;
+      const stableY = window.scrollY || document.documentElement.scrollTop || 0;
+
+      meta.setAttribute("content", saved.viewportContent);
+
       requestAnimationFrame(() => {
-        meta.setAttribute("content", saved.viewportContent);
-        window.scrollTo(saved.scrollX, saved.scrollY);
+        window.scrollTo({ left: stableX, top: stableY, behavior: "auto" });
+        try { window.statArchiveNormalizeScrollLocks?.(); } catch (_) {}
         restoring = false;
       });
     });
