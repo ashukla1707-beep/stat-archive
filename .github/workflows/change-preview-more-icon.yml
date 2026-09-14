@@ -1,4 +1,4 @@
-name: Change preview more icon
+name: Refresh PWA icons from splash
 on:
   push:
     branches: [main]
@@ -6,29 +6,49 @@ on:
 permissions:
   contents: write
 jobs:
-  change:
+  refresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Replace dropdown chevron with more menu icon
+      - name: Install Pillow
+        run: python3 -m pip install --quiet pillow
+      - name: Build PWA icons from current Android splash
         run: |
+          curl -L --fail --retry 3 \
+            -o /tmp/stat-archive-splash.webp \
+            https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/app/src/main/res/drawable-nodpi/splash_exact.webp
           python3 - <<'PY'
+          from PIL import Image, ImageOps
           from pathlib import Path
-          p=Path('assets/js/mobile-card-actions.js')
-          s=p.read_text()
-          old="btn.textContent = '⌄';"
-          new="btn.textContent = '⋯';"
-          if old not in s:
-              raise SystemExit('target icon not found')
-          s=s.replace(old,new,1)
-          # A three-dot menu should not rotate when opened.
-          s=s.replace("  .sa-toolbar-expand-btn.is-open{transform:rotate(180deg)!important}\n", "  .sa-toolbar-expand-btn.is-open{background:rgba(148,163,184,.12)!important}\n", 1)
-          p.write_text(s)
+
+          src = Image.open('/tmp/stat-archive-splash.webp').convert('RGBA')
+          out = Path('icons')
+          out.mkdir(exist_ok=True)
+
+          def cover(size):
+              # Home-screen icon: use the current splash artwork itself, cropped
+              # centrally to a square so it is large enough to be recognisable.
+              return ImageOps.fit(src, (size, size), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+
+          def maskable(size):
+              # Keep artwork inside the maskable safe zone and preserve aspect ratio.
+              canvas = Image.new('RGBA', (size, size), (0, 0, 0, 255))
+              inner = int(size * 0.80)
+              art = src.copy()
+              art.thumbnail((inner, inner), Image.Resampling.LANCZOS)
+              x = (size - art.width) // 2
+              y = (size - art.height) // 2
+              canvas.alpha_composite(art, (x, y))
+              return canvas
+
+          cover(192).convert('RGB').save(out / 'icon-192-splash.png', 'PNG', optimize=True)
+          cover(512).convert('RGB').save(out / 'icon-512-splash.png', 'PNG', optimize=True)
+          maskable(512).convert('RGB').save(out / 'icon-512-splash-maskable.png', 'PNG', optimize=True)
           PY
-      - name: Commit
+      - name: Commit refreshed PWA icons
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add assets/js/mobile-card-actions.js
-          git commit -m "Use more menu icon in preview toolbar"
+          git add icons/icon-192-splash.png icons/icon-512-splash.png icons/icon-512-splash-maskable.png
+          git commit -m "Use current splash artwork for PWA icons" || exit 0
           git push
