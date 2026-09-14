@@ -497,3 +497,25 @@ body[data-theme='light'] .stat-android-overlay{background:rgba(52,48,42,.34);}bo
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once:true });
   else init();
 })();
+
+/* Stat Archive — natural-height side menu */
+(() => {
+  "use strict";
+  if (document.getElementById("statArchiveNaturalMenuHeight")) return;
+  const style = document.createElement("style");
+  style.id = "statArchiveNaturalMenuHeight";
+  style.textContent = `
+html body #mainSideMenu.main-side-menu{
+  height:auto!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  bottom:auto!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+}
+@supports not (height:100dvh){
+  html body #mainSideMenu.main-side-menu{max-height:100vh!important;}
+}
+`;
+  document.head.appendChild(style);
+})();
