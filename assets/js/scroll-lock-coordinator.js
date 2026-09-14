@@ -122,6 +122,35 @@
     r.style.overscrollBehavior = "none";
   }
 
+  function restoreScrollInstantly(x, y) {
+    const b = body();
+    const r = root();
+    if (!b || !r) return;
+
+    /* The site intentionally uses html{scroll-behavior:smooth}. During an
+       overlay release that would animate scrollTo() and make Preview appear
+       to scroll back to the clicked card. Temporarily force AUTO on both
+       scrolling roots, restore synchronously in the same JS turn, then put
+       the original inline values back before the next normal interaction. */
+    const oldRootScrollBehavior = r.style.scrollBehavior;
+    const oldBodyScrollBehavior = b.style.scrollBehavior;
+    r.style.setProperty("scroll-behavior", "auto", "important");
+    b.style.setProperty("scroll-behavior", "auto", "important");
+
+    window.scrollTo(x, y);
+
+    /* Keep the override through the current paint. This prevents WebView and
+       Chromium from reinterpreting the restoration as a smooth scroll when
+       fixed positioning is removed. */
+    requestAnimationFrame(() => {
+      if (oldRootScrollBehavior) r.style.scrollBehavior = oldRootScrollBehavior;
+      else r.style.removeProperty("scroll-behavior");
+
+      if (oldBodyScrollBehavior) b.style.scrollBehavior = oldBodyScrollBehavior;
+      else b.style.removeProperty("scroll-behavior");
+    });
+  }
+
   function releaseGlobalLock() {
     const b = body();
     const r = root();
@@ -135,6 +164,9 @@
     r.classList.remove("stat-global-scroll-locked");
     b.classList.remove("stat-global-scroll-locked");
 
+    /* Remove fixed positioning and restore the saved coordinates in the SAME
+       frame. Never defer the actual position restore to rAF: doing that lets
+       one frame of scrollY=0 become visible after the overlay disappears. */
     b.style.position = "";
     b.style.top = "";
     b.style.left = "";
@@ -144,10 +176,8 @@
     if (r.style.overflow === "hidden") r.style.overflow = "";
     if (r.style.overscrollBehavior === "none") r.style.overscrollBehavior = "";
 
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: restoreY, left: restoreX, behavior: "auto" });
-      delete window.__statArchivePreviewReturnPosition;
-    });
+    restoreScrollInstantly(restoreX, restoreY);
+    delete window.__statArchivePreviewReturnPosition;
   }
 
   function syncGlobalLock() {
@@ -265,6 +295,7 @@
     window.statArchiveNormalizeScrollLocks = scheduleNormalize;
     window.statArchiveOfflineBackToMenu = goBackOneLevelFromOffline;
     window.statArchiveSyncGlobalScrollLock = syncGlobalLock;
+    window.statArchiveRestoreScrollInstantly = restoreScrollInstantly;
 
     scheduleNormalize();
   }
