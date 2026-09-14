@@ -1,4 +1,4 @@
-name: Unify menu card hover feedback
+name: Fix Android hover color in light mode
 on:
   push:
     branches: [main]
@@ -10,20 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply consistent menu hover styles
+      - name: Fix light theme Android hover
         shell: python
         run: |
           from pathlib import Path
-          p = Path('assets/styles.css')
+
+          p = Path('assets/js/phone-landscape-hero.js')
           s = p.read_text(encoding='utf-8')
-          css = '''\n\n/* Consistent menu card hover feedback: match the Android installer card. */\n@media (hover:hover) and (pointer:fine){\n  html body #mainSideMenu .main-menu-action:hover,\n  html body #mainSideMenu .main-menu-theme-btn:hover,\n  html body #mainSideMenu .mobile-menu-level-btn:hover,\n  html body #mainSideMenu #menuOfflineLibraryBtn:hover,\n  html body #mainSideMenu #menuManualsBtn:hover,\n  html body #mainSideMenu #menuAboutBtn:hover,\n  html body #mainSideMenu #menuLocalFeedbackBtn:hover,\n  html body #mainSideMenu #menuAndroidAppBtn:hover{\n    background:rgba(94,231,247,.045)!important;\n    border-color:rgba(94,231,247,.24)!important;\n    transform:none!important;\n    box-shadow:none!important;\n  }\n\n  html body[data-theme=\"light\"] #mainSideMenu .main-menu-action:hover,\n  html body[data-theme=\"light\"] #mainSideMenu .main-menu-theme-btn:hover,\n  html body[data-theme=\"light\"] #mainSideMenu .mobile-menu-level-btn:hover,\n  html body[data-theme=\"light\"] #mainSideMenu #menuOfflineLibraryBtn:hover,\n  html body[data-theme=\"light\"] #mainSideMenu #menuManualsBtn:hover,\n  html body[data-theme=\"light\"] #mainSideMenu #menuAboutBtn:hover,\n  html body[data-theme=\"light\"] #mainSideMenu #menuLocalFeedbackBtn:hover,\n  html body[data-theme=\"light\"] #mainSideMenu #menuAndroidAppBtn:hover{\n    background:rgba(75,54,95,.055)!important;\n    border-color:rgba(75,54,95,.20)!important;\n    transform:none!important;\n    box-shadow:none!important;\n  }\n}\n'''
-          marker = 'Consistent menu card hover feedback: match the Android installer card.'
-          if marker not in s:
-              p.write_text(s + css, encoding='utf-8')
+
+          dark_rule = 'html body #mainSideMenu #menuAndroidAppBtn.stat-android-card:hover{background:rgba(94,231,247,.045)!important;border-color:rgba(94,231,247,.24)!important;}'
+          light_rule = 'body[data-theme=\'light\'] #mainSideMenu #menuAndroidAppBtn.stat-android-card:hover{background:rgba(75,54,95,.055)!important;border-color:rgba(75,54,95,.20)!important;}'
+
+          if light_rule not in s:
+              if dark_rule not in s:
+                  raise SystemExit('Android hover rule not found')
+              s = s.replace(dark_rule, dark_rule + '\n' + light_rule, 1)
+              p.write_text(s, encoding='utf-8')
+
       - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add assets/styles.css
-          git diff --cached --quiet || git commit -m "Unify menu card hover feedback"
+          git add assets/js/phone-landscape-hero.js
+          git diff --cached --quiet || git commit -m "Fix Android hover color in light mode"
           git push origin HEAD:main
