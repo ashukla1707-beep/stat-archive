@@ -1,126 +1,126 @@
-/* Stat Archive — download/offline reliability layer. */
+/* Stat Archive — web Download progress UI aligned with Offline save progress. */
 (() => {
   "use strict";
-  if (window.__statArchiveDownloadOfflineRepairV4) return;
-  window.__statArchiveDownloadOfflineRepairV4 = true;
+  if (window.__statArchiveDownloadOfflineRepairV5) return;
+  window.__statArchiveDownloadOfflineRepairV5 = true;
 
   const originalDownloadEntry = typeof window.downloadEntry === "function" ? window.downloadEntry : null;
-  const originalSaveEntryOffline = typeof window.saveEntryOffline === "function" ? window.saveEntryOffline : null;
-  const originalOpenOfflineFile = typeof window.openOfflineFile === "function" ? window.openOfflineFile : null;
-  const originalShareOfflineFile = typeof window.shareOfflineFile === "function" ? window.shareOfflineFile : null;
-
   const isAndroid = () => !!(window.AndroidBridge && typeof window.AndroidBridge === "object");
-  const hasStreamBridge = () => !!(window.AndroidStreamBridge && typeof window.AndroidStreamBridge === "object");
   function nativeFetch(){ if(window.fetch?.__native) return window.fetch.__native; return window.fetch.bind(window); }
   function cleanName(value){ return String(value||"Stat Archive file").replace(/[\\/:*?"<>|\r\n]+/g,"_").replace(/\.+$/g,"").trim()||"Stat Archive file"; }
-  function hasUsefulExtension(name){ return /\.[A-Za-z0-9]{1,8}$/.test(String(name||"")); }
 
-  async function looksLikePdf(blob,record){
-    const hinted=[record?.mime,blob?.type,record?.filename,record?.title].filter(Boolean).join(" ").toLowerCase();
-    if(hinted.includes("application/pdf")||/\.pdf(?:\s|$)/i.test(hinted)) return true;
-    try{ const b=new Uint8Array(await blob.slice(0,5).arrayBuffer()); return b.length>=5&&b[0]===0x25&&b[1]===0x50&&b[2]===0x44&&b[3]===0x46&&b[4]===0x2d; }catch(_){ return false; }
+  function ensureDownloadProgressPanel(){
+    let panel=document.getElementById("statDownloadProgressPanel");
+    if(panel) return panel;
+    const style=document.createElement("style");
+    style.id="statDownloadProgressPanelStyle";
+    style.textContent=`
+#statDownloadProgressPanel{position:fixed;z-index:12050;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,18px);width:min(770px,calc(100vw - 30px));padding:17px 24px 20px;border:1px solid rgba(120,105,145,.20);border-radius:27px;background:rgba(255,255,255,.96);box-shadow:0 14px 38px rgba(45,34,55,.18);color:#29252d;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;font-family:Inter,sans-serif;box-sizing:border-box}
+#statDownloadProgressPanel.show{opacity:1;transform:translate(-50%,0)}
+#statDownloadProgressPanel .sa-dp-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:14px}
+#statDownloadProgressPanel .sa-dp-ring{width:38px;height:38px;border-radius:50%;box-sizing:border-box;border:4px solid #ded5e9;border-top-color:#75509a;animation:saDpSpin .8s linear infinite}
+#statDownloadProgressPanel .sa-dp-label{min-width:0;font-size:18px;font-weight:750;line-height:1.35;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#statDownloadProgressPanel .sa-dp-pct{font:800 19px/1 'JetBrains Mono',monospace;color:#70428e}
+#statDownloadProgressPanel .sa-dp-track{height:9px;margin-top:15px;border-radius:999px;background:#eee8f1;overflow:hidden}
+#statDownloadProgressPanel .sa-dp-fill{height:100%;width:0;border-radius:inherit;background:#75509a;transition:width .1s linear}
+body:not([data-theme="light"]) #statDownloadProgressPanel{background:rgba(16,23,33,.97);border-color:rgba(148,163,184,.20);color:#f1f4f8;box-shadow:0 14px 38px rgba(0,0,0,.32)}
+body:not([data-theme="light"]) #statDownloadProgressPanel .sa-dp-ring{border-color:#283646;border-top-color:#63efff}
+body:not([data-theme="light"]) #statDownloadProgressPanel .sa-dp-pct{color:#63efff}
+body:not([data-theme="light"]) #statDownloadProgressPanel .sa-dp-track{background:#202c39}
+body:not([data-theme="light"]) #statDownloadProgressPanel .sa-dp-fill{background:#63efff}
+@keyframes saDpSpin{to{transform:rotate(360deg)}}
+@media(max-width:700px){#statDownloadProgressPanel{bottom:calc(14px + env(safe-area-inset-bottom,0px));width:calc(100vw - 28px);padding:16px 20px 18px;border-radius:25px}#statDownloadProgressPanel .sa-dp-row{grid-template-columns:42px minmax(0,1fr) auto;gap:11px}#statDownloadProgressPanel .sa-dp-ring{width:34px;height:34px}#statDownloadProgressPanel .sa-dp-label{font-size:16px}#statDownloadProgressPanel .sa-dp-pct{font-size:17px}}
+`;
+    document.head.appendChild(style);
+    panel=document.createElement("div");
+    panel.id="statDownloadProgressPanel";
+    panel.setAttribute("role","status");
+    panel.setAttribute("aria-live","polite");
+    panel.innerHTML='<div class="sa-dp-row"><span class="sa-dp-ring" aria-hidden="true"></span><div class="sa-dp-label"></div><div class="sa-dp-pct">0%</div></div><div class="sa-dp-track"><div class="sa-dp-fill"></div></div>';
+    document.body.appendChild(panel);
+    return panel;
   }
 
-  async function normalizeRecordBlob(record,sourceEntry=null){
-    if(!record?.blob) throw new Error("Offline file could not be found.");
-    const pdf=await looksLikePdf(record.blob,sourceEntry||record);
-    let mime=String(record.mime||record.blob.type||"").trim(); if(pdf) mime="application/pdf"; if(!mime) mime="application/octet-stream";
-    let filename="";
-    try{ if(sourceEntry&&typeof window.archiveDownloadName==="function") filename=window.archiveDownloadName(sourceEntry); }catch(_){}
-    if(!filename){ try{ if(typeof window.safeOfflineShareFilename==="function") filename=window.safeOfflineShareFilename(record); }catch(_){} }
-    if(!filename) filename=record.filename||record.title||"Stat Archive file"; filename=cleanName(filename);
-    if(pdf&&!/\.pdf$/i.test(filename)) filename=hasUsefulExtension(filename)?filename.replace(/\.[A-Za-z0-9]{1,8}$/,".pdf"):filename+".pdf";
-    const blob=record.blob.type===mime?record.blob:new Blob([record.blob],{type:mime}); return {blob,mime,filename,pdf};
+  let hideTimer=0;
+  function showDownloadProgress(entry,loaded,total){
+    const panel=ensureDownloadProgressPanel();
+    clearTimeout(hideTimer);
+    const title=String(entry?.title||entry?.filename||"File").trim();
+    const pct=total>0?Math.max(0,Math.min(100,Math.round(loaded/total*100))):0;
+    panel.querySelector(".sa-dp-label").textContent=`Downloading · ${title}`;
+    panel.querySelector(".sa-dp-pct").textContent=total>0?`${pct}%`:"…";
+    panel.querySelector(".sa-dp-fill").style.width=total>0?`${pct}%`:"12%";
+    panel.classList.add("show");
   }
-
-  async function persistNormalizedOfflineRecord(record,normalized,sourceEntry=null){
-    if(!record||typeof window.putOfflineFile!=="function") return;
-    const next={...record,filename:normalized.filename,mime:normalized.mime,blob:normalized.blob}; if(sourceEntry?.driveUrl) next.driveUrl=sourceEntry.driveUrl;
-    const changed=next.filename!==record.filename||next.mime!==record.mime||next.blob.type!==record.blob?.type||(!!sourceEntry?.driveUrl&&next.driveUrl!==record.driveUrl);
-    if(changed){ try{ await window.putOfflineFile(next); }catch(_){} }
+  function finishDownloadProgress(entry){
+    const panel=ensureDownloadProgressPanel();
+    const title=String(entry?.title||entry?.filename||"File").trim();
+    panel.querySelector(".sa-dp-label").textContent=`Downloaded · ${title}`;
+    panel.querySelector(".sa-dp-pct").textContent="100%";
+    panel.querySelector(".sa-dp-fill").style.width="100%";
+    hideTimer=setTimeout(()=>panel.classList.remove("show"),900);
   }
+  function failDownloadProgress(){ const panel=document.getElementById("statDownloadProgressPanel"); if(panel) panel.classList.remove("show"); }
 
-  function blobSliceToBase64(blob){ return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onerror=()=>reject(reader.error||new Error("Could not read file chunk.")); reader.onload=()=>{ const v=String(reader.result||""); const c=v.indexOf(","); resolve(c>=0?v.slice(c+1):v); }; reader.readAsDataURL(blob); }); }
-
-  async function transferBlobWithAndroid(blob,filename,mime,action){
-    const bridge=window.AndroidStreamBridge;
-    if(!hasStreamBridge()||typeof bridge.beginBlobTransfer!=="function"||typeof bridge.appendBlobChunk!=="function"||typeof bridge.finishBlobTransfer!=="function") return false;
-    if(!bridge.beginBlobTransfer(filename,mime,action)) throw new Error("Android file transfer could not be started.");
-    const CHUNK_BYTES=256*1024;
-    for(let offset=0;offset<blob.size;offset+=CHUNK_BYTES){ const chunk=blob.slice(offset,Math.min(offset+CHUNK_BYTES,blob.size)); const base64=await blobSliceToBase64(chunk); if(!bridge.appendBlobChunk(base64)) throw new Error("Android file transfer was interrupted."); }
-    if(!bridge.finishBlobTransfer()) throw new Error("Android file transfer could not be completed."); return true;
-  }
-
-  async function saveBlobWithAndroid(blob,filename,mime){
-    if(!isAndroid()) throw new Error("Android file saving is unavailable.");
-    if(await transferBlobWithAndroid(blob,filename,mime,"save")) return;
-    if(typeof window.AndroidBridge.saveFile!=="function") throw new Error("Android file saving is unavailable.");
-    if(typeof window.blobToBase64!=="function") throw new Error("Could not prepare that file for Android.");
-    const base64=await window.blobToBase64(blob); window.AndroidBridge.saveFile(base64,filename,mime);
-  }
-
-  async function browserDownloadBlob(blob,filename){ const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.style.display="none"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
-
-  /* Web Download changes only its label/state. Its visual shell stays owned by the common card-action CSS, just like Offline. */
-  function formatProgressBytes(bytes){ const n=Number(bytes)||0; if(n<1024) return `${n} B`; if(n<1048576) return `${(n/1024).toFixed(1)} KB`; return `${(n/1048576).toFixed(1)} MB`; }
-  function paintWebProgress(btn,loaded,total){
-    if(!btn||isAndroid()) return;
-    btn.disabled=true;
-    if(total>0){ const pct=Math.max(0,Math.min(100,Math.round(loaded/total*100))); btn.textContent=`Downloading… ${pct}%`; btn.setAttribute("aria-label",`Downloading ${pct}%`); }
-    else { const amount=formatProgressBytes(loaded); btn.textContent=`Downloading… ${amount}`; btn.setAttribute("aria-label",`Downloading ${amount}`); }
-  }
-  async function responseBlobWithWebProgress(response,btn){
-    if(isAndroid()||!response.body||typeof response.body.getReader!=="function") return response.blob();
-    const total=Number(response.headers.get("content-length"))||0; const reader=response.body.getReader(); const chunks=[]; let loaded=0; paintWebProgress(btn,0,total);
-    while(true){ const {done,value}=await reader.read(); if(done) break; if(value){ chunks.push(value); loaded+=value.byteLength; paintWebProgress(btn,loaded,total); } }
-    if(total>0) paintWebProgress(btn,total,total);
+  async function responseBlobWithProgress(response,entry,btn){
+    if(!response.body||typeof response.body.getReader!=="function") return response.blob();
+    const total=Number(response.headers.get("content-length"))||0;
+    const reader=response.body.getReader(),chunks=[]; let loaded=0;
+    showDownloadProgress(entry,0,total);
+    while(true){
+      const {done,value}=await reader.read(); if(done) break;
+      if(value){chunks.push(value);loaded+=value.byteLength;showDownloadProgress(entry,loaded,total);if(btn&&total>0)btn.textContent=`Downloading… ${Math.max(0,Math.min(100,Math.round(loaded/total*100)))}%`;}
+    }
+    if(total>0) showDownloadProgress(entry,total,total);
     return new Blob(chunks,{type:response.headers.get("content-type")||"application/octet-stream"});
   }
 
-  function markDownloadComplete(entry,btn){
-    try{ if(btn){ btn.classList.remove("is-downloading","sa-offline-style"); btn.classList.add("is-downloaded"); btn.disabled=false; btn.textContent="✓ Downloaded"; btn.setAttribute("title","Already downloaded on this device"); btn.removeAttribute("aria-label"); }
-      if(typeof downloadedEntryIds!=="undefined"){ downloadedEntryIds.add(String(entry.id)); if(typeof saveEntryActionHistory==="function") saveEntryActionHistory("statArchiveDownloadedEntries",downloadedEntryIds); }
-    }catch(_){}
+  async function browserDownloadBlob(blob,filename){
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=filename;a.style.display="none";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
   }
-
-  async function downloadDriveEntry(entry,btn){
-    const originalHtml=btn?btn.innerHTML:"", originalText=btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Downloading…"; }
+  function markComplete(entry,btn){
+    if(btn){btn.disabled=false;btn.classList.add("is-downloaded");btn.textContent="✓ Downloaded";btn.title="Already downloaded on this device";}
+    try{if(typeof downloadedEntryIds!=="undefined"){downloadedEntryIds.add(String(entry.id));if(typeof saveEntryActionHistory==="function")saveEntryActionHistory("statArchiveDownloadedEntries",downloadedEntryIds);}}catch(_){}
+  }
+  async function webDownload(entry,btn){
+    const old=btn?.innerHTML||"⬇ Download";
+    if(btn){btn.disabled=true;btn.textContent="Downloading… 0%";}
+    showDownloadProgress(entry,0,0);
     try{
-      const inlineUrl=typeof window.statArchiveDriveStreamUrl==="function"?window.statArchiveDriveStreamUrl(entry,"inline"):entry.driveUrl;
-      let nativeName=""; try{ if(typeof window.archiveDownloadName==="function") nativeName=window.archiveDownloadName(entry); }catch(_){}
-      if(!nativeName) nativeName=entry.title||entry.filename||"Stat Archive file.pdf"; nativeName=cleanName(nativeName); if(!/\.pdf$/i.test(nativeName)) nativeName+=".pdf";
-      if(isAndroid()&&hasStreamBridge()&&typeof window.AndroidStreamBridge.saveUrl==="function"&&window.AndroidStreamBridge.saveUrl(inlineUrl,nativeName,"application/pdf")){ try{window.incrementActivity?.("download");}catch(_){} markDownloadComplete(entry,btn); return; }
-      if(isAndroid()&&typeof window.AndroidBridge.downloadUrl==="function"){ window.AndroidBridge.downloadUrl(inlineUrl,nativeName,"application/pdf"); try{window.incrementActivity?.("download");}catch(_){} markDownloadComplete(entry,btn); return; }
-      const response=await nativeFetch()(inlineUrl,{method:"GET",cache:"no-store",credentials:"omit"}); if(!response.ok) throw new Error(`Download failed (${response.status})`);
-      const raw=await responseBlobWithWebProgress(response,btn); const pdf=await looksLikePdf(raw,entry); const mime=pdf?"application/pdf":(raw.type||response.headers.get("content-type")||"application/octet-stream"); const blob=raw.type===mime?raw:new Blob([raw],{type:mime});
-      let filename=""; try{ if(typeof window.archiveDownloadName==="function") filename=window.archiveDownloadName(entry); }catch(_){} if(!filename) filename=entry.title||entry.filename||"Stat Archive file"; filename=cleanName(filename); if(pdf&&!/\.pdf$/i.test(filename)) filename+=".pdf";
-      if(isAndroid()) await saveBlobWithAndroid(blob,filename,mime); else await browserDownloadBlob(blob,filename);
-      try{window.incrementActivity?.("download");}catch(_){} markDownloadComplete(entry,btn);
-    }catch(err){ console.error("Drive download failed:",err); try{window.showError?.(err?.message||"Couldn't download that file.");}catch(_){alert("Couldn't download that file.");} }
-    finally{ if(btn&&!btn.classList.contains("is-downloaded")){ btn.classList.remove("is-downloading"); btn.disabled=false; btn.removeAttribute("aria-label"); if(originalHtml) btn.innerHTML=originalHtml; else btn.textContent=originalText||"⬇ Download"; } }
+      let url="";
+      if(entry?.driveUrl) url=typeof window.statArchiveDriveStreamUrl==="function"?window.statArchiveDriveStreamUrl(entry,"inline"):entry.driveUrl;
+      else {const worker=typeof WORKER_URL==="string"?WORKER_URL:"https://stat-archive-api.lustats.workers.dev";url=`${worker}/file?id=${encodeURIComponent(entry.id)}`;}
+      const response=await nativeFetch()(url,{method:"GET",cache:"no-store",credentials:"omit"});
+      if(!response.ok) throw new Error(`Download failed (${response.status})`);
+      const blob=await responseBlobWithProgress(response,entry,btn);
+      let filename="";try{if(typeof window.archiveDownloadName==="function")filename=window.archiveDownloadName(entry);}catch(_){}
+      if(!filename)filename=entry.filename||entry.title||"Stat Archive file";filename=cleanName(filename);
+      const hinted=String(blob.type||entry.mime||"").toLowerCase();if((hinted.includes("pdf")||entry.driveUrl)&&!/\.pdf$/i.test(filename))filename+=".pdf";
+      finishDownloadProgress(entry);
+      await browserDownloadBlob(blob,filename);
+      try{window.incrementActivity?.("download");}catch(_){}
+      markComplete(entry,btn);
+    }catch(err){
+      console.error("Download failed:",err);failDownloadProgress();if(btn){btn.disabled=false;btn.innerHTML=old;}try{window.showError?.(err?.message||"Couldn't download that file.");}catch(_){}
+    }
   }
 
-  async function downloadOfflinePreviewBlob(entry,btn){ const blob=entry?._offlineBlob; if(!blob) return false; const filename=entry?._offlineFilename||entry?.filename||"Stat Archive file.pdf"; const mime=entry?._offlineMime||blob.type||"application/pdf"; if(isAndroid()) await saveBlobWithAndroid(blob,filename,mime); else await browserDownloadBlob(blob,filename); return true; }
+  window.downloadEntry=function(entry,btn){
+    if(isAndroid()&&originalDownloadEntry) return originalDownloadEntry(entry,btn);
+    if(entry?._offlineBlob){
+      const name=cleanName(entry._offlineFilename||entry.filename||entry.title||"Stat Archive file.pdf");
+      showDownloadProgress(entry,0,entry._offlineBlob.size||1);showDownloadProgress(entry,entry._offlineBlob.size||1,entry._offlineBlob.size||1);finishDownloadProgress(entry);browserDownloadBlob(entry._offlineBlob,name).then(()=>markComplete(entry,btn));return;
+    }
+    return webDownload(entry,btn);
+  };
 
-  async function reliableDownloadEntry(entry,btn){
-    if(entry?._offlineBlob){ try{ await downloadOfflinePreviewBlob(entry,btn); markDownloadComplete(entry,btn); }catch(err){window.showError?.(err?.message||"Couldn't download that file.");} return; }
-    if(entry?.driveUrl) return downloadDriveEntry(entry,btn);
-    const originalHtml=btn?btn.innerHTML:"", originalText=btn?btn.textContent:""; if(btn){btn.disabled=true;btn.textContent="Downloading…";}
-    try{
-      const workerUrl=typeof WORKER_URL==="string"?WORKER_URL:"https://stat-archive-api.lustats.workers.dev"; const fileUrl=`${workerUrl}/file?id=${encodeURIComponent(entry.id)}`;
-      const response=await nativeFetch()(fileUrl,{method:"GET",credentials:"omit",cache:"no-store"}); if(!response.ok) throw new Error(`Download failed (${response.status})`);
-      const blob=await responseBlobWithWebProgress(response,btn); const filename=cleanName(entry.filename||entry.title||"stat-archive-file.pdf"); const mime=blob.type||"application/octet-stream";
-      if(isAndroid()) await saveBlobWithAndroid(blob,filename,mime); else await browserDownloadBlob(blob,filename);
-      try{window.incrementActivity?.("download");}catch(_){} markDownloadComplete(entry,btn);
-    }catch(err){ console.error("Download failed:",err); if(isAndroid()&&originalDownloadEntry&&!hasStreamBridge()){try{return originalDownloadEntry(entry,btn);}catch(_){}} try{window.showError?.(err?.message||"Couldn't download that file.");}catch(_){alert("Couldn't download that file.");} }
-    finally{ if(btn&&!btn.classList.contains("is-downloaded")){btn.classList.remove("is-downloading");btn.disabled=false;btn.removeAttribute("aria-label");if(originalHtml)btn.innerHTML=originalHtml;else btn.textContent=originalText||"⬇ Download";} }
-  }
-
-  window.downloadEntry=reliableDownloadEntry;
-
-  if(originalSaveEntryOffline){ window.saveEntryOffline=async function repairedSaveEntryOffline(entry,btn){ await originalSaveEntryOffline(entry,btn); if(!entry?.driveUrl||typeof window.getOfflineFile!=="function") return; try{const record=await window.getOfflineFile(String(entry.id));if(!record?.blob)return;const normalized=await normalizeRecordBlob(record,entry);await persistNormalizedOfflineRecord(record,normalized,entry);}catch(err){console.warn("Offline metadata repair failed:",err);} }; }
-  if(originalOpenOfflineFile){ window.openOfflineFile=async function repairedOpenOfflineFile(id){ if(typeof window.getOfflineFile!=="function") return originalOpenOfflineFile(id); const record=await window.getOfflineFile(String(id));if(!record?.blob)throw new Error("Offline file could not be found.");const normalized=await normalizeRecordBlob(record);await persistNormalizedOfflineRecord(record,normalized);if(isAndroid()&&hasStreamBridge()){await transferBlobWithAndroid(normalized.blob,normalized.filename,normalized.mime,"open");return;}return originalOpenOfflineFile(id); }; }
-  if(originalShareOfflineFile){ window.shareOfflineFile=async function repairedShareOfflineFile(id){ if(typeof window.getOfflineFile!=="function")return originalShareOfflineFile(id);const record=await window.getOfflineFile(String(id));if(!record?.blob)throw new Error("Offline file could not be found.");const normalized=await normalizeRecordBlob(record);await persistNormalizedOfflineRecord(record,normalized);if(isAndroid()&&hasStreamBridge()){await transferBlobWithAndroid(normalized.blob,normalized.filename,normalized.mime,"share");return;}return originalShareOfflineFile(id); }; }
-
-  document.addEventListener("click",event=>{ if(isAndroid())return; const btn=event.target instanceof Element?event.target.closest(".dl-btn"):null;if(!btn)return;const card=btn.closest(".card");if(!card)return;const source=Array.isArray(window.entries)?window.entries:(typeof entries!=="undefined"&&Array.isArray(entries)?entries:[]);const entry=source.find(item=>String(item.id)===String(card.dataset.id));if(!entry)return;event.preventDefault();event.stopImmediatePropagation();reliableDownloadEntry(entry,btn); },true);
+  document.addEventListener("click",event=>{
+    if(isAndroid())return;
+    const btn=event.target instanceof Element?event.target.closest(".dl-btn,.download-btn"):null;if(!btn)return;
+    const card=btn.closest(".card");if(!card)return;
+    const source=Array.isArray(window.entries)?window.entries:(typeof entries!=="undefined"&&Array.isArray(entries)?entries:[]);
+    const entry=source.find(item=>String(item.id)===String(card.dataset.id));if(!entry)return;
+    event.preventDefault();event.stopImmediatePropagation();window.downloadEntry(entry,btn);
+  },true);
 })();
