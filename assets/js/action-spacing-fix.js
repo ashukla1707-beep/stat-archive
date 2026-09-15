@@ -1,7 +1,7 @@
 (() => {
   if (document.getElementById('statArchiveActionSpacingFix')) return;
 
-  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915CanonicalOfflineV5';
+  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915CanonicalOfflineV6Perf';
   try {
     if (navigator.onLine && !localStorage.getItem(PURGE_KEY) && 'caches' in window) {
       caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('stat-archive-shell-')).map(key => caches.delete(key)))).then(() => localStorage.setItem(PURGE_KEY, '1')).catch(() => {});
@@ -61,18 +61,34 @@ html body .card .card-actions .dl-btn.sa-offline-style,html body .card .card-act
     root.querySelectorAll?.('.card').forEach(copyOfflineStyle);
     if(root.matches?.('.card')) copyOfflineStyle(root);
   }
-  function scheduleOfflineStyleSync(root=document){requestAnimationFrame(()=>syncOfflineStyles(root));}
+
+  let offlineSyncFrame=0;
+  function scheduleOfflineStyleSync(root=document){
+    if(offlineSyncFrame) return;
+    offlineSyncFrame=requestAnimationFrame(()=>{
+      offlineSyncFrame=0;
+      syncOfflineStyles(root);
+    });
+  }
   syncOfflineStyles();
+
+  /* Performance: never observe inline style mutations here. copyOfflineStyle()
+     writes CSS variables to Download, so observing style caused a feedback loop:
+     write -> mutation -> rAF -> write -> mutation. On entry sliders this could
+     keep the main thread busy continuously. Only structural/state changes need
+     a resync, and all of them are coalesced to one animation frame. */
   const styleObserver=new MutationObserver(mutations=>{
-    let full=false;
+    let needsSync=false;
     for(const mutation of mutations){
-      const el=mutation.target instanceof Element?mutation.target:mutation.target?.parentElement;
-      if(el?.closest?.('.card')) scheduleOfflineStyleSync(el.closest('.card'));
-      if(mutation.type==='childList'&&mutation.addedNodes.length) full=true;
+      if(mutation.type==='childList'&&mutation.addedNodes.length){needsSync=true;break;}
+      if(mutation.type==='attributes'){
+        const el=mutation.target instanceof Element?mutation.target:null;
+        if(el?.closest?.('.card')){needsSync=true;break;}
+      }
     }
-    if(full) scheduleOfflineStyleSync(document);
+    if(needsSync) scheduleOfflineStyleSync(document);
   });
-  styleObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled','style']});
+  styleObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
 
   const markThemeSettling=()=>{document.documentElement.classList.add('stat-theme-settling');requestAnimationFrame(()=>requestAnimationFrame(()=>{document.documentElement.classList.remove('stat-theme-settling');syncOfflineStyles()}))};
   ['themeDarkBtn','themeLightBtn','menuDarkBtn','menuLightBtn'].forEach(id=>document.getElementById(id)?.addEventListener('click',markThemeSettling,true));
