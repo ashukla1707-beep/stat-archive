@@ -25,8 +25,7 @@ html body .card-actions{display:flex!important;flex-wrap:nowrap!important;align-
 html body .card-actions>*{min-width:0!important;flex-shrink:1!important}
 html body .card-actions .action-btn{white-space:nowrap!important;flex:1 1 0!important;min-width:0!important;max-width:none!important;justify-content:center!important;overflow:hidden!important;text-overflow:clip!important}
 html body .card-actions .edit-btn,html body .card-actions .del-btn{flex:0 1 auto!important}
-html body .card-actions .dl-btn.is-downloaded{color:var(--green)!important}
-body[data-theme="light"] .card-actions .dl-btn.is-downloaded{color:#347d73!important}
+html body .card-actions .dl-btn.is-downloaded,html body .card-actions .offline-btn.is-saved{color:inherit!important}
 @media(max-width:700px){html body .card-actions{gap:4px!important}html body .card-actions .action-btn{padding-left:4px!important;padding-right:4px!important;font-size:clamp(9.5px,2.75vw,11.5px)!important;gap:3px!important}html body .card-actions .edit-btn{flex-basis:56px!important}html body .card-actions .del-btn{flex:0 1 42px!important}html body .archive-entries-divider{margin-top:0!important;padding-top:18px!important;margin-bottom:12px!important}}
 @media(max-width:390px){html body .card-actions{gap:3px!important}html body .card-actions .action-btn{padding-left:3px!important;padding-right:3px!important;font-size:9.5px!important;letter-spacing:-.01em!important}html body .card-actions .edit-btn{flex-basis:50px!important}html body .card-actions .del-btn{flex-basis:36px!important}}
 @media (hover:none),(pointer:coarse){html body #mainMenuBtn.main-menu-btn:hover,html body #mainMenuBtn.main-menu-btn:active,html body #mainMenuBtn.main-menu-btn:focus:not(:focus-visible){transform:none!important;filter:none!important;box-shadow:none!important;outline:none!important}}
