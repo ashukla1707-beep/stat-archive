@@ -1,4 +1,4 @@
-name: Fix APK regressions
+name: Restore download status
 on:
   push:
     branches: [main]
@@ -10,69 +10,57 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix three APK regressions
+      - name: Restore Download -> Downloading -> Downloaded state
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          # 1) Menu must be available before any network-only CDN dependency.
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          sup = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>'
-          pos = s.find(sup)
-          if pos < 0:
-              raise SystemExit('Supabase script anchor not found')
-          after = pos + len(sup)
-          tail = s[after:]
-          m = re.match(r'\s*(<script>\(function\(\)\{const menuBtn=.*?</script>)', tail, flags=re.S)
-          if m:
-              menu_boot = m.group(1)
-              block_end = after + m.end()
-              s = s[:pos] + menu_boot + '\n' + sup + s[block_end:]
-              p.write_text(s, encoding='utf-8')
+          # Card render: persisted downloads must look exactly like Offline's saved state.
+          p=Path('assets/js/archive-ui.js')
+          s=p.read_text(encoding='utf-8')
+          old='''  <button\n    class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"\n  >\n    ⬇ Download\n  </button>'''
+          new='''  <button\n    class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"\n    title="${downloadedEntryIds.has(String(entry.id)) ? "Already downloaded on this device" : "Download file"}"\n  >\n    ${downloadedEntryIds.has(String(entry.id)) ? "✓ Downloaded" : "⬇ Download"}\n  </button>'''
+          if old in s: s=s.replace(old,new,1)
+          elif new not in s: raise SystemExit('archive download button anchor not found')
+          p.write_text(s,encoding='utf-8')
 
-          # 2) Android must record/show the same Download status as web/PWA.
-          p = Path('assets/js/download-fix.js')
-          s = p.read_text(encoding='utf-8')
-          old = '  document.addEventListener("click", event => {\n    if (isAndroid()) return;\n\n    const btn = event.target instanceof Element ? event.target.closest(".dl-btn") : null;'
-          new = '  document.addEventListener("click", event => {\n    const btn = event.target instanceof Element ? event.target.closest(".dl-btn") : null;'
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif new not in s:
-              raise SystemExit('Android download-status anchor not found')
-          p.write_text(s, encoding='utf-8')
+          # Reliability layer: show Downloading while active and only persist Downloaded after success.
+          p=Path('assets/js/download-fix.js')
+          s=p.read_text(encoding='utf-8')
+          anchor='''  async function downloadDriveEntry(entry, btn) {'''
+          helper='''  function markDownloadComplete(entry, btn) {\n    try {\n      if (btn) {\n        btn.classList.add("is-downloaded");\n        btn.disabled = false;\n        btn.textContent = "✓ Downloaded";\n        btn.setAttribute("title", "Already downloaded on this device");\n      }\n      if (typeof downloadedEntryIds !== "undefined") {\n        downloadedEntryIds.add(String(entry.id));\n        if (typeof saveEntryActionHistory === "function") {\n          saveEntryActionHistory("statArchiveDownloadedEntries", downloadedEntryIds);\n        }\n      }\n    } catch (_) {}\n  }\n\n  async function downloadDriveEntry(entry, btn) {'''
+          if 'function markDownloadComplete(entry, btn)' not in s:
+              if anchor not in s: raise SystemExit('download helper anchor not found')
+              s=s.replace(anchor,helper,1)
 
-          # 3) Keep mu colour synchronized even when APK theme changes by DOM mutation.
-          p = Path('assets/js/hero-animation.js')
-          s = p.read_text(encoding='utf-8')
-          old = '  document.addEventListener("statarchive:theme-change", positionMeanSymbol);\n})();'
-          new = '''  document.addEventListener("statarchive:theme-change", positionMeanSymbol);
-  if (document.body) {
-    new MutationObserver(() => requestAnimationFrame(positionMeanSymbol))
-      .observe(document.body, { attributes:true, attributeFilter:["data-theme"] });
-  }
-  new MutationObserver(() => requestAnimationFrame(positionMeanSymbol))
-    .observe(document.documentElement, { attributes:true, attributeFilter:["data-theme"] });
-})();'''
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif new not in s:
-              raise SystemExit('mu theme-sync anchor not found')
-          p.write_text(s, encoding='utf-8')
+          # Mark successful paths. For Android picker/native download, success means handoff accepted.
+          s=s.replace('''        try { window.incrementActivity?.("download"); } catch (_) {}\n        return;''','''        try { window.incrementActivity?.("download"); } catch (_) {}\n        markDownloadComplete(entry, btn);\n        return;''')
+          s=s.replace('''      try { window.incrementActivity?.("download"); } catch (_) {}\n    } catch (err) {''','''      try { window.incrementActivity?.("download"); } catch (_) {}\n      markDownloadComplete(entry, btn);\n    } catch (err) {''')
 
-          # Force APK/PWA to replace stale cached shell/runtime after the repair.
-          p = Path('sw.js')
-          s = p.read_text(encoding='utf-8')
-          s = re.sub(r'const CACHE = "stat-archive-shell-[^"]+";', 'const CACHE = "stat-archive-shell-v20260915-apk-regression-v1";', s, count=1)
-          s = re.sub(r'const DOWNLOAD_FIX_TAG = .*?;', 'const DOWNLOAD_FIX_TAG = \'<script src="./assets/js/download-fix.js?v=20260915-apk-status-v1"></script>\';', s, count=1)
-          s = re.sub(r'const HERO_FIX_SCRIPT_TAG = .*?;', 'const HERO_FIX_SCRIPT_TAG = \'<script src="./assets/js/hero-layout-fix.js?v=20260915-mu-sync-v1"></script>\';', s, count=1)
-          p.write_text(s, encoding='utf-8')
+          # Offline-preview download is also a successful download action.
+          s=s.replace('''      try { await downloadOfflinePreviewBlob(entry, btn); }\n      catch (err) { window.showError?.(err?.message || "Couldn't download that file."); }\n      return;''','''      try {\n        await downloadOfflinePreviewBlob(entry, btn);\n        markDownloadComplete(entry, btn);\n      } catch (err) {\n        window.showError?.(err?.message || "Couldn't download that file.");\n      }\n      return;''')
 
-      - name: Commit fixes
+          # Do not mark a click as downloaded before the transfer succeeds.
+          old_block='''    try {\n      btn.classList.add("is-downloaded");\n      if (typeof downloadedEntryIds !== "undefined") {\n        downloadedEntryIds.add(String(entry.id));\n        if (typeof saveEntryActionHistory === "function") {\n          saveEntryActionHistory("statArchiveDownloadedEntries", downloadedEntryIds);\n        }\n      }\n    } catch (_) {}\n\n    reliableDownloadEntry(entry, btn);'''
+          if old_block in s: s=s.replace(old_block,'    reliableDownloadEntry(entry, btn);',1)
+
+          # Finally blocks must not overwrite the completed state.
+          s=s.replace('''      if (btn) {\n        btn.disabled = false;\n        if (originalHtml) btn.innerHTML = originalHtml;\n        else btn.textContent = originalText || "⬇ Download";\n      }''','''      if (btn && !btn.classList.contains("is-downloaded")) {\n        btn.disabled = false;\n        if (originalHtml) btn.innerHTML = originalHtml;\n        else btn.textContent = originalText || "⬇ Download";\n      }''')
+          p.write_text(s,encoding='utf-8')
+
+          # Force the live web/PWA shell to pick up the state fix immediately.
+          p=Path('sw.js')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'const CACHE = "stat-archive-shell-[^"]+";', 'const CACHE = "stat-archive-shell-v20260915-download-status-v1";', s, count=1)
+          s=re.sub(r'const DOWNLOAD_FIX_TAG = .*?;', 'const DOWNLOAD_FIX_TAG = \'<script src="./assets/js/download-fix.js?v=20260915-download-status-v1"></script>\';', s, count=1)
+          s=re.sub(r'const ACTION_SPACING_FIX_TAG = .*?;', 'const ACTION_SPACING_FIX_TAG = \'<script src="./assets/js/action-spacing-fix.js?v=20260915-download-status-v1"></script>\';', s, count=1)
+          p.write_text(s,encoding='utf-8')
+
+      - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add index.html assets/js/download-fix.js assets/js/hero-animation.js sw.js
-          git diff --cached --quiet || git commit -m "Fix APK offline menu, status indicators and mu theme sync"
+          git add assets/js/archive-ui.js assets/js/download-fix.js sw.js
+          git diff --cached --quiet || git commit -m "Restore persistent download status like Offline"
           git push origin HEAD:main
