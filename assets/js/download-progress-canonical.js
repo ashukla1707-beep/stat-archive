@@ -1,9 +1,9 @@
 /* Stat Archive — canonical Download transfer/progress runtime.
-   Owns Download clicks before legacy handlers, on web/PWA and Android WebView. */
+   Download uses the same progress-card visual language as Offline. */
 (() => {
   "use strict";
-  if (window.__STAT_ARCHIVE_CANONICAL_DOWNLOAD_PROGRESS_V1__) return;
-  window.__STAT_ARCHIVE_CANONICAL_DOWNLOAD_PROGRESS_V1__ = true;
+  if (window.__STAT_ARCHIVE_CANONICAL_DOWNLOAD_PROGRESS_V2__) return;
+  window.__STAT_ARCHIVE_CANONICAL_DOWNLOAD_PROGRESS_V2__ = true;
 
   const isAndroid = () => !!(window.AndroidBridge && typeof window.AndroidBridge === "object");
   const hasStreamBridge = () => !!(window.AndroidStreamBridge && typeof window.AndroidStreamBridge === "object");
@@ -23,28 +23,27 @@
   function ensurePanel(){
     let panel=document.getElementById("statCanonicalTransferProgress");
     if(panel) return panel;
-    if(!document.getElementById("statCanonicalTransferProgressStyle")){
-      const style=document.createElement("style");
-      style.id="statCanonicalTransferProgressStyle";
-      style.textContent=`
-#statCanonicalTransferProgress{position:fixed!important;z-index:2147483000!important;left:50%!important;bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;transform:translate(-50%,18px)!important;width:min(760px,calc(100vw - 28px))!important;padding:16px 20px 18px!important;box-sizing:border-box!important;border:1px solid rgba(148,163,184,.22)!important;border-radius:24px!important;background:rgba(14,21,31,.97)!important;color:#f3f6fa!important;box-shadow:0 16px 42px rgba(0,0,0,.34)!important;font-family:Inter,sans-serif!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;transition:opacity .15s ease,transform .15s ease,visibility .15s!important}
+    document.getElementById("statCanonicalTransferProgressStyle")?.remove();
+    const style=document.createElement("style");
+    style.id="statCanonicalTransferProgressStyle";
+    style.textContent=`
+#statCanonicalTransferProgress{position:fixed!important;z-index:2147483000!important;left:50%!important;bottom:calc(14px + env(safe-area-inset-bottom,0px))!important;transform:translate(-50%,16px)!important;width:min(770px,calc(100vw - 28px))!important;padding:17px 24px 20px!important;box-sizing:border-box!important;border:1px solid rgba(120,105,145,.18)!important;border-radius:25px!important;background:rgba(255,255,255,.97)!important;color:#29252d!important;box-shadow:0 14px 38px rgba(45,34,55,.16)!important;font-family:Inter,sans-serif!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;transition:opacity .16s ease,transform .16s ease,visibility .16s!important}
 #statCanonicalTransferProgress.is-visible{opacity:1!important;visibility:visible!important;transform:translate(-50%,0)!important}
-#statCanonicalTransferProgress .sa-cp-row{display:grid!important;grid-template-columns:36px minmax(0,1fr) auto!important;align-items:center!important;gap:11px!important}
-#statCanonicalTransferProgress .sa-cp-spinner{width:30px!important;height:30px!important;border:3px solid #293746!important;border-top-color:#63efff!important;border-radius:50%!important;animation:saCanonicalSpin .8s linear infinite!important;box-sizing:border-box!important}
-#statCanonicalTransferProgress .sa-cp-label{min-width:0!important;font-size:15px!important;font-weight:700!important;line-height:1.3!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#statCanonicalTransferProgress .sa-cp-pct{font:800 16px/1 'JetBrains Mono',monospace!important;color:#63efff!important}
-#statCanonicalTransferProgress .sa-cp-track{height:7px!important;margin-top:12px!important;border-radius:999px!important;background:#202c39!important;overflow:hidden!important}
-#statCanonicalTransferProgress .sa-cp-fill{height:100%!important;width:0;border-radius:inherit!important;background:#63efff!important;transition:width .08s linear!important}
-body[data-theme='light'] #statCanonicalTransferProgress{background:rgba(255,255,255,.98)!important;color:#29252d!important;border-color:rgba(75,54,95,.18)!important;box-shadow:0 14px 36px rgba(60,45,70,.18)!important}
-body[data-theme='light'] #statCanonicalTransferProgress .sa-cp-spinner{border-color:#e5ddeb!important;border-top-color:#67457f!important}body[data-theme='light'] #statCanonicalTransferProgress .sa-cp-pct{color:#67457f!important}body[data-theme='light'] #statCanonicalTransferProgress .sa-cp-track{background:#eee8f1!important}body[data-theme='light'] #statCanonicalTransferProgress .sa-cp-fill{background:#67457f!important}
-@keyframes saCanonicalSpin{to{transform:rotate(360deg)}}
+#statCanonicalTransferProgress .sa-cp-row{display:grid!important;grid-template-columns:38px minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important}
+#statCanonicalTransferProgress .sa-cp-icon{width:31px!important;height:31px!important;display:grid!important;place-items:center!important;box-sizing:border-box!important;border:3px solid #b7d7cc!important;border-radius:50%!important;color:#4e9f7f!important;font:900 20px/1 Inter,sans-serif!important;background:#fff!important}
+#statCanonicalTransferProgress .sa-cp-label{min-width:0!important;font-size:17px!important;font-weight:750!important;line-height:1.3!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#statCanonicalTransferProgress .sa-cp-pct{font:800 18px/1 'JetBrains Mono',monospace!important;color:#70428e!important}
+#statCanonicalTransferProgress .sa-cp-track{height:8px!important;margin-top:14px!important;border-radius:999px!important;background:#eee8f1!important;overflow:hidden!important}
+#statCanonicalTransferProgress .sa-cp-fill{height:100%!important;width:0;border-radius:inherit!important;background:#75509a!important;transition:width .08s linear!important}
+body:not([data-theme='light']) #statCanonicalTransferProgress{background:rgba(16,23,33,.97)!important;color:#f1f4f8!important;border-color:rgba(148,163,184,.20)!important;box-shadow:0 14px 38px rgba(0,0,0,.32)!important}
+body:not([data-theme='light']) #statCanonicalTransferProgress .sa-cp-icon{background:#101721!important;border-color:rgba(99,239,255,.38)!important;color:#63efff!important}body:not([data-theme='light']) #statCanonicalTransferProgress .sa-cp-pct{color:#63efff!important}body:not([data-theme='light']) #statCanonicalTransferProgress .sa-cp-track{background:#202c39!important}body:not([data-theme='light']) #statCanonicalTransferProgress .sa-cp-fill{background:#63efff!important}
+@media(max-width:700px){#statCanonicalTransferProgress{width:calc(100vw - 28px)!important;padding:16px 20px 18px!important;border-radius:24px!important}#statCanonicalTransferProgress .sa-cp-row{grid-template-columns:36px minmax(0,1fr) auto!important;gap:10px!important}#statCanonicalTransferProgress .sa-cp-icon{width:29px!important;height:29px!important;font-size:18px!important}#statCanonicalTransferProgress .sa-cp-label{font-size:16px!important}#statCanonicalTransferProgress .sa-cp-pct{font-size:17px!important}}
 `;
-      document.head.appendChild(style);
-    }
+    document.head.appendChild(style);
     panel=document.createElement("div");
     panel.id="statCanonicalTransferProgress";
     panel.setAttribute("role","status"); panel.setAttribute("aria-live","polite");
-    panel.innerHTML='<div class="sa-cp-row"><span class="sa-cp-spinner"></span><div class="sa-cp-label"></div><div class="sa-cp-pct">0%</div></div><div class="sa-cp-track"><div class="sa-cp-fill"></div></div>';
+    panel.innerHTML='<div class="sa-cp-row"><span class="sa-cp-icon">↓</span><div class="sa-cp-label"></div><div class="sa-cp-pct">0%</div></div><div class="sa-cp-track"><div class="sa-cp-fill"></div></div>';
     document.body.appendChild(panel);
     return panel;
   }
@@ -53,7 +52,9 @@ body[data-theme='light'] #statCanonicalTransferProgress .sa-cp-spinner{border-co
   function paint(entry,loaded,total,done=false){
     const panel=ensurePanel(); clearTimeout(hideTimer);
     const pct=total>0 ? Math.max(0,Math.min(100,Math.round(loaded/total*100))) : null;
-    panel.querySelector(".sa-cp-label").textContent=`${done?"Downloaded":"Downloading"} · ${titleOf(entry)}`;
+    panel.querySelector(".sa-cp-icon").textContent=done?"✓":"↓";
+    panel.querySelector(".sa-cp-label").textContent=done?"Downloaded":"Downloading";
+    panel.querySelector(".sa-cp-label").title=titleOf(entry);
     panel.querySelector(".sa-cp-pct").textContent=done?"100%":(pct==null?"…":`${pct}%`);
     panel.querySelector(".sa-cp-fill").style.width=done?"100%":(pct==null?"10%":`${pct}%`);
     panel.classList.add("is-visible");
@@ -64,8 +65,7 @@ body[data-theme='light'] #statCanonicalTransferProgress .sa-cp-spinner{border-co
   async function readResponse(response,entry,btn){
     const total=Number(response.headers.get("content-length")) || Number(entry?.size) || 0;
     if(!response.body || typeof response.body.getReader !== "function"){
-      paint(entry,0,total);
-      const blob=await response.blob(); paint(entry,blob.size,total||blob.size); return blob;
+      paint(entry,0,total); const blob=await response.blob(); paint(entry,blob.size,total||blob.size); return blob;
     }
     const reader=response.body.getReader(),chunks=[]; let loaded=0; paint(entry,0,total);
     while(true){
