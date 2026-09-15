@@ -1,4 +1,4 @@
-name: Close Android install banner after tap
+name: Fix APK regressions
 on:
   push:
     branches: [main]
@@ -10,27 +10,69 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Close compact Android banner on Install
+      - name: Fix three APK regressions
         shell: python
         run: |
           from pathlib import Path
+          import re
 
-          p = Path('assets/js/phone-landscape-hero.js')
+          # 1) Menu must be available before any network-only CDN dependency.
+          p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-
-          old = 'banner.querySelector(".stat-android-auto-close")?.addEventListener("click",()=>banner.remove());\n  return banner;'
-          new = 'banner.querySelector(".stat-android-auto-close")?.addEventListener("click",()=>banner.remove());\n  banner.querySelector(".stat-android-auto-install")?.addEventListener("click",()=>{\n    banner.classList.remove("is-visible");\n    window.setTimeout(()=>banner.remove(),180);\n  });\n  return banner;'
-
-          if new not in s:
-              if old not in s:
-                  raise SystemExit('Android auto banner listener anchor not found')
-              s = s.replace(old, new, 1)
+          sup = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>'
+          pos = s.find(sup)
+          if pos < 0:
+              raise SystemExit('Supabase script anchor not found')
+          after = pos + len(sup)
+          tail = s[after:]
+          m = re.match(r'\s*(<script>\(function\(\)\{const menuBtn=.*?</script>)', tail, flags=re.S)
+          if m:
+              menu_boot = m.group(1)
+              block_end = after + m.end()
+              s = s[:pos] + menu_boot + '\n' + sup + s[block_end:]
               p.write_text(s, encoding='utf-8')
 
-      - name: Commit fix
+          # 2) Android must record/show the same Download status as web/PWA.
+          p = Path('assets/js/download-fix.js')
+          s = p.read_text(encoding='utf-8')
+          old = '  document.addEventListener("click", event => {\n    if (isAndroid()) return;\n\n    const btn = event.target instanceof Element ? event.target.closest(".dl-btn") : null;'
+          new = '  document.addEventListener("click", event => {\n    const btn = event.target instanceof Element ? event.target.closest(".dl-btn") : null;'
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif new not in s:
+              raise SystemExit('Android download-status anchor not found')
+          p.write_text(s, encoding='utf-8')
+
+          # 3) Keep mu colour synchronized even when APK theme changes by DOM mutation.
+          p = Path('assets/js/hero-animation.js')
+          s = p.read_text(encoding='utf-8')
+          old = '  document.addEventListener("statarchive:theme-change", positionMeanSymbol);\n})();'
+          new = '''  document.addEventListener("statarchive:theme-change", positionMeanSymbol);
+  if (document.body) {
+    new MutationObserver(() => requestAnimationFrame(positionMeanSymbol))
+      .observe(document.body, { attributes:true, attributeFilter:["data-theme"] });
+  }
+  new MutationObserver(() => requestAnimationFrame(positionMeanSymbol))
+    .observe(document.documentElement, { attributes:true, attributeFilter:["data-theme"] });
+})();'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif new not in s:
+              raise SystemExit('mu theme-sync anchor not found')
+          p.write_text(s, encoding='utf-8')
+
+          # Force APK/PWA to replace stale cached shell/runtime after the repair.
+          p = Path('sw.js')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r'const CACHE = "stat-archive-shell-[^"]+";', 'const CACHE = "stat-archive-shell-v20260915-apk-regression-v1";', s, count=1)
+          s = re.sub(r'const DOWNLOAD_FIX_TAG = .*?;', 'const DOWNLOAD_FIX_TAG = \'<script src="./assets/js/download-fix.js?v=20260915-apk-status-v1"></script>\';', s, count=1)
+          s = re.sub(r'const HERO_FIX_SCRIPT_TAG = .*?;', 'const HERO_FIX_SCRIPT_TAG = \'<script src="./assets/js/hero-layout-fix.js?v=20260915-mu-sync-v1"></script>\';', s, count=1)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit fixes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add assets/js/phone-landscape-hero.js
-          git diff --cached --quiet || git commit -m "Close Android install banner after tap"
+          git add index.html assets/js/download-fix.js assets/js/hero-animation.js sw.js
+          git diff --cached --quiet || git commit -m "Fix APK offline menu, status indicators and mu theme sync"
           git push origin HEAD:main
