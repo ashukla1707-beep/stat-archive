@@ -1,0 +1,183 @@
+name: Fix web download progress
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-web-download-progress.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add browser download progress controller
+        shell: bash
+        run: |
+          cat >> assets/js/phone-landscape-hero.js <<'EOF'
+
+/* Web-only real download progress. Loaded before download-fix.js so the
+   browser owns the transfer while the Android bridge remains untouched. */
+(() => {
+  "use strict";
+  if (window.__statArchiveWebDownloadProgressV2) return;
+  window.__statArchiveWebDownloadProgressV2 = true;
+  if (window.AndroidBridge && typeof window.AndroidBridge === "object") return;
+
+  const fmt = bytes => {
+    const n = Number(bytes) || 0;
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const setProgress = (btn, loaded, total) => {
+    if (!btn) return;
+    btn.disabled = true;
+    btn.classList.add("is-downloading");
+    btn.classList.remove("is-downloaded");
+    if (total > 0) {
+      const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
+      btn.textContent = `Downloading… ${pct}%`;
+      btn.setAttribute("aria-label", `Downloading ${pct}%`);
+    } else {
+      btn.textContent = `Downloading… ${fmt(loaded)}`;
+      btn.setAttribute("aria-label", `Downloading ${fmt(loaded)}`);
+    }
+  };
+
+  async function responseBlobWithProgress(response, btn) {
+    const total = Number(response.headers.get("content-length")) || 0;
+    if (!response.body || typeof response.body.getReader !== "function") {
+      setProgress(btn, 0, total);
+      return response.blob();
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    setProgress(btn, 0, total);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        loaded += value.byteLength;
+        setProgress(btn, loaded, total);
+      }
+    }
+    if (total > 0) setProgress(btn, total, total);
+    return new Blob(chunks, { type: response.headers.get("content-type") || "application/octet-stream" });
+  }
+
+  function cleanName(value) {
+    return String(value || "stat-archive-file.pdf")
+      .replace(/[\\/:*?"<>|\r\n]+/g, "_")
+      .replace(/\.+$/g, "")
+      .trim() || "stat-archive-file.pdf";
+  }
+
+  function saveBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  function complete(entry, btn) {
+    btn.classList.remove("is-downloading");
+    btn.classList.add("is-downloaded");
+    btn.disabled = false;
+    btn.textContent = "✓ Downloaded";
+    btn.setAttribute("title", "Already downloaded on this device");
+    btn.removeAttribute("aria-label");
+    try {
+      if (typeof downloadedEntryIds !== "undefined") {
+        downloadedEntryIds.add(String(entry.id));
+        if (typeof saveEntryActionHistory === "function") {
+          saveEntryActionHistory("statArchiveDownloadedEntries", downloadedEntryIds);
+        }
+      }
+      window.incrementActivity?.("download");
+    } catch (_) {}
+  }
+
+  function fail(btn, wasDownloaded, oldHtml) {
+    btn.classList.remove("is-downloading");
+    btn.disabled = false;
+    btn.removeAttribute("aria-label");
+    if (wasDownloaded) {
+      btn.classList.add("is-downloaded");
+      btn.textContent = "✓ Downloaded";
+    } else {
+      btn.classList.remove("is-downloaded");
+      if (oldHtml) btn.innerHTML = oldHtml;
+      else btn.textContent = "⬇ Download";
+    }
+  }
+
+  async function webDownload(entry, btn) {
+    const wasDownloaded = btn.classList.contains("is-downloaded");
+    const oldHtml = btn.innerHTML;
+    try {
+      let url;
+      if (entry.driveUrl) {
+        url = typeof window.statArchiveDriveStreamUrl === "function"
+          ? window.statArchiveDriveStreamUrl(entry, "inline")
+          : entry.driveUrl;
+      } else {
+        const workerUrl = typeof WORKER_URL === "string"
+          ? WORKER_URL
+          : "https://stat-archive-api.lustats.workers.dev";
+        url = `${workerUrl}/file?id=${encodeURIComponent(entry.id)}`;
+      }
+      const response = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+      if (!response.ok) throw new Error(`Download failed (${response.status})`);
+      const blob = await responseBlobWithProgress(response, btn);
+      let filename = "";
+      try { filename = window.archiveDownloadName?.(entry) || ""; } catch (_) {}
+      if (!filename) filename = entry.filename || entry.title || "stat-archive-file.pdf";
+      filename = cleanName(filename);
+      if (entry.driveUrl && !/\.pdf$/i.test(filename)) filename += ".pdf";
+      saveBlob(blob, filename);
+      complete(entry, btn);
+    } catch (err) {
+      console.error("Web download failed:", err);
+      fail(btn, wasDownloaded, oldHtml);
+      try { window.showError?.(err?.message || "Couldn't download that file."); } catch (_) {}
+    }
+  }
+
+  document.addEventListener("click", event => {
+    const btn = event.target instanceof Element ? event.target.closest(".dl-btn") : null;
+    if (!btn) return;
+    const card = btn.closest(".card");
+    if (!card) return;
+    const source = Array.isArray(window.entries)
+      ? window.entries
+      : (typeof entries !== "undefined" && Array.isArray(entries) ? entries : []);
+    const entry = source.find(item => String(item.id) === String(card.dataset.id));
+    if (!entry) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    webDownload(entry, btn);
+  }, true);
+})();
+EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('sw.js')
+          s=p.read_text()
+          s=s.replace('stat-archive-shell-v20260915-download-status-v1','stat-archive-shell-v20260915-web-progress-v2')
+          s=s.replace('phone-landscape-hero.js?v=20260915-menu-v6','phone-landscape-hero.js?v=20260915-web-progress-v2')
+          p.write_text(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/phone-landscape-hero.js sw.js
+          git commit -m "Show real download progress on web"
+          git push
