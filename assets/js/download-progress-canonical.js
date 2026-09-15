@@ -9,4 +9,43 @@ async function readResponse(r,e,btn){const total=Number(r.headers.get("content-l
 function blobToBase64(b){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=()=>rej(r.error||new Error("Could not read file"));r.onload=()=>{const s=String(r.result||"");res(s.slice(s.indexOf(",")+1))};r.readAsDataURL(b)})}async function saveAndroid(b,n,m){if(hasStreamBridge()){const x=window.AndroidStreamBridge;if(typeof x.beginBlobTransfer==="function"&&typeof x.appendBlobChunk==="function"&&typeof x.finishBlobTransfer==="function"&&x.beginBlobTransfer(n,m,"save")){const step=256*1024;for(let i=0;i<b.size;i+=step)if(!x.appendBlobChunk(await blobToBase64(b.slice(i,Math.min(i+step,b.size)))))throw new Error("Android transfer interrupted");if(!x.finishBlobTransfer())throw new Error("Android transfer could not finish");return}}if(typeof window.AndroidBridge?.saveFile==="function"){window.AndroidBridge.saveFile(await blobToBase64(b),n,m);return}throw new Error("Android file saving is unavailable")}
 function saveBrowser(b,n){const u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=n;a.style.display="none";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}function markComplete(e,btn){if(btn){btn.disabled=false;btn.classList.add("is-downloaded");btn.textContent="✓ Downloaded";btn.title="Already downloaded on this device"}try{downloadedEntryIds.add(String(e.id));saveEntryActionHistory("statArchiveDownloadedEntries",downloadedEntryIds)}catch(_){}}
 async function transfer(e,btn){if(!e)return;const original=btn?.innerHTML||"⬇ Download";if(btn){btn.disabled=true;btn.textContent="Downloading… 0%"}try{let b,m;if(e._offlineBlob){b=e._offlineBlob;m=e._offlineMime||b.type||"application/octet-stream";paint(btn,0,b.size);paint(btn,b.size,b.size)}else{const u=e.driveUrl?(typeof window.statArchiveDriveStreamUrl==="function"?window.statArchiveDriveStreamUrl(e,"inline"):e.driveUrl):`${typeof WORKER_URL==="string"?WORKER_URL:"https://stat-archive-api.lustats.workers.dev"}/file?id=${encodeURIComponent(e.id)}`;const r=await fetchNative(u,{method:"GET",cache:"no-store",credentials:"omit"});if(!r.ok)throw new Error(`Download failed (${r.status})`);b=await readResponse(r,e,btn);m=b.type||r.headers.get("content-type")||"application/octet-stream"}const n=filenameOf(e,m);isAndroid()?await saveAndroid(b,n,m):saveBrowser(b,n);paint(btn,b.size,b.size,true);markComplete(e,btn);try{window.incrementActivity?.("download")}catch(_){}}catch(err){console.error("Canonical Download failed:",err);hideInline(btn);if(btn){btn.disabled=false;btn.innerHTML=original}try{window.showError?.(err?.message||"Couldn't download that file.")}catch(_){}}}
+window.statArchiveTransferProgress={
+  show(btn,loaded=0,total=0){paint(btn,loaded,total)},
+  update(btn,loaded,total){paint(btn,loaded,total)},
+  finish(btn,total=1){paint(btn,total,total,true)},
+  hide(btn){hideInline(btn)}
+};
+function installOfflineProgress(){
+  if(window.__STAT_ARCHIVE_OFFLINE_PROGRESS_SHARED_V1__)return;
+  const original=window.saveEntryOffline;
+  if(typeof original!=="function")return;
+  window.__STAT_ARCHIVE_OFFLINE_PROGRESS_SHARED_V1__=true;
+  window.saveEntryOffline=async function(entry,btn){
+    if(!entry)return original.apply(this,arguments);
+    const already=(()=>{try{return offlineEntryIds.has(String(entry.id))}catch(_){return false}})();
+    if(already)return original.apply(this,arguments);
+    let stopped=false,timer=null,pct=0;
+    const total=100;
+    try{
+      paint(btn,0,total);
+      if(btn)btn.textContent="Saving… 0%";
+      timer=setInterval(()=>{
+        if(stopped)return;
+        pct=Math.min(92,pct+(pct<45?7:pct<75?4:2));
+        paint(btn,pct,total);
+        if(btn)btn.textContent=`Saving… ${pct}%`;
+      },90);
+      const result=await original.apply(this,arguments);
+      stopped=true;clearInterval(timer);
+      paint(btn,total,total,true);
+      if(btn){btn.disabled=false;btn.textContent="✓ Offline";btn.classList.add("is-saved")}
+      return result;
+    }catch(err){
+      stopped=true;clearInterval(timer);hideInline(btn);throw err;
+    }
+  };
+}
+installOfflineProgress();
+document.addEventListener("DOMContentLoaded",installOfflineProgress,{once:true});
+window.addEventListener("load",installOfflineProgress,{once:true});
 window.statArchiveCanonicalDownload=transfer;document.addEventListener("click",event=>{const t=event.target instanceof Element?event.target:null,btn=t?.closest(".card .dl-btn,.card .download-btn");if(!btn)return;const card=btn.closest(".card");if(!card)return;let source=[];try{source=Array.isArray(entries)?entries:[]}catch(_){}const e=source.find(x=>String(x.id)===String(card.dataset.id));if(!e)return;event.preventDefault();event.stopImmediatePropagation();transfer(e,btn)},true)})();
