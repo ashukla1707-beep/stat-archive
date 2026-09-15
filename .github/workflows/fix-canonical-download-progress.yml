@@ -1,0 +1,43 @@
+name: Fix canonical Download progress
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-canonical-download-progress.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install canonical progress runtime
+        shell: python
+        run: |
+          from pathlib import Path
+          index = Path('index.html')
+          s = index.read_text()
+          tag = '<script src="assets/js/download-progress-canonical.js?v=20260915-1"></script>'
+          if tag not in s:
+              needle = '<script src="assets/js/service-worker-register.js"></script>'
+              if needle not in s: raise SystemExit('service-worker-register tag not found')
+              s = s.replace(needle, tag+'\n'+needle, 1)
+              index.write_text(s)
+
+          sw = Path('sw.js')
+          s = sw.read_text()
+          s = s.replace('stat-archive-shell-v20260915-download-offline-final-v6','stat-archive-shell-v20260915-canonical-download-progress-v7')
+          if '"./assets/js/download-progress-canonical.js"' not in s:
+              s = s.replace('"./assets/js/download-fix.js",','"./assets/js/download-fix.js","./assets/js/download-progress-canonical.js",',1)
+          s = s.replace("const DOWNLOAD_FIX_TAG = '<script src=\"./assets/js/download-fix.js?v=20260915-download-offline-final-v6\"></script>';", "const DOWNLOAD_FIX_TAG = '<script src=\"./assets/js/download-fix.js?v=20260915-canonical-download-progress-v7\"></script>';" )
+          if "download-progress-canonical.js" not in s.split('function decorateNavigationHtml',1)[1]:
+              raise SystemExit('canonical script missing from decorator section')
+          # Do not strip the canonical direct script. It must execute before the legacy injected Download layer.
+          sw.write_text(s)
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js assets/js/download-progress-canonical.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Make Download percentage canonical on web and APK"
+          git push
