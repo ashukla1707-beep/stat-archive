@@ -4,12 +4,7 @@
   const PURGE_KEY = 'statArchiveCardUiCachePurge20260915DownloadStatus';
   try {
     if (navigator.onLine && !localStorage.getItem(PURGE_KEY) && 'caches' in window) {
-      caches.keys()
-        .then(keys => Promise.all(
-          keys.filter(key => key.startsWith('stat-archive-shell-')).map(key => caches.delete(key))
-        ))
-        .then(() => localStorage.setItem(PURGE_KEY, '1'))
-        .catch(() => {});
+      caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('stat-archive-shell-')).map(key => caches.delete(key)))).then(() => localStorage.setItem(PURGE_KEY, '1')).catch(() => {});
     }
   } catch (_) {}
 
@@ -40,66 +35,44 @@ body[data-theme="light"] .card-actions .dl-btn.is-downloaded{color:#347d73!impor
 
   const markThemeSettling=()=>{document.documentElement.classList.add('stat-theme-settling');requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('stat-theme-settling')))};
   ['themeDarkBtn','themeLightBtn','menuDarkBtn','menuLightBtn'].forEach(id=>document.getElementById(id)?.addEventListener('click',markThemeSettling,true));
-
   function syncThemeAndMu(){
-    const bodyTheme=document.body?.getAttribute('data-theme');
-    const htmlTheme=document.documentElement.getAttribute('data-theme');
-    const value=bodyTheme==='light'||bodyTheme==='dark'?bodyTheme:(htmlTheme==='light'?'light':'dark');
-    const isLight=value==='light';
-    if(document.body&&document.body.getAttribute('data-theme')!==value)document.body.setAttribute('data-theme',value);
-    if(document.documentElement.getAttribute('data-theme')!==value)document.documentElement.setAttribute('data-theme',value);
-    const color=isLight?'#347d73':'#5ee7f7';
-    document.querySelectorAll('.hero-probability .axis-mid').forEach(mu=>{mu.style.setProperty('color',color,'important');mu.style.setProperty('fill',color,'important')});
-    const touchGraph=document.getElementById('statTouchDesktopGraph');
-    touchGraph?.querySelectorAll('[data-stat-touch-color]').forEach(node=>{if(node.hasAttribute('stroke'))node.setAttribute('stroke',color);if(node.hasAttribute('fill')&&node.getAttribute('fill')!=='none')node.setAttribute('fill',color)});
-    const curve=touchGraph?.querySelector('[data-stat-touch-curve]');if(curve)curve.style.filter=isLight?'none':'drop-shadow(0 0 7px rgba(94,231,247,.34))';
-    try{document.dispatchEvent(new CustomEvent('statarchive:theme-change',{detail:{theme:value}}))}catch(_){}
+    const bodyTheme=document.body?.getAttribute('data-theme');const htmlTheme=document.documentElement.getAttribute('data-theme');const value=bodyTheme==='light'||bodyTheme==='dark'?bodyTheme:(htmlTheme==='light'?'light':'dark');const isLight=value==='light';
+    if(document.body&&document.body.getAttribute('data-theme')!==value)document.body.setAttribute('data-theme',value);if(document.documentElement.getAttribute('data-theme')!==value)document.documentElement.setAttribute('data-theme',value);
+    const color=isLight?'#347d73':'#5ee7f7';document.querySelectorAll('.hero-probability .axis-mid').forEach(mu=>{mu.style.setProperty('color',color,'important');mu.style.setProperty('fill',color,'important')});
+    const touchGraph=document.getElementById('statTouchDesktopGraph');touchGraph?.querySelectorAll('[data-stat-touch-color]').forEach(node=>{if(node.hasAttribute('stroke'))node.setAttribute('stroke',color);if(node.hasAttribute('fill')&&node.getAttribute('fill')!=='none')node.setAttribute('fill',color)});const curve=touchGraph?.querySelector('[data-stat-touch-curve]');if(curve)curve.style.filter=isLight?'none':'drop-shadow(0 0 7px rgba(94,231,247,.34))';try{document.dispatchEvent(new CustomEvent('statarchive:theme-change',{detail:{theme:value}}))}catch(_){}
   }
-  let syncingTheme=false;
-  const themeObserver=new MutationObserver(()=>{if(syncingTheme)return;syncingTheme=true;try{syncThemeAndMu()}finally{syncingTheme=false}});
-  if(document.body)themeObserver.observe(document.body,{attributes:true,attributeFilter:['data-theme']});
-  themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-  syncThemeAndMu();
+  let syncingTheme=false;const themeObserver=new MutationObserver(()=>{if(syncingTheme)return;syncingTheme=true;try{syncThemeAndMu()}finally{syncingTheme=false}});if(document.body)themeObserver.observe(document.body,{attributes:true,attributeFilter:['data-theme']});themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});syncThemeAndMu();
 
-  /* Restore the persistent Downloaded impression on web/PWA cards. The download
-     reliability layer restores the button's original HTML after a transfer,
-     so class-only state could become invisible. Keep the label synchronized
-     with the already-persisted is-downloaded class instead. */
-  function syncDownloadStatus(root=document){
-    root.querySelectorAll?.('.dl-btn').forEach(btn=>{
-      if(btn.classList.contains('is-downloaded')&&!btn.disabled){
-        if(btn.textContent.trim()!=='✓ Downloaded')btn.textContent='✓ Downloaded';
-        btn.setAttribute('title','Downloaded on this device');
-      }
-    });
-  }
+  /* Keep Download status visible after the reliability layer restores the
+     button's original markup. History is still owned by archive-ui.js. */
+  function syncDownloadStatus(root=document){root.querySelectorAll?.('.dl-btn').forEach(btn=>{if(btn.classList.contains('is-downloaded')&&!btn.disabled){if(btn.textContent.trim()!=='✓ Downloaded')btn.textContent='✓ Downloaded';btn.setAttribute('title','Downloaded on this device')}})}
   syncDownloadStatus();
-  const downloadStatusObserver=new MutationObserver(mutations=>{
-    for(const mutation of mutations){
-      const target=mutation.target instanceof Element?mutation.target:mutation.target?.parentElement;
-      const btn=target?.closest?.('.dl-btn');
-      if(btn&&btn.classList.contains('is-downloaded')&&!btn.disabled){
-        if(btn.textContent.trim()!=='✓ Downloaded')btn.textContent='✓ Downloaded';
-        btn.setAttribute('title','Downloaded on this device');
-      }
-      if(mutation.type==='childList')mutation.addedNodes.forEach(node=>{if(node instanceof Element)syncDownloadStatus(node)});
-    }
-  });
-  downloadStatusObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
+  const downloadStatusObserver=new MutationObserver(mutations=>{for(const mutation of mutations){const target=mutation.target instanceof Element?mutation.target:mutation.target?.parentElement;const btn=target?.closest?.('.dl-btn');if(btn&&btn.classList.contains('is-downloaded')&&!btn.disabled){if(btn.textContent.trim()!=='✓ Downloaded')btn.textContent='✓ Downloaded';btn.setAttribute('title','Downloaded on this device')}if(mutation.type==='childList')mutation.addedNodes.forEach(node=>{if(node instanceof Element)syncDownloadStatus(node)})}});downloadStatusObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
 
-  const releaseMenuButtonState=()=>{const btn=document.getElementById('mainMenuBtn');if(!btn)return;try{btn.blur()}catch(_){}btn.classList.remove('is-pressed','is-active','active')};
-  const isTouchLike=()=>!!window.matchMedia?.('(hover:none), (pointer:coarse)').matches;
+  try {
+    if (typeof switchLevel === 'function' && !window.__statArchiveAtomicLevelSwitchV1) {
+      window.__statArchiveAtomicLevelSwitchV1 = true;
+      switchLevel = async function statArchiveAtomicSwitchLevel(level) {
+        const value = level === 'bsc' ? 'bsc' : 'msc';
+        if (value === currentLevel || levelSwitchInProgress) return;
+        const previous = {level:currentLevel,entries,subjects,totalStorageBytes,filterSubjects,filterTypes,latestEntriesMode,showAllEntrySubjects,searchQ};
+        const savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        mobileSubjectListOpen=false;showAllSubjectPills=false;document.getElementById('subjectFilterExpanded')?.remove();levelSwitchInProgress=true;currentLevel=value;
+        try{localStorage.setItem('statArchiveLevel',value)}catch(_){}setLevelUI(value);
+        const searchInput=document.getElementById('searchInput');const searchClear=document.getElementById('searchClear');
+        try {
+          if(session){try{await sb.auth.signOut()}catch(_){}}
+          const [loadedEntries]=await Promise.all([loadEntries(),loadSubjectsFromWorker()]);entries=loadedEntries;totalStorageBytes=entries.reduce((sum,entry)=>sum+(Number.isFinite(Number(entry.size))&&Number(entry.size)>0?Number(entry.size):0),0);
+          filterSubjects=new Set();filterTypes=new Set();latestEntriesMode=false;showAllEntrySubjects=false;searchQ='';if(searchInput)searchInput.value='';if(searchClear)searchClear.style.display='none';isLoadingArchive=false;renderSubjectFilters();renderTypeFilters();renderSubjectOptions();render();requestAnimationFrame(()=>window.scrollTo({top:savedScrollY,left:0,behavior:'auto'}));
+        } catch(err) {
+          console.error('Level switch load failed:',err);currentLevel=previous.level;entries=previous.entries;subjects=previous.subjects;totalStorageBytes=previous.totalStorageBytes;filterSubjects=previous.filterSubjects;filterTypes=previous.filterTypes;latestEntriesMode=previous.latestEntriesMode;showAllEntrySubjects=previous.showAllEntrySubjects;searchQ=previous.searchQ;try{localStorage.setItem('statArchiveLevel',previous.level)}catch(_){}setLevelUI(previous.level);isLoadingArchive=false;renderSubjectFilters();renderTypeFilters();renderSubjectOptions();render();showError(`Could not load ${value==='bsc'?'B.Sc':'M.Sc'} data.`);requestAnimationFrame(()=>window.scrollTo({top:savedScrollY,left:0,behavior:'auto'}));
+        } finally {levelSwitchInProgress=false}
+      };
+    }
+  } catch(err){console.warn('Could not install atomic level switching:',err)}
+
+  const releaseMenuButtonState=()=>{const btn=document.getElementById('mainMenuBtn');if(!btn)return;try{btn.blur()}catch(_){}btn.classList.remove('is-pressed','is-active','active')};const isTouchLike=()=>!!window.matchMedia?.('(hover:none), (pointer:coarse)').matches;
   document.addEventListener('pointerup',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn'))return;requestAnimationFrame(releaseMenuButtonState)},true);
   document.addEventListener('click',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn,#mainMenuCloseBtn,#mainMenuBackdrop'))return;setTimeout(releaseMenuButtonState,0)},true);
-
-  document.addEventListener('click',event=>{
-    const btn=event.target instanceof Element?event.target.closest('.entry-subject-more-btn'):null;
-    if(!btn)return;
-    const grid=document.getElementById('grid');if(!grid||typeof render!=='function')return;
-    event.preventDefault();event.stopImmediatePropagation();
-    const rows=grid.querySelectorAll('.subject-row[data-subject-code]');const anchorRow=rows.length?rows[rows.length-1]:null;const anchorCode=anchorRow?.dataset.subjectCode||'';const anchorTop=anchorRow?anchorRow.getBoundingClientRect().top:null;
-    try{btn.blur()}catch(_){}showAllEntrySubjects=!showAllEntrySubjects;render();
-    if(!anchorCode||!Number.isFinite(anchorTop))return;
-    requestAnimationFrame(()=>{const replacement=Array.from(grid.querySelectorAll('.subject-row[data-subject-code]')).find(row=>row.dataset.subjectCode===anchorCode);if(!replacement)return;const delta=replacement.getBoundingClientRect().top-anchorTop;if(Math.abs(delta)>.5)window.scrollBy({top:delta,left:0,behavior:'auto'})});
-  },true);
+  document.addEventListener('click',event=>{const btn=event.target instanceof Element?event.target.closest('.entry-subject-more-btn'):null;if(!btn)return;const grid=document.getElementById('grid');if(!grid||typeof render!=='function')return;event.preventDefault();event.stopImmediatePropagation();const rows=grid.querySelectorAll('.subject-row[data-subject-code]');const anchorRow=rows.length?rows[rows.length-1]:null;const anchorCode=anchorRow?.dataset.subjectCode||'';const anchorTop=anchorRow?anchorRow.getBoundingClientRect().top:null;try{btn.blur()}catch(_){}showAllEntrySubjects=!showAllEntrySubjects;render();if(!anchorCode||!Number.isFinite(anchorTop))return;requestAnimationFrame(()=>{const replacement=Array.from(grid.querySelectorAll('.subject-row[data-subject-code]')).find(row=>row.dataset.subjectCode===anchorCode);if(!replacement)return;const delta=replacement.getBoundingClientRect().top-anchorTop;if(Math.abs(delta)>.5)window.scrollBy({top:delta,left:0,behavior:'auto'})})},true);
 })();
