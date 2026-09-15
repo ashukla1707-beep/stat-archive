@@ -200,8 +200,9 @@ function buildCard(entry) {
 
   <button
     class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"
+    title="${downloadedEntryIds.has(String(entry.id)) ? "Already downloaded on this device" : "Download file"}"
   >
-    ⬇ Download
+    ${downloadedEntryIds.has(String(entry.id)) ? "✓ Downloaded" : "⬇ Download"}
   </button>
 
   <button

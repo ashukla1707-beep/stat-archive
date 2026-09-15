@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260915-menu-v6";
+const CACHE = "stat-archive-shell-v20260915-download-status-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -25,9 +25,9 @@ const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=2026091
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu12-consistent-2"></script>';
 const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260915-menu-v6"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260910-mobile-reference-1"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260915-download-status-v1"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
-const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260914-drive-save-picker-v1"></script>';
+const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260915-download-status-v1"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260910-bugfix-1"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';

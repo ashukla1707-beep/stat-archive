@@ -204,6 +204,23 @@
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
+  function markDownloadComplete(entry, btn) {
+    try {
+      if (btn) {
+        btn.classList.add("is-downloaded");
+        btn.disabled = false;
+        btn.textContent = "✓ Downloaded";
+        btn.setAttribute("title", "Already downloaded on this device");
+      }
+      if (typeof downloadedEntryIds !== "undefined") {
+        downloadedEntryIds.add(String(entry.id));
+        if (typeof saveEntryActionHistory === "function") {
+          saveEntryActionHistory("statArchiveDownloadedEntries", downloadedEntryIds);
+        }
+      }
+    } catch (_) {}
+  }
+
   async function downloadDriveEntry(entry, btn) {
     const originalHtml = btn ? btn.innerHTML : "";
     const originalText = btn ? btn.textContent : "";
@@ -235,6 +252,7 @@
           && typeof window.AndroidStreamBridge.saveUrl === "function"
           && window.AndroidStreamBridge.saveUrl(inlineUrl, nativeName, "application/pdf")) {
         try { window.incrementActivity?.("download"); } catch (_) {}
+        markDownloadComplete(entry, btn);
         return;
       }
 
@@ -242,6 +260,7 @@
       if (isAndroid() && typeof window.AndroidBridge.downloadUrl === "function") {
         window.AndroidBridge.downloadUrl(inlineUrl, nativeName, "application/pdf");
         try { window.incrementActivity?.("download"); } catch (_) {}
+        markDownloadComplete(entry, btn);
         return;
       }
 
@@ -276,12 +295,13 @@
       }
 
       try { window.incrementActivity?.("download"); } catch (_) {}
+      markDownloadComplete(entry, btn);
     } catch (err) {
       console.error("Drive download failed:", err);
       try { window.showError?.(err?.message || "Couldn't download that file."); }
       catch (_) { alert("Couldn't download that file."); }
     } finally {
-      if (btn) {
+      if (btn && !btn.classList.contains("is-downloaded")) {
         btn.disabled = false;
         if (originalHtml) btn.innerHTML = originalHtml;
         else btn.textContent = originalText || "⬇ Download";
@@ -303,8 +323,12 @@
 
   async function reliableDownloadEntry(entry, btn) {
     if (entry?._offlineBlob) {
-      try { await downloadOfflinePreviewBlob(entry, btn); }
-      catch (err) { window.showError?.(err?.message || "Couldn't download that file."); }
+      try {
+        await downloadOfflinePreviewBlob(entry, btn);
+        markDownloadComplete(entry, btn);
+      } catch (err) {
+        window.showError?.(err?.message || "Couldn't download that file.");
+      }
       return;
     }
 
@@ -333,6 +357,7 @@
       else await browserDownloadBlob(blob, filename);
 
       try { window.incrementActivity?.("download"); } catch (_) {}
+      markDownloadComplete(entry, btn);
     } catch (err) {
       console.error("Download failed:", err);
       if (isAndroid() && originalDownloadEntry && !hasStreamBridge()) {
@@ -341,7 +366,7 @@
       try { window.showError?.(err?.message || "Couldn't download that file."); }
       catch (_) { alert("Couldn't download that file."); }
     } finally {
-      if (btn) {
+      if (btn && !btn.classList.contains("is-downloaded")) {
         btn.disabled = false;
         if (originalHtml) btn.innerHTML = originalHtml;
         else btn.textContent = originalText || "⬇ Download";
@@ -431,16 +456,6 @@
 
     event.preventDefault();
     event.stopImmediatePropagation();
-
-    try {
-      btn.classList.add("is-downloaded");
-      if (typeof downloadedEntryIds !== "undefined") {
-        downloadedEntryIds.add(String(entry.id));
-        if (typeof saveEntryActionHistory === "function") {
-          saveEntryActionHistory("statArchiveDownloadedEntries", downloadedEntryIds);
-        }
-      }
-    } catch (_) {}
 
     reliableDownloadEntry(entry, btn);
   }, true);
