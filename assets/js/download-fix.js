@@ -61,10 +61,11 @@
 
   async function browserDownloadBlob(blob,filename){ const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.style.display="none"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); }
 
+  /* Web Download changes only its label/state. Its visual shell stays owned by the common card-action CSS, just like Offline. */
   function formatProgressBytes(bytes){ const n=Number(bytes)||0; if(n<1024) return `${n} B`; if(n<1048576) return `${(n/1024).toFixed(1)} KB`; return `${(n/1048576).toFixed(1)} MB`; }
   function paintWebProgress(btn,loaded,total){
     if(!btn||isAndroid()) return;
-    btn.disabled=true; btn.classList.add("is-downloading");
+    btn.disabled=true;
     if(total>0){ const pct=Math.max(0,Math.min(100,Math.round(loaded/total*100))); btn.textContent=`Downloading… ${pct}%`; btn.setAttribute("aria-label",`Downloading ${pct}%`); }
     else { const amount=formatProgressBytes(loaded); btn.textContent=`Downloading… ${amount}`; btn.setAttribute("aria-label",`Downloading ${amount}`); }
   }
@@ -77,7 +78,7 @@
   }
 
   function markDownloadComplete(entry,btn){
-    try{ if(btn){ btn.classList.remove("is-downloading"); btn.classList.add("is-downloaded"); btn.disabled=false; btn.textContent="✓ Downloaded"; btn.setAttribute("title","Already downloaded on this device"); btn.removeAttribute("aria-label"); }
+    try{ if(btn){ btn.classList.remove("is-downloading","sa-offline-style"); btn.classList.add("is-downloaded"); btn.disabled=false; btn.textContent="✓ Downloaded"; btn.setAttribute("title","Already downloaded on this device"); btn.removeAttribute("aria-label"); }
       if(typeof downloadedEntryIds!=="undefined"){ downloadedEntryIds.add(String(entry.id)); if(typeof saveEntryActionHistory==="function") saveEntryActionHistory("statArchiveDownloadedEntries",downloadedEntryIds); }
     }catch(_){}
   }
