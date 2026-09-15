@@ -1,7 +1,7 @@
 (() => {
   if (document.getElementById('statArchiveActionSpacingFix')) return;
 
-  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915DownloadStatus';
+  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915UnifiedStatusV2';
   try {
     if (navigator.onLine && !localStorage.getItem(PURGE_KEY) && 'caches' in window) {
       caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('stat-archive-shell-')).map(key => caches.delete(key)))).then(() => localStorage.setItem(PURGE_KEY, '1')).catch(() => {});
@@ -28,6 +28,13 @@ html body .card-actions .edit-btn,html body .card-actions .del-btn{flex:0 1 auto
 html body .card-actions .dl-btn.is-downloaded,html body .card-actions .offline-btn.is-saved{color:inherit!important}
 @media(max-width:700px){html body .card-actions{gap:4px!important}html body .card-actions .action-btn{padding-left:4px!important;padding-right:4px!important;font-size:clamp(9.5px,2.75vw,11.5px)!important;gap:3px!important}html body .card-actions .edit-btn{flex-basis:56px!important}html body .card-actions .del-btn{flex:0 1 42px!important}html body .archive-entries-divider{margin-top:0!important;padding-top:18px!important;margin-bottom:12px!important}}
 @media(max-width:390px){html body .card-actions{gap:3px!important}html body .card-actions .action-btn{padding-left:3px!important;padding-right:3px!important;font-size:9.5px!important;letter-spacing:-.01em!important}html body .card-actions .edit-btn{flex-basis:50px!important}html body .card-actions .del-btn{flex-basis:36px!important}}
+
+/* Download and Offline share one visual state system. Keep transfer text/progress functional; only presentation is unified. */
+html body .card .card-actions .dl-btn.is-downloading,html body .card .card-actions .offline-btn:disabled:not(.is-saved){opacity:1!important}
+html body:not([data-theme="light"]) .card .card-actions .dl-btn.is-downloading,html body:not([data-theme="light"]) .card .card-actions .offline-btn:disabled:not(.is-saved){color:#f1f4f8!important;background:#111722!important;border:1px solid rgba(255,255,255,.035)!important;box-shadow:none!important}
+html body[data-theme="light"] .card .card-actions .dl-btn.is-downloading,html body[data-theme="light"] .card .card-actions .offline-btn:disabled:not(.is-saved){color:#27302d!important;background:#eee9f4!important;border:1px solid #ddd4e4!important;box-shadow:none!important}
+html body:not([data-theme="light"]) .card .card-actions .dl-btn.is-downloaded,html body:not([data-theme="light"]) .card .card-actions .offline-btn.is-saved{color:#63efff!important;background:rgba(18,52,64,.76)!important;border:1px solid rgba(99,239,255,.38)!important;box-shadow:inset 0 0 0 1px rgba(99,239,255,.07)!important;opacity:1!important}
+html body[data-theme="light"] .card .card-actions .dl-btn.is-downloaded,html body[data-theme="light"] .card .card-actions .offline-btn.is-saved{color:#fff!important;background:#5a3a73!important;border:1px solid #5a3a73!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)!important;opacity:1!important}
 @media (hover:none),(pointer:coarse){html body #mainMenuBtn.main-menu-btn:hover,html body #mainMenuBtn.main-menu-btn:active,html body #mainMenuBtn.main-menu-btn:focus:not(:focus-visible){transform:none!important;filter:none!important;box-shadow:none!important;outline:none!important}}
 `;
   document.head.appendChild(style);
