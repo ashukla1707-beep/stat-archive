@@ -1,11 +1,11 @@
-const CACHE = "stat-archive-shell-v20260915-download-offline-final-v6";
+const CACHE = "stat-archive-shell-v20260915-canonical-download-progress-v7";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
   "./","./index.html","./assets/styles.css","./assets/scanner.css",
   "./assets/js/pdf.js","./assets/js/core.js","./assets/js/archive-ui.js",
   "./assets/js/preview.js","./assets/js/preview-state-guard.js","./assets/js/offline.js",
-  "./assets/js/management.js","./assets/js/speed-boost.js","./assets/js/download-fix.js",
+  "./assets/js/management.js","./assets/js/speed-boost.js","./assets/js/download-fix.js","./assets/js/download-progress-canonical.js",
   "./assets/js/search-suggestions.js","./assets/js/search-filter-fix.js","./assets/js/runtime.js",
   "./assets/js/tooltips.js","./assets/js/startup-polish.js","./assets/js/service-worker-register.js","./assets/js/hero-animation.js",
   "./assets/js/hero-selection-guard.js","./assets/js/subject-panel.js","./assets/js/accessibility.js",
@@ -25,10 +25,10 @@ const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=2026091
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu12-consistent-2"></script>';
 const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260915-web-progress-v2"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260915-download-offline-final-v6"></script>';
-const MOBILE_CARD_ACTIONS_TAG = '<script src="./assets/js/mobile-card-actions.js?v=20260915-download-offline-final-v6"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260915-canonical-download-progress-v7"></script>';
+const MOBILE_CARD_ACTIONS_TAG = '<script src="./assets/js/mobile-card-actions.js?v=20260915-canonical-download-progress-v7"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
-const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260915-download-offline-final-v6"></script>';
+const DOWNLOAD_FIX_TAG = '<script src="./assets/js/download-fix.js?v=20260915-canonical-download-progress-v7"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260910-bugfix-1"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
 const ENTRY_METHOD_FIX_TAG = '<script src="./assets/js/entry-method-fix.js?v=20260909-1"></script>';
