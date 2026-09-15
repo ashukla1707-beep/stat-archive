@@ -15,37 +15,4 @@ window.statArchiveTransferProgress={
   finish(btn,total=1){paint(btn,total,total,true)},
   hide(btn){hideInline(btn)}
 };
-function installOfflineProgress(){
-  if(window.__STAT_ARCHIVE_OFFLINE_PROGRESS_SHARED_V1__)return;
-  const original=window.saveEntryOffline;
-  if(typeof original!=="function")return;
-  window.__STAT_ARCHIVE_OFFLINE_PROGRESS_SHARED_V1__=true;
-  window.saveEntryOffline=async function(entry,btn){
-    if(!entry)return original.apply(this,arguments);
-    const already=(()=>{try{return offlineEntryIds.has(String(entry.id))}catch(_){return false}})();
-    if(already)return original.apply(this,arguments);
-    let stopped=false,timer=null,pct=0;
-    const total=100;
-    try{
-      paint(btn,0,total);
-      if(btn)btn.textContent="Saving… 0%";
-      timer=setInterval(()=>{
-        if(stopped)return;
-        pct=Math.min(92,pct+(pct<45?7:pct<75?4:2));
-        paint(btn,pct,total);
-        if(btn)btn.textContent=`Saving… ${pct}%`;
-      },90);
-      const result=await original.apply(this,arguments);
-      stopped=true;clearInterval(timer);
-      paint(btn,total,total,true);
-      if(btn){btn.disabled=false;btn.textContent="✓ Offline";btn.classList.add("is-saved")}
-      return result;
-    }catch(err){
-      stopped=true;clearInterval(timer);hideInline(btn);throw err;
-    }
-  };
-}
-installOfflineProgress();
-document.addEventListener("DOMContentLoaded",installOfflineProgress,{once:true});
-window.addEventListener("load",installOfflineProgress,{once:true});
 window.statArchiveCanonicalDownload=transfer;document.addEventListener("click",event=>{const t=event.target instanceof Element?event.target:null,btn=t?.closest(".card .dl-btn,.card .download-btn");if(!btn)return;const card=btn.closest(".card");if(!card)return;let source=[];try{source=Array.isArray(entries)?entries:[]}catch(_){}const e=source.find(x=>String(x.id)===String(card.dataset.id));if(!e)return;event.preventDefault();event.stopImmediatePropagation();transfer(e,btn)},true)})();
