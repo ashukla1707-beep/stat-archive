@@ -1,7 +1,7 @@
 (() => {
   if (document.getElementById('statArchiveActionSpacingFix')) return;
 
-  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915CanonicalOfflineV5';
+  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915CanonicalOfflineV6';
   try {
     if (navigator.onLine && !localStorage.getItem(PURGE_KEY) && 'caches' in window) {
       caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('stat-archive-shell-')).map(key => caches.delete(key)))).then(() => localStorage.setItem(PURGE_KEY, '1')).catch(() => {});
@@ -19,6 +19,19 @@ html body .archive-entries-divider>i,html body .archive-entries-divider::before,
 html.stat-theme-settling *,html.stat-theme-settling *::before,html.stat-theme-settling *::after{transition:none!important}
 html body .header .hero-probability .axis-mid{color:#5ee7f7!important;fill:#5ee7f7!important}
 html[data-theme="light"] body .header .hero-probability .axis-mid,html body[data-theme="light"] .header .hero-probability .axis-mid{color:#347d73!important;fill:#347d73!important}
+/* Entry slider is available on APK/mobile and desktop web. */
+html body .subject-mobile-scrollbar{display:block!important;width:100%!important;margin-top:10px!important;padding:0 2px!important;box-sizing:border-box!important}
+html body .subject-mobile-scrollbar.is-disabled{display:none!important}
+html body .subject-mobile-scrollbar input[type="range"]{display:block!important;width:100%!important;height:20px!important;margin:0!important;padding:0!important;appearance:none!important;-webkit-appearance:none!important;background:transparent!important;cursor:pointer!important;touch-action:pan-x!important}
+html body .subject-mobile-scrollbar input[type="range"]::-webkit-slider-runnable-track{height:5px!important;border-radius:999px!important;background:rgba(148,163,184,.22)!important}
+html body .subject-mobile-scrollbar input[type="range"]::-webkit-slider-thumb{appearance:none!important;-webkit-appearance:none!important;width:38px!important;height:10px!important;margin-top:-2.5px!important;border:0!important;border-radius:999px!important;background:var(--cyan)!important;box-shadow:0 2px 8px rgba(0,0,0,.16)!important}
+html body .subject-mobile-scrollbar input[type="range"]::-moz-range-track{height:5px!important;border-radius:999px!important;background:rgba(148,163,184,.22)!important}
+html body .subject-mobile-scrollbar input[type="range"]::-moz-range-progress{height:5px!important;border-radius:999px!important;background:var(--cyan)!important}
+html body .subject-mobile-scrollbar input[type="range"]::-moz-range-thumb{width:38px!important;height:10px!important;border:0!important;border-radius:999px!important;background:var(--cyan)!important}
+html body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-webkit-slider-runnable-track{background:#ddd7e1!important}
+html body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-webkit-slider-thumb{background:#4b365f!important}
+html body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-moz-range-track{background:#ddd7e1!important}
+html body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-moz-range-progress,html body[data-theme="light"] .subject-mobile-scrollbar input[type="range"]::-moz-range-thumb{background:#4b365f!important}
 html body .card-actions{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:space-between!important;gap:5px!important;width:100%!important;min-width:0!important;overflow:hidden!important}
 html body .card-actions>*{min-width:0!important;flex-shrink:1!important}
 html body .card-actions .action-btn{white-space:nowrap!important;flex:1 1 0!important;min-width:0!important;max-width:none!important;justify-content:center!important;overflow:hidden!important;text-overflow:clip!important}
