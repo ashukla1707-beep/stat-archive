@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260915-inline-transfer-final-v9";
+const CACHE = "stat-archive-shell-v20260916-no-transfer-progress-v10";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -23,9 +23,9 @@ const MENU_FLASH_GUARD = `
 
 const FEATURE_SCRIPT_TAG = '<script src="./assets/js/feature-polish.js?v=20260910-bugfix-2"></script>';
 const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260913-mu12-consistent-2"></script>';
-const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260915-web-progress-v2"></script>';
+const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260916-no-progress-v10"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260906-3"></script>';
-const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260915-inline-transfer-final-v9"></script>';
+const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260916-no-progress-v10"></script>';
 const MOBILE_CARD_ACTIONS_TAG = '<script src="./assets/js/mobile-card-actions.js?v=20260915-inline-transfer-final-v9"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260910-bugfix-1"></script>';

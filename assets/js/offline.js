@@ -1183,12 +1183,10 @@ async function saveEntryOffline(
 
   if (btn) {
     btn.textContent =
-      "Saving… 0%";
+      "Saving…";
 
     btn.disabled =
       true;
-
-    window.statArchiveTransferProgress?.show(btn, 0, Number(entry.size) || 0);
   }
 
 
@@ -1209,44 +1207,8 @@ async function saveEntryOffline(
     }
 
 
-    const totalBytes =
-      Number(response.headers.get("content-length")) ||
-      Number(entry.size) ||
-      0;
-
-    let blob;
-
-    if (response.body && typeof response.body.getReader === "function") {
-      const reader = response.body.getReader();
-      const chunks = [];
-      let loadedBytes = 0;
-
-      window.statArchiveTransferProgress?.show(btn, 0, totalBytes);
-
-      while (true) {
-        const part = await reader.read();
-        if (part.done) break;
-
-        if (part.value) {
-          chunks.push(part.value);
-          loadedBytes += part.value.byteLength;
-          window.statArchiveTransferProgress?.update(btn, loadedBytes, totalBytes);
-
-          if (btn && totalBytes > 0) {
-            const pct = Math.max(0, Math.min(100, Math.round((loadedBytes / totalBytes) * 100)));
-            btn.textContent = `Saving… ${pct}%`;
-          }
-        }
-      }
-
-      blob = new Blob(chunks, {
-        type: response.headers.get("content-type") || "application/octet-stream"
-      });
-    } else {
-      blob = await response.blob();
-      window.statArchiveTransferProgress?.update(btn, blob.size, totalBytes || blob.size);
-    }
-
+    const blob =
+      await response.blob();
 
     const meta =
       subjectMeta(
@@ -1318,9 +1280,6 @@ async function saveEntryOffline(
 
     updateOfflineLibraryCount();
 
-
-    window.statArchiveTransferProgress?.finish(btn, 100);
-
     if (btn) {
       btn.innerHTML =
         "✓ Offline";
@@ -1344,8 +1303,6 @@ async function saveEntryOffline(
 
 
   } catch (err) {
-
-    window.statArchiveTransferProgress?.hide(btn);
 
     showError(
       err?.message ||
