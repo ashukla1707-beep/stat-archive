@@ -1,4 +1,4 @@
-name: Fix canonical Download progress
+name: Remove transfer progress UI
 on:
   push:
     paths:
@@ -6,79 +6,74 @@ on:
 permissions:
   contents: write
 jobs:
-  repair:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Make Offline use the canonical inline transfer component
+      - name: Remove progress implementations instead of hiding them
         shell: python
         run: |
           from pathlib import Path
           import re
 
-          # 1) Remove the temporary wrapper/fake timer from the canonical runtime.
-          p = Path('assets/js/download-progress-canonical.js')
-          s = p.read_text()
-          start = s.find('function installOfflineProgress(){')
-          end_marker = 'window.statArchiveCanonicalDownload=transfer;'
-          if start >= 0:
-              end = s.find(end_marker, start)
-              if end < 0: raise SystemExit('canonical download marker missing')
-              s = s[:start] + s[end:]
+          # Download: keep transfer/save behavior, remove progress DOM/CSS/percentage runtime.
+          p=Path('assets/js/download-progress-canonical.js')
+          s=p.read_text()
+          start=s.find('function installStyle()')
+          end=s.find('async function readResponse', start)
+          if start>=0 and end>=0:
+              s=s[:start] + 'function paint(){}\nfunction hideInline(){}\n' + s[end:]
+          s=re.sub(r'if\(btn&&total>0\)btn\.textContent=`Downloading…[^;]+;','',s)
+          s=s.replace('btn.textContent="Downloading… 0%"','btn.textContent="Downloading…"')
+          s=re.sub(r'\nwindow\.statArchiveTransferProgress=\{.*?\};','',s,flags=re.S)
           p.write_text(s)
 
-          # 2) Patch the real Offline save function itself. It now streams the same
-          # response bytes and drives the exact shared inline component used by Download.
-          p = Path('assets/js/offline.js')
-          s = p.read_text()
-          old_start = '''  if (btn) {\n    btn.textContent =\n      "Saving…";\n\n    btn.disabled =\n      true;\n  }'''
-          new_start = '''  if (btn) {\n    btn.textContent =\n      "Saving… 0%";\n\n    btn.disabled =\n      true;\n\n    window.statArchiveTransferProgress?.show(btn, 0, Number(entry.size) || 0);\n  }'''
-          if old_start not in s: raise SystemExit('Offline button start block not found')
-          s = s.replace(old_start, new_start, 1)
-
-          old_blob = '''    const blob =\n      await response.blob();'''
-          new_blob = '''    const totalBytes =\n      Number(response.headers.get("content-length")) ||\n      Number(entry.size) ||\n      0;\n\n    let blob;\n\n    if (response.body && typeof response.body.getReader === "function") {\n      const reader = response.body.getReader();\n      const chunks = [];\n      let loadedBytes = 0;\n\n      window.statArchiveTransferProgress?.show(btn, 0, totalBytes);\n\n      while (true) {\n        const part = await reader.read();\n        if (part.done) break;\n\n        if (part.value) {\n          chunks.push(part.value);\n          loadedBytes += part.value.byteLength;\n          window.statArchiveTransferProgress?.update(btn, loadedBytes, totalBytes);\n\n          if (btn && totalBytes > 0) {\n            const pct = Math.max(0, Math.min(100, Math.round((loadedBytes / totalBytes) * 100)));\n            btn.textContent = `Saving… ${pct}%`;\n          }\n        }\n      }\n\n      blob = new Blob(chunks, {\n        type: response.headers.get("content-type") || "application/octet-stream"\n      });\n    } else {\n      blob = await response.blob();\n      window.statArchiveTransferProgress?.update(btn, blob.size, totalBytes || blob.size);\n    }'''
-          if old_blob not in s: raise SystemExit('Offline response.blob block not found')
-          s = s.replace(old_blob, new_blob, 1)
-
-          old_complete = '''    if (btn) {\n      btn.innerHTML =\n        "✓ Offline";'''
-          new_complete = '''    window.statArchiveTransferProgress?.finish(btn, 100);\n\n    if (btn) {\n      btn.innerHTML =\n        "✓ Offline";'''
-          if old_complete not in s: raise SystemExit('Offline completion block not found')
-          s = s.replace(old_complete, new_complete, 1)
-
-          old_catch = '''  } catch (err) {\n\n    showError('''
-          new_catch = '''  } catch (err) {\n\n    window.statArchiveTransferProgress?.hide(btn);\n\n    showError('''
-          if old_catch not in s: raise SystemExit('Offline catch block not found')
-          s = s.replace(old_catch, new_catch, 1)
+          # Offline: remove streaming/progress implementation entirely and return to a plain blob save.
+          p=Path('assets/js/offline.js')
+          s=p.read_text()
+          s=s.replace('"Saving… 0%"','"Saving…"')
+          s=re.sub(r'\n\s*window\.statArchiveTransferProgress\?\.(?:show|update|finish|hide)\([^;]*\);','',s)
+          a=s.find('    const totalBytes =')
+          b=s.find('\n\n    const meta =',a)
+          if a>=0 and b>=0:
+              s=s[:a]+'    const blob =\n      await response.blob();'+s[b:]
           p.write_text(s)
 
-          # 3) Remove the legacy floating Download runtime from page injection. It was
-          # still being appended by the service worker and could win event ownership.
-          p = Path('sw.js')
-          s = p.read_text()
-          s = re.sub(r'\n?const DOWNLOAD_FIX_TAG = [^\n]+\n', '\n', s)
-          s = s.replace('  out = out.replace(\'</body>\', `${MOBILE_CARD_ACTIONS_TAG}\\n${DOWNLOAD_FIX_TAG}\\n${ACTION_SPACING_FIX_TAG}\\n</body>`);',
-                        '  out = out.replace(\'</body>\', `${MOBILE_CARD_ACTIONS_TAG}\\n${ACTION_SPACING_FIX_TAG}\\n</body>`);')
-          s = s.replace('stat-archive-shell-v20260915-shared-transfer-progress-v8','stat-archive-shell-v20260915-inline-transfer-final-v9')
-          s = s.replace('v=20260915-shared-transfer-progress-v8','v=20260915-inline-transfer-final-v9')
-          # Canonical runtime must always be network-first too.
-          needle = "url.pathname.endsWith('/assets/js/download-fix.js')||"
-          if "url.pathname.endsWith('/assets/js/download-progress-canonical.js')||" not in s and needle in s:
-              s = s.replace(needle, needle + "url.pathname.endsWith('/assets/js/download-progress-canonical.js')||", 1)
+          # Remove the old web progress controller physically appended to the shared APK/PWA/web runtime.
+          p=Path('assets/js/phone-landscape-hero.js')
+          s=p.read_text()
+          marker='/* Web-only real download progress.'
+          i=s.find(marker)
+          if i>=0:
+              s=s[:i].rstrip()+"\n"
           p.write_text(s)
 
-          # 4) Force fresh canonical/offline scripts in the source document as well.
-          p = Path('index.html')
-          s = p.read_text()
-          s = re.sub(r'download-progress-canonical\.js\?v=[^"\']+', 'download-progress-canonical.js?v=20260915-inline-final-v9', s)
-          s = re.sub(r'assets/js/offline\.js(?:\?v=[^"\']+)?', 'assets/js/offline.js?v=20260915-inline-final-v9', s)
+          # Remove previously injected transfer-state styling from the card styling source.
+          p=Path('assets/js/action-spacing-fix.js')
+          s=p.read_text()
+          s=re.sub(r'\n?/\* Download and Offline share one visual state system\..*?(?=@media \(hover:none\),\(pointer:coarse\))','\n',s,flags=re.S)
           p.write_text(s)
 
-      - name: Commit repair
+          # Cache bump: web, installed PWA and APK WebView must all receive the source removal.
+          p=Path('sw.js')
+          s=p.read_text()
+          s=re.sub(r"stat-archive-shell-v[^'\"]+",'stat-archive-shell-v20260916-no-transfer-progress-v10',s,count=1)
+          s=re.sub(r'download-progress-canonical\.js\?v=[^"\']+','download-progress-canonical.js?v=20260916-no-progress-v10',s)
+          s=re.sub(r'phone-landscape-hero\.js\?v=[^"\']+','phone-landscape-hero.js?v=20260916-no-progress-v10',s)
+          s=re.sub(r'action-spacing-fix\.js\?v=[^"\']+','action-spacing-fix.js?v=20260916-no-progress-v10',s)
+          p.write_text(s)
+
+          p=Path('index.html')
+          s=p.read_text()
+          s=re.sub(r'download-progress-canonical\.js\?v=[^"\']+','download-progress-canonical.js?v=20260916-no-progress-v10',s)
+          s=re.sub(r'assets/js/offline\.js(?:\?v=[^"\']+)?','assets/js/offline.js?v=20260916-no-progress-v10',s)
+          s=re.sub(r'phone-landscape-hero\.js\?v=[^"\']+','phone-landscape-hero.js?v=20260916-no-progress-v10',s)
+          p.write_text(s)
+      - name: Commit cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html sw.js assets/js/offline.js assets/js/download-progress-canonical.js
+          git add assets/js/download-progress-canonical.js assets/js/offline.js assets/js/phone-landscape-hero.js assets/js/action-spacing-fix.js index.html sw.js
           git diff --cached --quiet && exit 0
-          git commit -m "Replace legacy Offline progress with canonical inline progress"
+          git commit -m "Remove Download and Offline progress UI implementations"
           git push
