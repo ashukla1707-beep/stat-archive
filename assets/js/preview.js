@@ -315,7 +315,9 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     const firstViewport = firstPage.getViewport({ scale: 1 });
     const tasks = new Map();
     const rendered = new Set();
-    let fitWidth = Math.max(220, viewport.clientWidth - PAGE_PAD * 2);
+    // Fit to the real reader viewport. On narrow phones, never force a
+    // 220px minimum wider than the space that is actually available.
+    let fitWidth = Math.max(1, viewport.clientWidth - PAGE_PAD * 2);
     const firstHeight = fitWidth * firstViewport.height / firstViewport.width;
     const metas = new Array(pdf.numPages);
     let worldY = PAGE_PAD;
@@ -792,7 +794,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         if (Math.abs(newWidth - s.lastViewportWidth) < 2) return;
         const anchor = captureAnchor();
         s.lastViewportWidth = newWidth;
-        s.fitWidth = Math.max(220, newWidth - PAGE_PAD * 2);
+        s.fitWidth = Math.max(1, newWidth - PAGE_PAD * 2);
         s.worldW = s.fitWidth + PAGE_PAD * 2;
         for (const m of metas) {
           m.w = s.fitWidth;
