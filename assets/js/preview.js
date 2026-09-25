@@ -842,12 +842,14 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     state = { abort, tasks: new Map() };
 
     try {
-      if (entry?.driveUrl) {
-        const previewUrl = typeof googleDrivePreviewUrl === "function" ? googleDrivePreviewUrl(entry) : entry.driveUrl;
-        body.innerHTML = `<iframe src="${escapeHtml(previewUrl)}" title="${escapeHtml(entry?.title || entry?.filename || "Preview")}" style="width:100%;height:100%;border:0;background:#080c12"></iframe>`;
-        return;
-      }
-      const fileUrl = `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
+      // Drive-backed entries use Stat Archive's same-origin stream too.
+      // Avoid Google's embedded viewer: Android/WebView can reject its account
+      // cookies even when the underlying Drive file is public.
+      const fileUrl = entry?.driveUrl
+        ? (typeof statArchiveDriveStreamUrl === "function"
+            ? statArchiveDriveStreamUrl(entry, "inline")
+            : entry.driveUrl)
+        : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
       const response = await fetch(fileUrl, { cache: "no-store", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);
       const raw = await response.blob();
