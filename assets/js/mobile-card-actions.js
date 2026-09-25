@@ -25,7 +25,6 @@ html body .card .card-actions .offline-btn{display:flex!important;visibility:vis
   html:not([data-authenticated="true"]) body .card .card-actions{justify-content:space-between!important;gap:0!important}
   html:not([data-authenticated="true"]) body .card .card-actions .action-btn{flex:0 0 auto!important;width:auto!important;max-width:none!important;height:32px!important;min-height:32px!important;padding:0 10px!important;border-radius:9px!important;font-size:12.5px!important;font-weight:700!important;gap:4px!important}
   html:not([data-authenticated="true"]) body .card .card-actions .pv-btn{min-width:clamp(88px,27vw,104px)!important}
-  html:not([data-authenticated="true"]) body .card .card-actions .dl-btn{min-width:clamp(103px,31vw,122px)!important}
   html:not([data-authenticated="true"]) body .card .card-actions .offline-btn{min-width:clamp(86px,26vw,102px)!important}
   html[data-authenticated="true"] body .card .card-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:stretch!important;gap:4px!important;width:100%!important;max-width:100%!important;overflow:hidden!important}
   html[data-authenticated="true"] body .card .card-actions .action-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:auto!important;min-width:0!important;max-width:none!important;height:34px!important;min-height:34px!important;padding:0 5px!important;border-radius:9px!important;font-size:10.5px!important;font-weight:700!important;gap:3px!important}
@@ -42,7 +41,6 @@ html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body
 @media(max-width:380px){
   html:not([data-authenticated="true"]) body .card .card-actions .action-btn{height:30px!important;min-height:30px!important;padding:0 7px!important;font-size:11.5px!important;border-radius:8px!important;gap:3px!important}
   html:not([data-authenticated="true"]) body .card .card-actions .pv-btn{min-width:82px!important}
-  html:not([data-authenticated="true"]) body .card .card-actions .dl-btn{min-width:96px!important}
   html:not([data-authenticated="true"]) body .card .card-actions .offline-btn{min-width:80px!important}
   html[data-authenticated="true"] body .card .card-actions{gap:3px!important}
   html[data-authenticated="true"] body .card .card-actions .action-btn{height:32px!important;min-height:32px!important;padding:0 3px!important;font-size:9.5px!important;border-radius:8px!important;gap:2px!important}
