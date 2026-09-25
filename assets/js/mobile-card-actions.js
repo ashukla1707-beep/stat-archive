@@ -13,6 +13,26 @@ html[data-authenticated="true"] body .card .card-actions .edit-btn,html[data-aut
 html[data-authenticated="true"] body .card .card-actions .edit-btn{font-size:0!important}
 html[data-authenticated="true"] body .card .card-actions .edit-btn::before{content:"✎"!important;font-size:14px!important;line-height:1!important}
 html body .card .card-actions .offline-btn{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+/* One compact action system for signed-in cards on web and APK. */
+html[data-authenticated="true"] body .card .card-actions{
+  display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+  align-items:center!important;justify-content:flex-start!important;gap:6px!important;
+  width:100%!important;max-width:100%!important;overflow:visible!important
+}
+html[data-authenticated="true"] body .card .card-actions .action-btn{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;
+  height:34px!important;min-height:34px!important;margin:0!important;padding:0 11px!important;
+  border-radius:9px!important;font-size:11.5px!important;font-weight:700!important;gap:4px!important;
+  white-space:nowrap!important;overflow:visible!important
+}
+html[data-authenticated="true"] body .card .card-actions .edit-btn,
+html[data-authenticated="true"] body .card .card-actions .del-btn{
+  flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;padding:0!important
+}
+html[data-authenticated="true"] body .card .card-actions .edit-btn{font-size:0!important}
+html[data-authenticated="true"] body .card .card-actions .edit-btn::before{content:"✎"!important;font-size:14px!important;line-height:1!important}
+
 @media(min-width:701px){
   html[data-authenticated="true"] body .card .card-actions{justify-content:flex-start!important;gap:8px!important}
   html[data-authenticated="true"] body .card .card-actions .pv-btn,
@@ -63,6 +83,12 @@ html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body
   html[data-authenticated="true"] body .card .card-actions .edit-btn{flex-basis:46px!important;width:46px!important;min-width:46px!important;max-width:46px!important;font-size:9.5px!important}
   html[data-authenticated="true"] body .card .card-actions .del-btn{flex-basis:30px!important;width:30px!important;min-width:30px!important;max-width:30px!important}
 }
+/* Final cascade guard: authenticated actions stay compact at every viewport. */
+html[data-authenticated="true"] body .card .card-actions{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important}
+html[data-authenticated="true"] body .card .card-actions .pv-btn,
+html[data-authenticated="true"] body .card .card-actions .offline-btn{flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;height:34px!important;min-height:34px!important;padding:0 11px!important;font-size:11.5px!important}
+html[data-authenticated="true"] body .card .card-actions .edit-btn,
+html[data-authenticated="true"] body .card .card-actions .del-btn{flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important}
 .card-source-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 7px;border-radius:999px;border:1px solid rgba(99,239,255,.28);background:rgba(99,239,255,.08);color:#75eefa;font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.08em;white-space:nowrap}
 body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#4b365f}
 `;
