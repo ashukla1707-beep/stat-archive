@@ -1,7 +1,7 @@
 (() => {
   if (document.getElementById('statArchiveActionSpacingFix')) return;
 
-  const PURGE_KEY = 'statArchiveCardUiCachePurge20260915CanonicalOfflineV6Perf';
+  const PURGE_KEY = 'statArchiveCardUiCachePurge20260925DownloadEffectV1';
   try {
     if (navigator.onLine && !localStorage.getItem(PURGE_KEY) && 'caches' in window) {
       caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('stat-archive-shell-')).map(key => caches.delete(key)))).then(() => localStorage.setItem(PURGE_KEY, '1')).catch(() => {});
@@ -101,9 +101,18 @@ html body .card .card-actions .dl-btn.sa-offline-style,html body .card .card-act
   }
   let syncingTheme=false;const themeObserver=new MutationObserver(()=>{if(syncingTheme)return;syncingTheme=true;try{syncThemeAndMu()}finally{syncingTheme=false}});if(document.body)themeObserver.observe(document.body,{attributes:true,attributeFilter:['data-theme']});themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});syncThemeAndMu();
 
-  function syncDownloadStatus(root=document){root.querySelectorAll?.('.dl-btn,.download-btn').forEach(btn=>{if(btn.classList.contains('is-downloaded')&&!btn.disabled){if(btn.textContent.trim()!=='✓ Downloaded')btn.textContent='✓ Downloaded';btn.setAttribute('title','Downloaded on this device')}})}
+  /* Keep the action label as Download. Completion is communicated by the
+     existing checkmark/state styling only, so the pill width never jumps. */
+  function syncDownloadStatus(root=document){
+    root.querySelectorAll?.('.dl-btn,.download-btn').forEach(btn=>{
+      if(btn.classList.contains('is-downloaded')&&!btn.disabled){
+        if(btn.textContent.trim()!=='✓ Download') btn.textContent='✓ Download';
+        btn.setAttribute('title','Downloaded on this device');
+      }
+    });
+  }
   syncDownloadStatus();
-  const downloadStatusObserver=new MutationObserver(mutations=>{for(const mutation of mutations){const target=mutation.target instanceof Element?mutation.target:mutation.target?.parentElement;const btn=target?.closest?.('.dl-btn,.download-btn');if(btn&&btn.classList.contains('is-downloaded')&&!btn.disabled){if(btn.textContent.trim()!=='✓ Downloaded')btn.textContent='✓ Downloaded';btn.setAttribute('title','Downloaded on this device')}if(mutation.type==='childList')mutation.addedNodes.forEach(node=>{if(node instanceof Element)syncDownloadStatus(node)})}});downloadStatusObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
+  const downloadStatusObserver=new MutationObserver(mutations=>{for(const mutation of mutations){const target=mutation.target instanceof Element?mutation.target:mutation.target?.parentElement;const btn=target?.closest?.('.dl-btn,.download-btn');if(btn&&btn.classList.contains('is-downloaded')&&!btn.disabled){if(btn.textContent.trim()!=='✓ Download')btn.textContent='✓ Download';btn.setAttribute('title','Downloaded on this device')}if(mutation.type==='childList')mutation.addedNodes.forEach(node=>{if(node instanceof Element)syncDownloadStatus(node)})}});downloadStatusObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
 
   const releaseMenuButtonState=()=>{const btn=document.getElementById('mainMenuBtn');if(!btn)return;try{btn.blur()}catch(_){}btn.classList.remove('is-pressed','is-active','active')};const isTouchLike=()=>!!window.matchMedia?.('(hover:none), (pointer:coarse)').matches;
   document.addEventListener('pointerup',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn'))return;requestAnimationFrame(releaseMenuButtonState)},true);
