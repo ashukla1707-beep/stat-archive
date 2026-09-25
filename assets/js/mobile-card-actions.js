@@ -83,13 +83,14 @@ html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body
   html[data-authenticated="true"] body .card .card-actions .edit-btn{flex-basis:46px!important;width:46px!important;min-width:46px!important;max-width:46px!important;font-size:9.5px!important}
   html[data-authenticated="true"] body .card .card-actions .del-btn{flex-basis:30px!important;width:30px!important;min-width:30px!important;max-width:30px!important}
 }
-/* Final cascade guard: authenticated actions stay compact and centered at every viewport. */
-html[data-authenticated="true"] body .card .card-actions{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important}
+/* Final cascade guard: span the row — first action at left, last at right,
+   with the remaining actions distributed evenly between them. */
+html[data-authenticated="true"] body .card .card-actions{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important}
 html[data-authenticated="true"] body .card .card-actions .pv-btn,
 html[data-authenticated="true"] body .card .card-actions .offline-btn{flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;height:34px!important;min-height:34px!important;padding:0 11px!important;font-size:11.5px!important}
 html[data-authenticated="true"] body .card .card-actions .edit-btn,
 html[data-authenticated="true"] body .card .card-actions .del-btn{flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important}
-html:not([data-authenticated="true"]) body .card .card-actions{justify-content:center!important;gap:8px!important}
+html:not([data-authenticated="true"]) body .card .card-actions{justify-content:space-between!important;gap:8px!important}
 .card-source-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 7px;border-radius:999px;border:1px solid rgba(99,239,255,.28);background:rgba(99,239,255,.08);color:#75eefa;font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.08em;white-space:nowrap}
 body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#4b365f}
 `;
