@@ -22,17 +22,32 @@ body[data-theme="light"] .entry-method-card.is-active{
   background:rgba(54,185,210,.055) !important;
   box-shadow:0 0 0 1px rgba(54,185,210,.08) inset !important;
 }
+/* The create-entry sheet must remain scrollable on both desktop web and APK.
+   Keep the overlay fixed; make the form itself the only vertical scroller. */
+#overlay{
+  overflow:hidden !important;
+}
+#overlay #uploadForm.form-card{
+  display:block !important;
+  height:auto !important;
+  max-height:calc(100dvh - 32px) !important;
+  overflow-x:hidden !important;
+  overflow-y:scroll !important;
+  touch-action:pan-y !important;
+  overscroll-behavior:contain !important;
+  -webkit-overflow-scrolling:touch !important;
+  scrollbar-width:auto !important;
+  padding-bottom:max(25px,env(safe-area-inset-bottom)) !important;
+}
+#overlay #uploadForm.form-card::-webkit-scrollbar{width:10px !important}
+#overlay #uploadForm.form-card::-webkit-scrollbar-thumb{background:rgba(148,163,184,.38) !important;border-radius:999px !important}
 @media(max-width:700px){
   #overlay{
     align-items:flex-start !important;
     padding:8px !important;
   }
-  #overlay .form-card{
+  #overlay #uploadForm.form-card{
     max-height:calc(100dvh - 16px) !important;
-    overflow-y:auto !important;
-    -webkit-overflow-scrolling:touch !important;
-    overscroll-behavior:contain !important;
-    padding-bottom:max(25px,env(safe-area-inset-bottom)) !important;
   }
 }
 `;
