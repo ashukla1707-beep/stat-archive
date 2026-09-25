@@ -45,7 +45,7 @@ html body .card .card-actions .offline-btn{display:flex!important;visibility:vis
 html body:not([data-theme="light"]) .card .card-actions .pv-btn:not(.is-previewed):not(.sa-preview-used),html body:not([data-theme="light"]) .card .card-actions .offline-btn:not(.is-saved){color:#f1f4f8!important;background:#111722!important;border:1px solid rgba(255,255,255,.035)!important;box-shadow:none!important}
 html body:not([data-theme="light"]) .card .card-actions .pv-btn.is-previewed,html body:not([data-theme="light"]) .card .card-actions .pv-btn.sa-preview-used,html body:not([data-theme="light"]) .card .card-actions .offline-btn.is-saved{color:#63efff!important;background:rgba(18,52,64,.76)!important;border:1px solid rgba(99,239,255,.38)!important;box-shadow:inset 0 0 0 1px rgba(99,239,255,.07)!important}
 html body[data-theme="light"] .card .card-actions .pv-btn:not(.is-previewed):not(.sa-preview-used),html body[data-theme="light"] .card .card-actions .offline-btn:not(.is-saved){color:#27302d!important;background:#eee9f4!important;border:1px solid #ddd4e4!important;box-shadow:none!important}
-html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body[data-theme="light"] .card .card-actions .pv-btn.sa-preview-used,html body[data-theme="light"] .card .card-actions .offline-btn.is-saved{color:#fff!important;background:#5a3a73!important;border:1px solid #5a3a73!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)!important}
+html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body[data-theme="light"] .card .card-actions .pv-btn.sa-preview-used,html body[data-theme="light"] .card .card-actions .offline-btn.is-saved{color:#fff!important;background:#4b365f!important;border:1px solid #4b365f!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)!important}
 @media(max-width:380px){
   html:not([data-authenticated="true"]) body .card .card-actions .action-btn{height:30px!important;min-height:30px!important;padding:0 7px!important;font-size:11.5px!important;border-radius:8px!important;gap:3px!important}
   html:not([data-authenticated="true"]) body .card .card-actions .pv-btn{min-width:82px!important}
@@ -56,7 +56,7 @@ html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body
   html[data-authenticated="true"] body .card .card-actions .del-btn{flex-basis:30px!important;width:30px!important;min-width:30px!important;max-width:30px!important}
 }
 .card-source-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 7px;border-radius:999px;border:1px solid rgba(99,239,255,.28);background:rgba(99,239,255,.08);color:#75eefa;font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.08em;white-space:nowrap}
-body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#5a3a73}
+body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#4b365f}
 `;
 
   document.head.appendChild(style);
