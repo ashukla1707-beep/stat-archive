@@ -133,9 +133,10 @@ body[data-theme="light"] .sa-reader-btn{background:#fffaf1;color:#27302d;border-
 body[data-theme="light"] .sa-reader-info,body[data-theme="light"] .sa-reader-zoom{color:#59635e}
 body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);color:#59635e}
 @media(max-width:700px){
-  #previewOverlay{padding:0!important;align-items:stretch!important}
+  #previewOverlay{padding:0!important;align-items:stretch!important;justify-content:stretch!important}
   #previewOverlay .preview-card.sa-reader-active{
-    width:100vw!important;height:100dvh!important;max-height:none!important;
+    position:fixed!important;inset:0!important;
+    width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;
     margin:0!important;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))!important;
     border-radius:0!important;
   }
