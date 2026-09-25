@@ -455,9 +455,9 @@ body{
   }
 
 
-  /* Latest Entries is a denser combined feed: show more cards at once. */
+  /* Latest Entries: keep cards wide enough for the full signed-in action row. */
   .subject-row[data-subject-code="__latest__"] .subject-track .card{
-    flex-basis:calc((100% - 4*12px)/5);
+    flex-basis:calc((100% - 3*12px)/4);
   }
   .subject-row[data-subject-code="__latest__"] .subject-track{
     gap:12px;
@@ -473,7 +473,7 @@ body{
 
   @media(max-width:1199px){
     .subject-row[data-subject-code="__latest__"] .subject-track .card{
-      flex-basis:calc((100% - 3*12px)/4);
+      flex-basis:calc((100% - 2*12px)/3);
     }
   }
   @media(max-width:899px){
