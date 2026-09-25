@@ -605,6 +605,27 @@ body{
   .preview-card.pdf-preview-active .pdf-open-new-tab-bottom{flex:0 0 auto;margin-top:0;padding-top:8px;position:static;background:none}
   .preview-card.pdf-preview-active .pdf-open-new-tab-bottom .pdf-open-new-tab-btn{min-height:48px}
 
+  /* File-a-new-entry: keep desktop web visually aligned with the compact APK form. */
+  @media(min-width:701px){
+    #overlay{padding:16px}
+    #uploadForm.form-card{
+      max-width:440px;
+      padding:20px;
+      border-radius:16px;
+      max-height:92vh;
+    }
+    #uploadForm .form-header{margin-bottom:14px}
+    #uploadForm .form-title{font-size:14px}
+    #uploadForm label{margin:12px 0 5px;font-size:9.5px}
+    #uploadForm input[type=text],
+    #uploadForm input[type=url],
+    #uploadForm select{padding:10px 11px;border-radius:8px;font-size:12.5px}
+    #uploadForm .form-row{gap:10px}
+    #uploadForm .hint{font-size:10px;line-height:1.45}
+    #uploadForm .drive-toggle-btn{font-size:10.5px;margin-top:7px}
+    #uploadForm .submit-btn{margin-top:16px;padding:11px 14px;border-radius:9px}
+  }
+
   /* ===== Mobile-friendly PDF preview ===== */
   .pdf-preview-shell{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
   .pdf-preview-toolbar{
