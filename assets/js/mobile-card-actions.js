@@ -14,6 +14,14 @@ html[data-authenticated="true"] body .card .card-actions .edit-btn{font-size:0!i
 html[data-authenticated="true"] body .card .card-actions .edit-btn::before{content:"✎"!important;font-size:14px!important;line-height:1!important}
 html body .card .card-actions .offline-btn{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 @media(min-width:701px){
+  /* Web: keep the two reader actions compact and anchored to opposite sides,
+     matching the APK card proportions after removal of the Download action. */
+  html:not([data-authenticated="true"]) body .card .card-actions{justify-content:space-between!important;gap:12px!important}
+  html:not([data-authenticated="true"]) body .card .card-actions .pv-btn,
+  html:not([data-authenticated="true"]) body .card .card-actions .offline-btn{
+    flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;
+    padding-left:14px!important;padding-right:14px!important
+  }
     html[data-authenticated="true"] body .card .card-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:stretch!important;gap:5px!important;overflow:hidden!important}
   html[data-authenticated="true"] body .card .card-actions .action-btn{display:inline-flex!important;width:auto!important;max-width:none!important;height:32px!important;min-height:32px!important;border-radius:9px!important;font-size:11.5px!important;font-weight:650!important}
   html[data-authenticated="true"] body .card .card-actions .pv-btn,html[data-authenticated="true"] body .card .card-actions .offline-btn{flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;padding-left:6px!important;padding-right:6px!important}
