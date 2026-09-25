@@ -22,9 +22,9 @@ html body .card .card-actions .offline-btn{display:flex!important;visibility:vis
     flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;
     padding-left:14px!important;padding-right:14px!important
   }
-    html[data-authenticated="true"] body .card .card-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:stretch!important;gap:5px!important;overflow:hidden!important}
+    html[data-authenticated="true"] body .card .card-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-start!important;gap:8px!important;overflow:hidden!important}
   html[data-authenticated="true"] body .card .card-actions .action-btn{display:inline-flex!important;width:auto!important;max-width:none!important;height:32px!important;min-height:32px!important;border-radius:9px!important;font-size:11.5px!important;font-weight:650!important}
-  html[data-authenticated="true"] body .card .card-actions .pv-btn,html[data-authenticated="true"] body .card .card-actions .offline-btn{flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;padding-left:6px!important;padding-right:6px!important}
+  html[data-authenticated="true"] body .card .card-actions .pv-btn,html[data-authenticated="true"] body .card .card-actions .offline-btn{flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;padding-left:14px!important;padding-right:14px!important}
   html[data-authenticated="true"] body .card .card-actions .edit-btn,html[data-authenticated="true"] body .card .card-actions .del-btn{display:inline-flex!important;flex:0 0 36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;padding:0!important}
   html[data-authenticated="true"] body .card .card-actions .edit-btn{font-size:0!important}
 }
