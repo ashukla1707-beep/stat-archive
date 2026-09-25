@@ -1784,13 +1784,20 @@ async function downloadEntry(
 
   try {
 
+    const fileUrl = entry?.driveUrl
+      ? (typeof statArchiveDriveStreamUrl === "function"
+          ? statArchiveDriveStreamUrl(entry, "download")
+          : entry.driveUrl)
+      : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
+
     const response =
       await fetch(
-        `${WORKER_URL}/file?id=${
-          encodeURIComponent(
-            entry.id
-          )
-        }`
+        fileUrl,
+        {
+          method: "GET",
+          cache: "no-store",
+          credentials: "omit"
+        }
       );
 
 
