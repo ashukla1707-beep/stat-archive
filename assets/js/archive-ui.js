@@ -199,13 +199,6 @@ function buildCard(entry) {
   </button>
 
   <button
-    class="action-btn dl-btn${downloadedEntryIds.has(String(entry.id)) ? " is-downloaded" : ""}"
-    title="${downloadedEntryIds.has(String(entry.id)) ? "Already downloaded on this device" : "Download file"}"
-  >
-    ${downloadedEntryIds.has(String(entry.id)) ? "✓ Downloaded" : "⬇ Download"}
-  </button>
-
-  <button
     class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}"
     title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}"
   >
