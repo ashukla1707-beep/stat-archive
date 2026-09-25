@@ -5,7 +5,7 @@
   style.id = 'statArchiveMobileCardActionsFinal';
   style.textContent = `
 html body .card .card-actions{box-sizing:border-box!important}
-html:not([data-authenticated="true"]) body .card .card-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}
+html:not([data-authenticated="true"]) body .card .card-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:center!important;gap:8px!important}
 html:not([data-authenticated="true"]) body .card .card-actions .action-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important;min-width:0!important;width:auto!important;white-space:nowrap!important}
 html[data-authenticated="true"] body .card .card-actions{display:grid!important;grid-template-columns:minmax(0,1.05fr) minmax(0,1.22fr) minmax(0,1.05fr) 34px 34px!important;align-items:stretch!important;justify-content:stretch!important;gap:4px!important;width:100%!important;max-width:100%!important;overflow:visible!important}
 html[data-authenticated="true"] body .card .card-actions .action-btn{display:flex!important;align-items:center!important;justify-content:center!important;min-width:0!important;max-width:100%!important;width:100%!important;margin:0!important;padding:0 5px!important;gap:3px!important;white-space:nowrap!important;word-break:keep-all!important;overflow:hidden!important;text-overflow:clip!important;box-sizing:border-box!important}
@@ -83,12 +83,13 @@ html body[data-theme="light"] .card .card-actions .pv-btn.is-previewed,html body
   html[data-authenticated="true"] body .card .card-actions .edit-btn{flex-basis:46px!important;width:46px!important;min-width:46px!important;max-width:46px!important;font-size:9.5px!important}
   html[data-authenticated="true"] body .card .card-actions .del-btn{flex-basis:30px!important;width:30px!important;min-width:30px!important;max-width:30px!important}
 }
-/* Final cascade guard: authenticated actions stay compact at every viewport. */
-html[data-authenticated="true"] body .card .card-actions{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important}
+/* Final cascade guard: authenticated actions stay compact and centered at every viewport. */
+html[data-authenticated="true"] body .card .card-actions{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important}
 html[data-authenticated="true"] body .card .card-actions .pv-btn,
 html[data-authenticated="true"] body .card .card-actions .offline-btn{flex:0 0 auto!important;width:auto!important;min-width:0!important;max-width:none!important;height:34px!important;min-height:34px!important;padding:0 11px!important;font-size:11.5px!important}
 html[data-authenticated="true"] body .card .card-actions .edit-btn,
 html[data-authenticated="true"] body .card .card-actions .del-btn{flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important}
+html:not([data-authenticated="true"]) body .card .card-actions{justify-content:center!important;gap:8px!important}
 .card-source-badge{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 7px;border-radius:999px;border:1px solid rgba(99,239,255,.28);background:rgba(99,239,255,.08);color:#75eefa;font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.08em;white-space:nowrap}
 body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);background:rgba(90,58,115,.08);color:#4b365f}
 `;
