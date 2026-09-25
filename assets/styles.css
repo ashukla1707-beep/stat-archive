@@ -612,7 +612,12 @@ body{
       max-width:440px;
       padding:20px;
       border-radius:16px;
-      max-height:92vh;
+      height:auto;
+      max-height:calc(100dvh - 32px);
+      overflow-y:auto;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-gutter:stable;
     }
     #uploadForm .form-header{margin-bottom:14px}
     #uploadForm .form-title{font-size:14px}
