@@ -39,8 +39,9 @@ body[data-theme="light"] .entry-method-card.is-active{
   scrollbar-width:auto !important;
   padding-bottom:max(25px,env(safe-area-inset-bottom)) !important;
 }
-#overlay #uploadForm.form-card::-webkit-scrollbar{width:10px !important}
-#overlay #uploadForm.form-card::-webkit-scrollbar-thumb{background:rgba(148,163,184,.38) !important;border-radius:999px !important}
+/* Keep scrolling functional without drawing a scrollbar over the rounded dialog edge. */
+#overlay #uploadForm.form-card{scrollbar-width:none !important}
+#overlay #uploadForm.form-card::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}
 @media(max-width:700px){
   #overlay{
     align-items:flex-start !important;
