@@ -8,7 +8,7 @@
   const PAGE_PAD = 12;
   const DPR_MAX = 1.75;
   const FAST_DPR_MAX = 1.25;
-  const ENGINE_ID = "native-scroll-pinch-v7-r2-range";
+  const ENGINE_ID = "native-scroll-pinch-v8-web-custom-range";
   const PDF_CACHE_MAX = 3;
   const pdfBlobCache = new Map();
 
@@ -94,10 +94,10 @@
     style.id = "statArchivePreviewNativeV2Css";
     style.textContent = `
 #previewOverlay .preview-card.sa-reader-active{
-  width:min(1120px,calc(100vw - 24px))!important;
-  height:min(900px,calc(100dvh - 24px))!important;
-  max-width:none!important;
-  max-height:none!important;
+  width:min(560px,calc((100vw - 28px) * .5))!important;
+  height:calc((100dvh - 28px) * .90)!important;
+  max-width:560px!important;
+  max-height:calc(100dvh - 28px)!important;
   padding:16px!important;
   display:flex!important;
   flex-direction:column!important;
@@ -951,28 +951,10 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
           )}`;
 
       const looksPdf = /\.pdf(?:$|[?#])/i.test(String(entry?.file_name || entry?.filename || entry?.title || fileUrl));
-      const canUseNativePdf = looksPdf &&
-        !(window.AndroidBridge && typeof window.AndroidBridge.openFile === "function") &&
-        !/Android/i.test(navigator.userAgent || "");
 
-      if (canUseNativePdf) {
-        const nativeUrl = String(fileUrl) + (String(fileUrl).includes("#") ? "&" : "#") + "view=FitH&toolbar=0";
-        body.innerHTML = `
-          <div style="width:100%;height:100%;min-height:0;background:#080c12">
-            <iframe
-              id="saNativePdfFrame"
-              title="${escapeHtml(entry?.title || entry?.filename || entry?.file_name || "PDF preview")}"
-              src="${escapeHtml(nativeUrl)}"
-              style="display:block;width:100%;height:100%;border:0;background:#080c12"
-              loading="eager"
-            ></iframe>
-          </div>`;
-        console.info(`[Stat Archive Preview] native PDF stream started in ${Math.round(performance.now() - startedAt)} ms`);
-        return;
-      }
-
-      // R2 PDFs now go directly to PDF.js by URL. The Worker supports byte ranges,
-      // so PDF.js can request only the chunks needed for page 1 and later pages.
+      // Always use the Stat Archive PDF.js reader for PDFs on the website.
+      // This preserves the approved compact web layout and toolbar while R2
+      // files still use byte-range requests through buildPdf().
       if (looksPdf && !entry?.driveUrl) {
         const el = document.getElementById("saPreviewLoading");
         if (el) el.textContent = "Opening PDF…";
