@@ -1044,6 +1044,22 @@ document
 
 
         if (
+          type === "Book" &&
+          hasDuplicateBookTitle(
+            title,
+            entry.id
+          )
+        ) {
+
+          showEditEntryError(
+            "A book with this name already exists in the archive."
+          );
+
+          return;
+        }
+
+
+        if (
           YEAR_REQUIRED_TYPES.includes(
             type
           )
@@ -3853,6 +3869,60 @@ function hasDuplicateQuestionEntry(
 }
 
 
+function normalizeBookTitleForDuplicateCheck(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[_\-–—]+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+function hasDuplicateBookTitle(title, excludeEntryId = null) {
+
+  const wanted =
+    normalizeBookTitleForDuplicateCheck(
+      title
+    );
+
+
+  if (!wanted) {
+    return false;
+  }
+
+
+  return entries.some(
+    entry =>
+      String(
+        entry?.id || ""
+      ) !==
+        String(
+          excludeEntryId || ""
+        ) &&
+
+      canonicalEntryType(
+        entry?.type
+      ) ===
+        "Book" &&
+
+      normalizeBookTitleForDuplicateCheck(
+        entry?.title
+      ) ===
+        wanted &&
+
+      String(
+        entry?.level ||
+        currentLevel
+      ) ===
+        String(
+          currentLevel
+        )
+  );
+}
+
+
 let isUploading =
   false;
 
@@ -4157,6 +4227,31 @@ document
           selectedType === "Book"
             ? "Add a title for the book."
             : "Add a title describing the file when Type is \"Others\"."
+        );
+
+
+        isUploading =
+          false;
+
+
+        return;
+      }
+
+
+      if (
+        selectedType === "Book" &&
+        hasDuplicateBookTitle(
+          document
+            .getElementById(
+              "titleInput"
+            )
+            .value
+            .trim()
+        )
+      ) {
+
+        showFormError(
+          "A book with this name already exists in the archive."
         );
 
 
