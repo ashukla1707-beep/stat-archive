@@ -65,6 +65,7 @@
   width:100%;height:100%;min-height:0;
   display:flex;flex-direction:column;
   background:var(--bg,#070a0f);color:var(--text,#f5f7fb);
+  border-radius:10px;overflow:hidden;
 }
 .sa-reader-toolbar{
   flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
