@@ -8,7 +8,7 @@
   const PAGE_PAD = 12;
   const DPR_MAX = 1.75;
   const FAST_DPR_MAX = 1.25;
-  const ENGINE_ID = "native-scroll-pinch-v3-fast";
+  const ENGINE_ID = "native-scroll-pinch-v4-frontend-lazy";
 
   let state = null;
   let serial = 0;
@@ -254,19 +254,11 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     if (!body) return;
 
     const lib = await window.loadPdfJs();
-    const sourceOptions = typeof source === "string"
-      ? {
-          url: source,
-          rangeChunkSize: 256 * 1024,
-          disableRange: false,
-          disableStream: false,
-          disableAutoFetch: true
-        }
-      : {
-          data: await source.arrayBuffer()
-        };
+    // Frontend-only preview: the stable backend is left untouched.
+    // We fetch the PDF as a Blob first, then PDF.js renders pages lazily.
+    const pdfBlob = source;
     const pdf = await lib.getDocument({
-      ...sourceOptions,
+      data: await pdfBlob.arrayBuffer(),
       cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
       cMapPacked: true
     }).promise;
@@ -357,7 +349,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
 
     const s = {
       pdf,
-      blob,
+      blob: pdfBlob,
       abort: state?.abort || new AbortController(),
       viewport,
       sizer,
@@ -799,14 +791,14 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     download.onclick = () => {
       try {
         if (typeof window.downloadEntry === "function") window.downloadEntry(entry, download);
-        else downloadBlob(blob, pdfName(entry));
+        else downloadBlob(pdfBlob, pdfName(entry));
       } catch (err) {
         console.error(err);
-        downloadBlob(blob, pdfName(entry));
+        downloadBlob(pdfBlob, pdfName(entry));
       }
     };
-    print.onclick = () => printBlob(blob, print, pdfName(entry));
-    open.onclick = () => openBlob(blob, pdfName(entry));
+    print.onclick = () => printBlob(pdfBlob, print, pdfName(entry));
+    open.onclick = () => openBlob(pdfBlob, pdfName(entry));
 
     if ("ResizeObserver" in window) {
       s.resizeObserver = new ResizeObserver(() => {
@@ -876,21 +868,8 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
-      // R2 PDFs use HTTP byte ranges so PDF.js can render the first page
-      // without waiting for the complete book. Drive keeps the reliable blob
-      // path because public Drive range behavior varies between files.
-      if (!entry?.driveUrl && /\\.pdf(?:$|[?#])/i.test(fileUrl)) {
-        try {
-          await buildPdf(entry, fileUrl, token);
-          return;
-        } catch (rangeError) {
-          if (abort.signal.aborted || token !== serial) return;
-          console.warn("Range preview failed; falling back to full PDF", rangeError);
-        }
-      }
-
-      // Reliable fallback for Drive, images, and any server/browser that
-      // cannot satisfy PDF.js range requests.
+      // Keep the backend unchanged. Fetch through the existing stable endpoint,
+      // then let the reader render only the visible pages and release distant canvases.
       const response = await fetch(fileUrl, { cache: "default", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);
       const raw = await response.blob();
