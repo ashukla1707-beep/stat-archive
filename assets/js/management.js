@@ -4361,7 +4361,8 @@ document
 
       if (
         driveLinkMode &&
-        !window.__statArchiveDriveReminderConfirmed
+        window.__statArchiveDriveReminderConfirmed !==
+          driveUrl
       ) {
 
         const reminder =
@@ -4444,7 +4445,7 @@ document
                */
               window
                 .__statArchiveDriveReminderConfirmed =
-                  true;
+                  driveUrl;
 
               document
                 .getElementById(
@@ -4460,11 +4461,12 @@ document
 
 
       if (
-        window.__statArchiveDriveReminderConfirmed
+        window.__statArchiveDriveReminderConfirmed ===
+          driveUrl
       ) {
 
         window.__statArchiveDriveReminderConfirmed =
-          false;
+          "";
       }
 
 
