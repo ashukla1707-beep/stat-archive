@@ -483,18 +483,46 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       s.statusTimer = setTimeout(() => status.classList.remove("show"), ms);
     }
 
-    const fragment = document.createDocumentFragment();
-    for (const m of metas) {
-      const el = document.createElement("div");
-      el.className = "sa-reader-page is-placeholder";
-      el.dataset.page = String(m.num);
-      el.style.cssText = `left:${m.x}px;top:${m.y}px;width:${m.w}px;height:${m.h}px`;
-      m.el = el;
-      fragment.appendChild(el);
-    }
-    surface.appendChild(fragment);
+    // Create page 1 immediately. Creating hundreds/thousands of page DOM
+    // nodes up front delays the first paint on Android WebView.
+    const firstMeta = metas[0];
+    const firstEl = document.createElement("div");
+    firstEl.className = "sa-reader-page is-placeholder";
+    firstEl.dataset.page = "1";
+    firstEl.style.cssText = `left:${firstMeta.x}px;top:${firstMeta.y}px;width:${firstMeta.w}px;height:${firstMeta.h}px`;
+    firstMeta.el = firstEl;
+    surface.appendChild(firstEl);
     updateSizerAndTransform();
     updateCurrent(1);
+
+    // Render page 1 before populating the rest of a large document.
+    await renderPage(firstMeta);
+
+    // Add remaining placeholders in small idle batches so they never block
+    // the first visible page.
+    let placeholderIndex = 1;
+    const addPlaceholderBatch = () => {
+      if (token !== serial || state !== s || placeholderIndex >= metas.length) return;
+      const fragment = document.createDocumentFragment();
+      const end = Math.min(metas.length, placeholderIndex + 80);
+      for (; placeholderIndex < end; placeholderIndex++) {
+        const m = metas[placeholderIndex];
+        if (m.el) continue;
+        const el = document.createElement("div");
+        el.className = "sa-reader-page is-placeholder";
+        el.dataset.page = String(m.num);
+        el.style.cssText = `left:${m.x}px;top:${m.y}px;width:${m.w}px;height:${m.h}px`;
+        m.el = el;
+        fragment.appendChild(el);
+      }
+      surface.appendChild(fragment);
+      if (placeholderIndex < metas.length) {
+        if ("requestIdleCallback" in window) requestIdleCallback(addPlaceholderBatch, { timeout: 120 });
+        else setTimeout(addPlaceholderBatch, 16);
+      }
+    };
+    if ("requestIdleCallback" in window) requestIdleCallback(addPlaceholderBatch, { timeout: 120 });
+    else setTimeout(addPlaceholderBatch, 16);
 
     function setMetaFromViewport(m, rawViewport) {
       const newW = s.fitWidth;
