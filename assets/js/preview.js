@@ -8,7 +8,7 @@
   const PAGE_PAD = 12;
   const DPR_MAX = 1.75;
   const FAST_DPR_MAX = 1.25;
-  const ENGINE_ID = "native-scroll-pinch-v5-fast-open";
+  const ENGINE_ID = "native-scroll-pinch-v6-native-first";
   const PDF_CACHE_MAX = 3;
   const pdfBlobCache = new Map();
 
@@ -924,8 +924,34 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
-      // Backend stays untouched. Reuse a recently fetched PDF when possible;
-      // otherwise show real download progress while the stable endpoint transfers it.
+      // Fastest frontend-only path: on desktop browsers, let the native PDF
+      // viewer consume the existing stable URL directly. This avoids waiting for
+      // JavaScript to build a full Blob before anything can be displayed.
+      // Android/WebView stays on the PDF.js path because embedded PDF support is
+      // inconsistent there.
+      const looksPdf = /\\.pdf(?:$|[?#])/i.test(String(entry?.filename || entry?.title || fileUrl));
+      const canUseNativePdf = looksPdf &&
+        !(window.AndroidBridge && typeof window.AndroidBridge.openFile === "function") &&
+        !/Android/i.test(navigator.userAgent || "");
+
+      if (canUseNativePdf) {
+        const nativeUrl = String(fileUrl) + (String(fileUrl).includes("#") ? "&" : "#") + "view=FitH&toolbar=0";
+        body.innerHTML = `
+          <div style="width:100%;height:100%;min-height:0;background:#080c12">
+            <iframe
+              id="saNativePdfFrame"
+              title="${escapeHtml(entry?.title || entry?.filename || "PDF preview")}"
+              src="${escapeHtml(nativeUrl)}"
+              style="display:block;width:100%;height:100%;border:0;background:#080c12"
+              loading="eager"
+            ></iframe>
+          </div>`;
+        console.info(`[Stat Archive Preview] native PDF stream started in ${Math.round(performance.now() - startedAt)} ms`);
+        return;
+      }
+
+      // PDF.js fallback for Android/WebView and browsers without the native path.
+      // Reuse a recently fetched PDF when possible; otherwise show real progress.
       const key = cacheKey(entry, fileUrl);
       let raw = getCachedBlob(key);
       const loading = () => document.getElementById("saPreviewLoading");
