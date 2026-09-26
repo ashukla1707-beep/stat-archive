@@ -115,7 +115,7 @@ body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);bac
   style.textContent = `
 @media(max-width:700px){
 html body #previewOverlay.overlay{align-items:center!important;justify-content:center!important;padding:14px!important;background:rgba(3,7,12,.76)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
-html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120px,calc(100vw - 28px))!important;height:min(900px,calc(100dvh - 28px))!important;max-width:1120px!important;max-height:900px!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
+html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px,calc((100vw - 28px) * .5))!important;height:min(450px,calc((100dvh - 28px) * .5))!important;max-width:560px!important;max-height:450px!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
 .sa-toolbar-expand-btn,.sa-toolbar-extra-row{display:none}
 @media(max-width:700px){
   html body #previewOverlay.overlay{padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom))!important;align-items:center!important;justify-content:center!important}
