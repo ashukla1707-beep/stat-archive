@@ -1,6 +1,6 @@
 {
-  "versionCode": 27,
-  "versionName": "1.5.20",
+  "versionCode": 28,
+  "versionName": "1.5.21",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.20 fixes the intermittent Android launch splash issue so the approved full-screen splash is shown instead of the cropped system splash artwork."
+  "message": "Stat Archive 1.5.21 is the current Android release."
 }
