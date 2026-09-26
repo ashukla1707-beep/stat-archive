@@ -5603,18 +5603,3 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 }
 
-
-/* Drive public-sharing reminder */
-.drive-public-reminder-overlay{z-index:10050;padding:18px}
-.drive-public-reminder-card{width:min(440px,calc(100vw - 36px));border-radius:20px!important;padding:24px!important;background:var(--panel-solid)!important;border:1px solid var(--line-strong)!important;color:var(--text)!important;box-shadow:var(--shadow)!important}
-.drive-public-reminder-brand{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:24px;color:var(--text)}
-.drive-public-reminder-card .form-title{display:block;font-size:18px;margin-bottom:22px;color:var(--text)}
-.drive-public-reminder-card p{margin:0 0 18px;color:var(--text);font-size:15px;line-height:1.5}
-.drive-public-reminder-setting{padding:13px 14px;margin:-2px 0 18px;border:1px solid var(--line-strong);border-radius:12px;background:var(--panel-2);font-weight:650;color:var(--text)}
-.drive-public-reminder-setting span{padding:0 5px;color:var(--cyan)}
-.drive-public-reminder-question{font-weight:650!important;margin-bottom:22px!important}
-.drive-public-reminder-actions{display:flex;justify-content:flex-end;gap:10px}
-.drive-public-reminder-actions button{min-width:88px;border-radius:10px;padding:10px 16px;font:600 14px 'Inter',sans-serif}
-.drive-public-reminder-cancel{border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
-.drive-public-reminder-yes{margin:0!important;width:auto!important}
-html[data-theme="light"] .drive-public-reminder-card,body[data-theme="light"] .drive-public-reminder-card{background:var(--panel-solid)!important;color:var(--text)!important}
