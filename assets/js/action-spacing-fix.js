@@ -41,6 +41,29 @@ html body .card .card-actions .offline-btn{box-sizing:border-box!important;heigh
   html body #previewOverlay.overlay .sa-toolbar-expand-btn,
   html body #previewOverlay.overlay .sa-toolbar-extra-row{display:none!important}
 }
+
+/* Chrome/Brave "Desktop site" on a phone exposes a desktop-sized CSS viewport,
+   so the normal 560px desktop modal gets scaled down to a tiny physical card.
+   Only in that touch-desktop browser case, let the same desktop reader occupy
+   almost the full emulated viewport. Real desktop/laptop and normal mobile are untouched. */
+html.sa-preview-touch-desktop body #previewOverlay.overlay{padding:18px!important;align-items:center!important;justify-content:center!important}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .preview-card.sa-reader-active{
+  width:min(920px,calc(100vw - 36px))!important;
+  max-width:920px!important;
+  height:calc((100dvh - 36px) * .92)!important;
+  max-height:calc(100dvh - 36px)!important;
+  margin:auto!important;
+  border-radius:20px!important;
+  overflow:hidden!important;
+}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-reader-toolbar{padding:10px 12px!important;gap:10px!important;flex-wrap:nowrap!important}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-reader-group{gap:8px!important}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-reader-btn{min-width:40px!important;height:40px!important;padding:0 10px!important;font-size:13px!important}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-reader-info,
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-reader-zoom{font-size:12px!important}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-reader-open{min-height:44px!important;font-size:12px!important}
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-toolbar-expand-btn,
+html.sa-preview-touch-desktop body #previewOverlay.overlay .sa-toolbar-extra-row{display:none!important}
 `;
   document.head.appendChild(style);
 
@@ -59,6 +82,24 @@ html body .card .card-actions .offline-btn{box-sizing:border-box!important;heigh
   document.addEventListener('pointerup',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn'))return;requestAnimationFrame(releaseMenuButtonState)},true);
   document.addEventListener('click',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn,#mainMenuCloseBtn,#mainMenuBackdrop'))return;setTimeout(releaseMenuButtonState,0)},true);
 
+  function isPhoneDesktopSiteMode(){
+    const touch=(navigator.maxTouchPoints||0)>0;
+    const desktopLayout=window.innerWidth>700;
+    const bridge=window.AndroidBridge&&typeof window.AndroidBridge.openFile==='function';
+    const coarse=!!window.matchMedia?.('(pointer:coarse)').matches;
+    const sw=Number(window.screen?.width)||9999;
+    const sh=Number(window.screen?.height)||9999;
+    const phoneSizedScreen=Math.min(sw,sh)<=700;
+    return !bridge&&touch&&desktopLayout&&(coarse||phoneSizedScreen);
+  }
+  function syncTouchDesktopPreviewMode(){
+    document.documentElement.classList.toggle('sa-preview-touch-desktop',isPhoneDesktopSiteMode());
+  }
+  syncTouchDesktopPreviewMode();
+  window.addEventListener('resize',syncTouchDesktopPreviewMode,{passive:true});
+  window.addEventListener('orientationchange',syncTouchDesktopPreviewMode,{passive:true});
+  window.visualViewport?.addEventListener('resize',syncTouchDesktopPreviewMode,{passive:true});
+
   function restoreDesktopPreviewToolbar(){
     if (!window.matchMedia?.('(min-width:701px)').matches) return;
     document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(toolbar=>{
@@ -73,8 +114,9 @@ html body .card .card-actions .offline-btn{box-sizing:border-box!important;heigh
       toolbar.querySelector('.sa-toolbar-extra-row')?.remove();
     });
   }
-  const previewToolbarObserver=new MutationObserver(restoreDesktopPreviewToolbar);
+  const previewToolbarObserver=new MutationObserver(()=>{syncTouchDesktopPreviewMode();restoreDesktopPreviewToolbar()});
   const startPreviewToolbarRestore=()=>{
+    syncTouchDesktopPreviewMode();
     restoreDesktopPreviewToolbar();
     if(document.body)previewToolbarObserver.observe(document.body,{subtree:true,childList:true});
   };
