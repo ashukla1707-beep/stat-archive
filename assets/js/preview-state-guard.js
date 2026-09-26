@@ -94,8 +94,36 @@
     const original = window.previewEntry;
     if (typeof original !== "function" || original.__saStateGuardWrapped) return;
 
-    const wrapped = function (...args) {
+    const wrapped = async function (...args) {
       captureArchiveState();
+
+      /* Keep the previously approved Stat Archive PDF.js reader on desktop.
+         preview.js has a native-browser PDF branch for desktop; temporarily
+         exposing a harmless bridge makes that branch opt out, so the same
+         custom reader is used on web and Android. Because the current /file
+         endpoint supports byte ranges, this still uses the fast range-loading
+         path rather than downloading the whole PDF before rendering page 1. */
+      const isAndroid = /Android/i.test(navigator.userAgent || "");
+      const existingBridge = window.AndroidBridge;
+      const alreadyHasBridge = Boolean(
+        existingBridge && typeof existingBridge.openFile === "function"
+      );
+
+      if (!isAndroid && !alreadyHasBridge) {
+        const hadOwnBridge = Object.prototype.hasOwnProperty.call(window, "AndroidBridge");
+        try {
+          window.AndroidBridge = { openFile() {} };
+          return await original.apply(this, args);
+        } finally {
+          try {
+            if (hadOwnBridge) window.AndroidBridge = existingBridge;
+            else delete window.AndroidBridge;
+          } catch (_) {
+            try { window.AndroidBridge = existingBridge; } catch (_) {}
+          }
+        }
+      }
+
       return original.apply(this, args);
     };
     wrapped.__saStateGuardWrapped = true;
