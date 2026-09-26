@@ -852,7 +852,9 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         ? (typeof statArchiveDriveStreamUrl === "function"
             ? statArchiveDriveStreamUrl(entry, "inline")
             : entry.driveUrl)
-        : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}`;
+        : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
+            typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
+          )}`;
       const response = await fetch(fileUrl, { cache: "no-store", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);
       const raw = await response.blob();
