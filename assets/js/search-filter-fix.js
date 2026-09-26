@@ -120,3 +120,117 @@
 
   setTimeout(setupSearchFilterFix, 1000);
 })();
+
+/* Stat Archive — keep the Android install/version UI synchronized with the
+   current APK metadata even when an older service worker has version.json
+   cached. This file is a network-first runtime asset, so the repair reaches
+   already-installed web clients without waiting for the old shell cache. */
+(() => {
+  "use strict";
+
+  if (window.__STAT_ARCHIVE_ANDROID_VERSION_UI_FIX_1520__) return;
+  window.__STAT_ARCHIVE_ANDROID_VERSION_UI_FIX_1520__ = true;
+
+  const FALLBACK = {
+    versionName: "1.5.20",
+    versionCode: 27,
+    apkUrl: "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk"
+  };
+
+  let meta = { ...FALLBACK };
+  let paintQueued = false;
+  let refreshPromise = null;
+
+  function setTextIfDifferent(el, value) {
+    if (el && el.textContent !== value) el.textContent = value;
+  }
+
+  function paint() {
+    const versionName = String(meta.versionName || FALLBACK.versionName);
+    const apkUrl = String(meta.apkUrl || FALLBACK.apkUrl);
+
+    setTextIfDifferent(document.getElementById("statAndroidVersion"), `v${versionName}`);
+    setTextIfDifferent(document.getElementById("menuAndroidAppMeta"), `Official APK · v${versionName}`);
+
+    document.querySelectorAll("#statAndroidDownload, #statAndroidAutoBanner .stat-android-auto-install").forEach(link => {
+      if (!(link instanceof HTMLAnchorElement)) return;
+      if (link.href !== apkUrl) link.href = apkUrl;
+      if (link.id === "statAndroidDownload") link.setAttribute("download", "stat-archive.apk");
+    });
+  }
+
+  function schedulePaint() {
+    if (paintQueued) return;
+    paintQueued = true;
+    requestAnimationFrame(() => {
+      paintQueued = false;
+      paint();
+    });
+  }
+
+  async function refresh() {
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = (async () => {
+      paint();
+      try {
+        // Unique query string deliberately bypasses stale cache entries created
+        // by an older service worker that cached /version.json by request URL.
+        const url = `./version.json?v=${encodeURIComponent(FALLBACK.versionName)}&t=${Date.now()}`;
+        const response = await fetch(url, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data || typeof data !== "object") return;
+
+        meta = {
+          versionName: String(data.versionName || meta.versionName || FALLBACK.versionName),
+          versionCode: Number(data.versionCode || meta.versionCode || FALLBACK.versionCode),
+          apkUrl: String(data.apkUrl || meta.apkUrl || FALLBACK.apkUrl)
+        };
+      } catch (_) {
+        // FALLBACK is the current official release, so the UI remains correct
+        // even if metadata cannot be reached temporarily.
+      } finally {
+        paint();
+        refreshPromise = null;
+      }
+    })();
+
+    return refreshPromise;
+  }
+
+  function start() {
+    paint();
+    refresh();
+
+    const observer = new MutationObserver(schedulePaint);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    document.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest("#menuAndroidAppBtn, #statAndroidDownload")) return;
+      setTimeout(paint, 0);
+      setTimeout(refresh, 60);
+      setTimeout(paint, 220);
+    }, true);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refresh();
+    });
+    window.addEventListener("focus", refresh, { passive: true });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
+})();
