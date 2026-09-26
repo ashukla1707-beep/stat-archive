@@ -333,7 +333,10 @@ export default {
       // PDF.js relies on byte ranges for fast first-page rendering. Google
       // commonly honors Range with 206 even when Accept-Ranges is omitted.
       if (contentRange || upstream.status === 206) headers.set("Accept-Ranges", "bytes");
-      headers.set("Cache-Control", "private, no-store");
+      // Public Drive PDFs are immutable enough for a short private cache.
+      // This makes repeat previews instant without exposing the file publicly
+      // through a shared intermediary cache.
+      headers.set("Cache-Control", "private, max-age=900");
       headers.set("Content-Disposition", `${mode}; filename*=UTF-8''${encodeURIComponent(requestedName)}`);
       headers.set("X-Content-Type-Options", "nosniff");
       return new Response(upstream.body, { status: upstream.status, headers });
