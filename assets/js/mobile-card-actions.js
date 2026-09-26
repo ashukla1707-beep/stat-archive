@@ -139,7 +139,8 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
 }
 @media(max-width:430px){
   html body #previewOverlay.overlay .sa-reader-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px!important;column-gap:5px!important;padding:6px!important}
-  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type{grid-template-columns:32px minmax(56px,1fr) 32px!important;gap:3px!important;width:100%!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type{grid-template-columns:32px minmax(78px,1fr) 32px!important;gap:3px!important;width:100%!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type .sa-reader-info{min-width:78px!important;font-size:8.5px!important;letter-spacing:-.03em!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:nth-of-type(2){grid-template-columns:32px minmax(38px,1fr) 32px!important;gap:3px!important;width:100%!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-btn{min-width:32px!important;width:32px!important;padding:0!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-info,html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-zoom{font-size:9px!important;white-space:nowrap!important}
