@@ -1,6 +1,6 @@
 {
-  "versionCode": 26,
-  "versionName": "1.5.19",
+  "versionCode": 27,
+  "versionName": "1.5.20",
   "apkUrl": "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
-  "message": "Stat Archive 1.5.19 fixes intermittent splash-screen squeezing by keeping the splash artwork in portrait geometry while preserving normal app rotation after launch."
+  "message": "Stat Archive 1.5.20 fixes the intermittent Android launch splash issue so the approved full-screen splash is shown instead of the cropped system splash artwork."
 }
