@@ -330,6 +330,9 @@ export default {
       const length = upstream.headers.get("Content-Length"); if (length) headers.set("Content-Length", length);
       const contentRange = upstream.headers.get("Content-Range"); if (contentRange) headers.set("Content-Range", contentRange);
       const acceptRanges = upstream.headers.get("Accept-Ranges"); if (acceptRanges) headers.set("Accept-Ranges", acceptRanges);
+      // PDF.js relies on byte ranges for fast first-page rendering. Google
+      // commonly honors Range with 206 even when Accept-Ranges is omitted.
+      if (contentRange || upstream.status === 206) headers.set("Accept-Ranges", "bytes");
       headers.set("Cache-Control", "private, no-store");
       headers.set("Content-Disposition", `${mode}; filename*=UTF-8''${encodeURIComponent(requestedName)}`);
       headers.set("X-Content-Type-Options", "nosniff");
