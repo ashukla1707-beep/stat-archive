@@ -885,8 +885,15 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         String(entry?.type || "").toLowerCase().includes("question") ||
         String(entry?.type || "").toLowerCase() === "notes";
       if (looksPdf) {
-        await buildPdf(entry, null, token, fileUrl);
-        return;
+        try {
+          await buildPdf(entry, null, token, fileUrl);
+          return;
+        } catch (streamErr) {
+          if (streamErr?.name === "AbortError" || token !== serial) return;
+          console.warn("Streamed PDF preview failed; falling back to full download.", streamErr);
+          // Some endpoints/WebViews do not expose byte ranges consistently.
+          // Fall through to the proven blob path instead of showing an error.
+        }
       }
 
       const response = await fetch(fileUrl, { cache: "no-store", signal: abort.signal });
