@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260926-drive-reminder-v1";
+const CACHE = "stat-archive-shell-v20260916-no-transfer-progress-v10";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
