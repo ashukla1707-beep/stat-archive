@@ -1259,7 +1259,7 @@ document
           closeEditEntry();
 
 
-          render();
+          window.location.reload();
 
 
         } catch (err) {
@@ -1389,7 +1389,7 @@ async function deleteEntry(
       );
 
 
-    render();
+    window.location.reload();
 
 
   } catch (err) {
@@ -4534,7 +4534,7 @@ document
         closeAndResetUploadForm();
 
 
-        render();
+        window.location.reload();
 
 
       } catch (err) {
