@@ -4364,9 +4364,75 @@ document
       ) {
 
         const confirmedPublic =
-          window.confirm(
-            "Google Drive reminder\n\nBefore adding this entry, make sure the PDF sharing is set to:\n\nAnyone with the link → Viewer\n\nOtherwise students will not be able to preview the PDF.\n\nHave you made this file public?"
-          );
+          await new Promise(resolve => {
+
+            const reminder =
+              document.getElementById(
+                "drivePublicReminderOverlay"
+              );
+
+            const yes =
+              document.getElementById(
+                "drivePublicReminderYes"
+              );
+
+            const cancel =
+              document.getElementById(
+                "drivePublicReminderCancel"
+              );
+
+
+            if (
+              !reminder ||
+              !yes ||
+              !cancel
+            ) {
+
+              resolve(false);
+              return;
+            }
+
+
+            const finish =
+              value => {
+
+                reminder.style.display =
+                  "none";
+
+                yes.onclick =
+                  null;
+
+                cancel.onclick =
+                  null;
+
+                reminder.onclick =
+                  null;
+
+                resolve(value);
+              };
+
+
+            yes.onclick =
+              () => finish(true);
+
+            cancel.onclick =
+              () => finish(false);
+
+            reminder.onclick =
+              event => {
+
+                if (
+                  event.target ===
+                  reminder
+                ) {
+                  finish(false);
+                }
+              };
+
+
+            reminder.style.display =
+              "flex";
+          });
 
 
         if (!confirmedPublic) {
