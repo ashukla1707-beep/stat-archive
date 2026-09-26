@@ -416,10 +416,22 @@ function googleDrivePreviewUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id
 function googleDriveDownloadUrl(x){const raw=typeof x==="string"?x:x?.driveUrl,id=googleDriveFileId(raw);return id?`https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`:String(raw||"");}
 
 function archiveDownloadName(entry) {
-  const raw = String(entry?.title || entry?.filename || "Stat Archive file").trim();
+  // Keep display titles independent from HTTP/preview filenames. Normalize
+  // separators and punctuation before the name is placed in a stream URL or
+  // Content-Disposition header so unusual entry names cannot affect previewing.
+  const source = String(entry?.title || entry?.filename || "Stat Archive file");
+  const raw = source
+    .normalize("NFKC")
+    .replace(/[_]+/g, " ")
+    .replace(/[\\/:*?"<>|#%&{}$!'@+=\`~\r\n\t]+/g, " ")
+    .replace(/[\u0000-\u001F\u007F]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^[. ]+|[. ]+$/g, "")
+    .trim() || "Stat Archive file";
   const extMatch = String(entry?.filename || "").match(/\.[A-Za-z0-9]{1,8}$/);
-  const ext = extMatch ? extMatch[0] : ".pdf";
-  return /\.[A-Za-z0-9]{1,8}$/.test(raw) ? raw : raw + ext;
+  const ext = extMatch ? extMatch[0].toLowerCase() : ".pdf";
+  const stem = raw.replace(/\.[A-Za-z0-9]{1,8}$/i, "").trim() || "Stat Archive file";
+  return (stem.slice(0, 140).replace(/[. ]+$/g, "") || "Stat Archive file") + ext;
 }
 
 function statArchiveDriveStreamUrl(entry, mode = "inline") {
