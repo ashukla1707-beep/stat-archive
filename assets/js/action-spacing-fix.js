@@ -32,6 +32,15 @@ html body .card .card-actions .offline-btn{box-sizing:border-box!important;heigh
 @media(max-width:700px){html body .card-actions{gap:4px!important}html body .card-actions .action-btn{padding-left:4px!important;padding-right:4px!important;font-size:clamp(9.5px,2.75vw,11.5px)!important;gap:3px!important}html body .card-actions .edit-btn{flex-basis:56px!important}html body .card-actions .del-btn{flex:0 1 42px!important}html body .archive-entries-divider{margin-top:0!important;padding-top:18px!important;margin-bottom:12px!important}}
 @media(max-width:390px){html body .card-actions{gap:3px!important}html body .card-actions .edit-btn{flex-basis:50px!important}html body .card-actions .del-btn{flex-basis:36px!important}}
 @media (hover:none),(pointer:coarse){html body #mainMenuBtn.main-menu-btn:hover,html body #mainMenuBtn.main-menu-btn:active,html body #mainMenuBtn.main-menu-btn:focus:not(:focus-visible){transform:none!important;filter:none!important;box-shadow:none!important;outline:none!important}}
+
+/* Restore the already-approved desktop PDF preview: half-width popup, 90% height,
+   and the complete desktop toolbar. Mobile keeps its separate compact layout. */
+@media(min-width:701px){
+  html body #previewOverlay.overlay{align-items:center!important;justify-content:center!important;padding:14px!important}
+  html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px,calc((100vw - 28px) * .5))!important;height:calc((100dvh - 28px) * .90)!important;max-width:560px!important;max-height:calc(100dvh - 28px)!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important}
+  html body #previewOverlay.overlay .sa-toolbar-expand-btn,
+  html body #previewOverlay.overlay .sa-toolbar-extra-row{display:none!important}
+}
 `;
   document.head.appendChild(style);
 
@@ -49,4 +58,27 @@ html body .card .card-actions .offline-btn{box-sizing:border-box!important;heigh
   const releaseMenuButtonState=()=>{const btn=document.getElementById('mainMenuBtn');if(!btn)return;try{btn.blur()}catch(_){}btn.classList.remove('is-pressed','is-active','active')};const isTouchLike=()=>!!window.matchMedia?.('(hover:none), (pointer:coarse)').matches;
   document.addEventListener('pointerup',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn'))return;requestAnimationFrame(releaseMenuButtonState)},true);
   document.addEventListener('click',event=>{const target=event.target instanceof Element?event.target:null;if(!isTouchLike()||!target?.closest?.('#mainMenuBtn,#mainMenuCloseBtn,#mainMenuBackdrop'))return;setTimeout(releaseMenuButtonState,0)},true);
+
+  function restoreDesktopPreviewToolbar(){
+    if (!window.matchMedia?.('(min-width:701px)').matches) return;
+    document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(toolbar=>{
+      const groups=toolbar.querySelectorAll(':scope > .sa-reader-group');
+      const tools=groups[1];
+      if(!tools)return;
+      ['saReaderReset','saReaderDownload','saReaderPrint'].forEach(id=>{
+        const control=toolbar.querySelector('#'+id);
+        if(control&&control.parentElement!==tools)tools.appendChild(control);
+      });
+      toolbar.querySelector('.sa-toolbar-expand-btn')?.remove();
+      toolbar.querySelector('.sa-toolbar-extra-row')?.remove();
+    });
+  }
+  const previewToolbarObserver=new MutationObserver(restoreDesktopPreviewToolbar);
+  const startPreviewToolbarRestore=()=>{
+    restoreDesktopPreviewToolbar();
+    if(document.body)previewToolbarObserver.observe(document.body,{subtree:true,childList:true});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startPreviewToolbarRestore,{once:true});
+  else startPreviewToolbarRestore();
+  window.addEventListener('resize',restoreDesktopPreviewToolbar,{passive:true});
 })();
