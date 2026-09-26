@@ -113,9 +113,11 @@ body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);bac
   const style = document.createElement('style');
   style.id = 'statArchivePreviewPopupPolish';
   style.textContent = `
-html body #previewOverlay.overlay{align-items:center!important;justify-content:center!important;padding:14px!important;background:rgba(3,7,12,.76)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
-html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120px,calc(100vw - 28px))!important;height:min(900px,calc(100dvh - 28px))!important;max-width:1120px!important;max-height:900px!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
-.sa-toolbar-expand-btn,.sa-toolbar-extra-row{display:none}
+@media(min-width:701px){
+  html body #previewOverlay.overlay{align-items:center!important;justify-content:center!important;padding:14px!important;background:rgba(3,7,12,.76)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
+  html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px,calc((100vw - 28px) * .5))!important;height:calc((100dvh - 28px) * .90)!important;max-width:560px!important;max-height:calc(100dvh - 28px)!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
+  .sa-toolbar-expand-btn,.sa-toolbar-extra-row{display:none!important}
+}
 @media(max-width:700px){
   html body #previewOverlay.overlay{padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom))!important;align-items:center!important;justify-content:center!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active{width:calc(100vw - 20px)!important;height:min(88dvh,820px)!important;max-width:680px!important;max-height:calc(100dvh - 24px)!important;margin:auto!important;padding:12px!important;border-radius:18px!important}
@@ -204,7 +206,10 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
     });
   }
 
-  const enhance = () => document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
+  const enhance = () => {
+    if (!window.matchMedia('(max-width:700px)').matches) return;
+    document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
+  };
   const observer = new MutationObserver(enhance);
   const start = () => {
     enhance();
