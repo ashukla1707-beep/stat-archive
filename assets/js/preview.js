@@ -7,7 +7,8 @@
   const PAGE_GAP = 14;
   const PAGE_PAD = 12;
   const DPR_MAX = 1.75;
-  const ENGINE_ID = "native-scroll-pinch-v2";
+  const FAST_DPR_MAX = 1.25;
+  const ENGINE_ID = "native-scroll-pinch-v3-fast";
 
   let state = null;
   let serial = 0;
@@ -516,7 +517,11 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         const rawViewport = page.getViewport({ scale: 1 });
         setMetaFromViewport(m, rawViewport);
 
-        const dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
+        // Render the first visible pass at a lighter pixel density so pages
+        // appear quickly, especially in Android WebView. Zoomed pages can still
+        // use the higher cap for readability.
+        const dprCap = target <= 1.05 ? FAST_DPR_MAX : DPR_MAX;
+        const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
         const fit = s.fitWidth / rawViewport.width;
         const renderViewport = page.getViewport({ scale: fit * target * dpr });
         const canvas = document.createElement("canvas");
@@ -546,9 +551,11 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     function renderVisible() {
       if (token !== serial || state !== s || s.pinch) return;
       const size = viewportSize();
-      const top = Math.max(0, (viewport.scrollTop - size.h * 1.25) / s.zoom);
-      const bottom = (viewport.scrollTop + size.h * 2.25) / s.zoom;
-      let i = Math.max(0, pageIndexAt(top) - 2);
+      // Prioritize what the user can actually see. The old reader rendered
+      // several off-screen pages immediately, competing with page 1.
+      const top = Math.max(0, (viewport.scrollTop - size.h * 0.20) / s.zoom);
+      const bottom = (viewport.scrollTop + size.h * 1.20) / s.zoom;
+      let i = Math.max(0, pageIndexAt(top) - 1);
       for (; i < metas.length; i++) {
         const m = metas[i];
         if (m.y > bottom) break;
