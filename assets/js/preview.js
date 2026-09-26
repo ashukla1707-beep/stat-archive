@@ -249,16 +249,27 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     }
   }
 
-  async function buildPdf(entry, blob, token) {
+  async function buildPdf(entry, source, token, sourceUrl = "") {
     const body = document.getElementById("previewBody");
     if (!body) return;
 
     const lib = await window.loadPdfJs();
-    const pdf = await lib.getDocument({
-      data: await blob.arrayBuffer(),
-      cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
-      cMapPacked: true
-    }).promise;
+    const loadingSource = sourceUrl
+      ? {
+          url: sourceUrl,
+          rangeChunkSize: 262144,
+          disableRange: false,
+          disableStream: false,
+          disableAutoFetch: true,
+          cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+          cMapPacked: true
+        }
+      : {
+          data: await source.arrayBuffer(),
+          cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+          cMapPacked: true
+        };
+    const pdf = await lib.getDocument(loadingSource).promise;
 
     if (token !== serial) {
       try { pdf.destroy(); } catch (_) {}
@@ -865,6 +876,19 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
+      // PDFs go straight to PDF.js by URL. This lets PDF.js use HTTP byte
+      // ranges/streaming and start page 1 without waiting for the whole book.
+      const looksPdf = /\\.pdf(?:$|[?#])/i.test(String(entry?.filename || "")) ||
+        /\\.pdf(?:$|[?#])/i.test(String(entry?.title || "")) ||
+        entry?.driveUrl ||
+        String(entry?.type || "").toLowerCase() === "book" ||
+        String(entry?.type || "").toLowerCase().includes("question") ||
+        String(entry?.type || "").toLowerCase() === "notes";
+      if (looksPdf) {
+        await buildPdf(entry, null, token, fileUrl);
+        return;
+      }
+
       const response = await fetch(fileUrl, { cache: "no-store", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);
       const raw = await response.blob();
