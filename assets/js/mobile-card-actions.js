@@ -121,7 +121,10 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px
   html body #previewOverlay.overlay{padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom))!important;align-items:center!important;justify-content:center!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active{width:calc(100vw - 20px)!important;height:min(88dvh,820px)!important;max-width:680px!important;max-height:calc(100dvh - 24px)!important;margin:auto!important;padding:12px!important;border-radius:18px!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active>.form-header{margin-bottom:8px!important}
-  html body #previewOverlay.overlay .sa-reader-toolbar{position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto 34px!important;align-items:center!important;column-gap:8px!important;row-gap:6px!important;overflow:visible!important;padding:7px!important}
+  /* Keep every reader control inside the rounded preview card on phones. */
+  html body #previewOverlay.overlay .preview-body{min-width:0!important;max-width:100%!important;overflow:hidden!important}
+  html body #previewOverlay.overlay .sa-reader-shell{min-width:0!important;max-width:100%!important;overflow:hidden!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar{width:100%!important;max-width:100%!important;box-sizing:border-box!important;position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto 34px!important;align-items:center!important;column-gap:8px!important;row-gap:6px!important;overflow:visible!important;padding:7px!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group{min-width:0!important;margin:0!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type{display:grid!important;grid-template-columns:34px minmax(70px,auto) 34px!important;align-items:center!important;gap:5px!important;justify-self:start!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:nth-of-type(2){display:grid!important;grid-template-columns:34px minmax(46px,auto) 34px!important;align-items:center!important;gap:5px!important;justify-self:end!important}
