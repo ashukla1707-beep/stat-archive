@@ -138,10 +138,10 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
   body[data-theme="light"] .sa-toolbar-extra-row{background:#f7f3e9!important;box-shadow:0 12px 26px rgba(74,59,39,.16)!important}
 }
 @media(max-width:430px){
-  html body #previewOverlay.overlay .sa-reader-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px!important;column-gap:5px!important;padding:6px!important}
-  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type{grid-template-columns:32px minmax(78px,1fr) 32px!important;gap:3px!important;width:100%!important}
-  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type .sa-reader-info{min-width:78px!important;font-size:8.5px!important;letter-spacing:-.03em!important}
-  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:nth-of-type(2){grid-template-columns:32px minmax(38px,1fr) 32px!important;gap:3px!important;width:100%!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar{grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr) 32px!important;column-gap:4px!important;padding:6px!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type{grid-template-columns:32px minmax(0,1fr) 32px!important;gap:3px!important;width:100%!important;overflow:hidden!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type .sa-reader-info{min-width:0!important;width:100%!important;font-size:8px!important;letter-spacing:-.04em!important;text-align:center!important;overflow:hidden!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:nth-of-type(2){grid-template-columns:32px minmax(34px,1fr) 32px!important;gap:3px!important;width:100%!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-btn{min-width:32px!important;width:32px!important;padding:0!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-info,html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group .sa-reader-zoom{font-size:9px!important;white-space:nowrap!important}
   .sa-toolbar-expand-btn{width:32px!important;min-width:32px!important;height:32px!important}
