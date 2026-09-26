@@ -2114,33 +2114,6 @@ document
           .value;
 
 
-      /*
-       * scanner.js owns the visible Drive method card. In some APK/WebView
-       * runs its click path can reveal the Drive field without this module's
-       * driveLinkMode flag staying in sync. Treat a populated, visible Drive
-       * field as authoritative.
-       */
-      const driveFieldElement =
-        document.getElementById(
-          "driveLinkField"
-        );
-
-      const usingDriveEntry =
-        !!driveUrl &&
-        !!driveFieldElement &&
-        getComputedStyle(
-          driveFieldElement
-        ).display !==
-          "none";
-
-
-      if (usingDriveEntry) {
-
-        driveLinkMode =
-          true;
-      }
-
-
       const typeLimit =
         maxBytesForType(
           selectedType
@@ -4387,113 +4360,23 @@ document
 
 
       if (
-        usingDriveEntry &&
-        window.__statArchiveDriveReminderConfirmed !==
-          driveUrl
+        driveLinkMode
       ) {
 
-        const reminder =
-          document.getElementById(
-            "drivePublicReminderOverlay"
-          );
-
-        const yes =
-          document.getElementById(
-            "drivePublicReminderYes"
-          );
-
-        const cancel =
-          document.getElementById(
-            "drivePublicReminderCancel"
+        const confirmedPublic =
+          window.confirm(
+            "Google Drive reminder\n\nBefore adding this entry, make sure the PDF sharing is set to:\n\nAnyone with the link → Viewer\n\nOtherwise students will not be able to preview the PDF.\n\nHave you made this file public?"
           );
 
 
-        if (
-          reminder &&
-          yes &&
-          cancel
-        ) {
+        if (!confirmedPublic) {
 
-          /*
-           * Do not await inside the original form submit event.
-           * Android WebView can lose the submit/user-activation chain while
-           * a custom modal is open. Instead, stop this attempt and submit
-           * the form again after the user explicitly presses Yes.
-           */
           isUploading =
             false;
 
 
-          reminder.style.display =
-            "flex";
-
-
-          const closeReminder =
-            () => {
-
-              reminder.style.display =
-                "none";
-
-              yes.onclick =
-                null;
-
-              cancel.onclick =
-                null;
-
-              reminder.onclick =
-                null;
-            };
-
-
-          cancel.onclick =
-            closeReminder;
-
-
-          reminder.onclick =
-            event => {
-
-              if (
-                event.target ===
-                reminder
-              ) {
-                closeReminder();
-              }
-            };
-
-
-          yes.onclick =
-            () => {
-
-              closeReminder();
-
-              /*
-               * Skip the reminder exactly once, then run the normal upload
-               * path from the beginning with all existing validation.
-               */
-              window
-                .__statArchiveDriveReminderConfirmed =
-                  driveUrl;
-
-              document
-                .getElementById(
-                  "uploadForm"
-                )
-                .requestSubmit();
-            };
-
-
           return;
         }
-      }
-
-
-      if (
-        window.__statArchiveDriveReminderConfirmed ===
-          driveUrl
-      ) {
-
-        window.__statArchiveDriveReminderConfirmed =
-          "";
       }
 
 
