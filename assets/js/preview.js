@@ -5,10 +5,10 @@
   const MAX_ZOOM = 3;
   const ZOOM_STEP = 0.25;
   const PAGE_GAP = 14;
-  const PAGE_PAD = 12;
+  const PAGE_PAD = 0;
   const DPR_MAX = 1.75;
   const FAST_DPR_MAX = 1.25;
-  const ENGINE_ID = "native-scroll-pinch-v8-web-custom-range";
+  const ENGINE_ID = "native-scroll-pinch-v9-edge-fit";
   const PDF_CACHE_MAX = 3;
   const pdfBlobCache = new Map();
 
@@ -151,7 +151,7 @@
   border-left:1px solid var(--line,rgba(148,163,184,.14));
   border-right:1px solid var(--line,rgba(148,163,184,.14));
   background:#080c12;
-  scrollbar-gutter:stable both-edges;
+  scrollbar-gutter:auto!important;
   overflow-anchor:none!important;
 }
 .sa-reader-sizer{position:relative;min-width:100%;min-height:100%;overflow-anchor:none!important}
@@ -161,7 +161,7 @@
 }
 .sa-reader-page{
   position:absolute;background:#fff;overflow:hidden;
-  box-shadow:0 2px 12px rgba(0,0,0,.28);overflow-anchor:none!important;
+  box-shadow:none;overflow-anchor:none!important;
 }
 .sa-reader-page canvas{display:block;width:100%;height:100%;pointer-events:none}
 .sa-reader-page.is-placeholder:after{
@@ -400,8 +400,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     const firstViewport = firstPage.getViewport({ scale: 1 });
     const tasks = new Map();
     const rendered = new Set();
-    const desktopFitRatio = window.matchMedia("(min-width:701px)").matches ? 0.78 : 1;
-    let fitWidth = Math.max(1, (viewport.clientWidth - PAGE_PAD * 2) * desktopFitRatio);
+    let fitWidth = Math.max(1, viewport.clientWidth - PAGE_PAD * 2);
     const firstHeight = fitWidth * firstViewport.height / firstViewport.width;
     const metas = new Array(pdf.numPages);
     let worldY = PAGE_PAD;
@@ -889,8 +888,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         if (Math.abs(newWidth - s.lastViewportWidth) < 2) return;
         const anchor = captureAnchor();
         s.lastViewportWidth = newWidth;
-        const resizeFitRatio = window.matchMedia("(min-width:701px)").matches ? 0.78 : 1;
-        s.fitWidth = Math.max(1, (newWidth - PAGE_PAD * 2) * resizeFitRatio);
+        s.fitWidth = Math.max(1, newWidth - PAGE_PAD * 2);
         s.worldW = s.fitWidth + PAGE_PAD * 2;
         for (const m of metas) {
           m.w = s.fitWidth;
