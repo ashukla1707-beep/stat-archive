@@ -249,13 +249,24 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     }
   }
 
-  async function buildPdf(entry, blob, token) {
+  async function buildPdf(entry, source, token) {
     const body = document.getElementById("previewBody");
     if (!body) return;
 
     const lib = await window.loadPdfJs();
+    const sourceOptions = typeof source === "string"
+      ? {
+          url: source,
+          rangeChunkSize: 256 * 1024,
+          disableRange: false,
+          disableStream: false,
+          disableAutoFetch: true
+        }
+      : {
+          data: await source.arrayBuffer()
+        };
     const pdf = await lib.getDocument({
-      data: await blob.arrayBuffer(),
+      ...sourceOptions,
       cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
       cMapPacked: true
     }).promise;
@@ -865,8 +876,21 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
-      // Let the browser/WebView reuse a previously fetched PDF. "no-store"
-      // forced every Preview tap to download the complete file again.
+      // R2 PDFs use HTTP byte ranges so PDF.js can render the first page
+      // without waiting for the complete book. Drive keeps the reliable blob
+      // path because public Drive range behavior varies between files.
+      if (!entry?.driveUrl && /\\.pdf(?:$|[?#])/i.test(fileUrl)) {
+        try {
+          await buildPdf(entry, fileUrl, token);
+          return;
+        } catch (rangeError) {
+          if (abort.signal.aborted || token !== serial) return;
+          console.warn("Range preview failed; falling back to full PDF", rangeError);
+        }
+      }
+
+      // Reliable fallback for Drive, images, and any server/browser that
+      // cannot satisfy PDF.js range requests.
       const response = await fetch(fileUrl, { cache: "default", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);
       const raw = await response.blob();
