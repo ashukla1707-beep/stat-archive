@@ -176,23 +176,103 @@
   }
 })();
 
-/* Two small interaction corrections:
-   1) ✓ Offline means "open the already-saved copy", not "save again".
-      Intercept it before the older save/progress wrapper so no false
-      "Saved for offline use" status is shown.
-   2) Expanding More must reveal extra subjects without moving the reader's
-      current viewport to the newly-created bottom of the list. */
+/* Interaction corrections:
+   1) ✓ Offline opens the already-saved copy without showing a false save status.
+   2) More / Show less keep the current page position instead of visually jumping.
+   3) Remove mobile/WebView tap/press impressions from action/menu/preview controls.
+   4) Activity counters switch to compact notation from 1,000 onward. */
 (() => {
   "use strict";
 
   if (window.__STAT_ARCHIVE_OFFLINE_MORE_INTERACTION_FIX__) return;
-  window.__STAT_ARCHIVE_OFFLINE_MORE_INTERACTION_FIX__ = "1";
+  window.__STAT_ARCHIVE_OFFLINE_MORE_INTERACTION_FIX__ = "2";
 
   function hideActionStatus() {
     const status = document.getElementById("statArchiveActionStatus");
     if (!status) return;
     status.classList.remove("is-visible", "show", "has-progress", "success", "error");
     status.setAttribute("aria-hidden", "true");
+  }
+
+  function installNoPressImpressionStyle() {
+    document.getElementById("saNoPressImpressionStyle")?.remove();
+    const style = document.createElement("style");
+    style.id = "saNoPressImpressionStyle";
+    style.textContent = `
+#mainSideMenu button,
+#mainSideMenu [role="button"],
+.card .action-btn,
+.entry-subject-more-btn,
+#previewOverlay button,
+#previewModal button,
+.preview-modal button,
+.sa-reader button,
+#offlineLibraryOverlay button{
+  -webkit-tap-highlight-color:transparent !important;
+  -webkit-touch-callout:none !important;
+}
+#mainSideMenu button:active,
+#mainSideMenu [role="button"]:active,
+.card .action-btn:active,
+.entry-subject-more-btn:active,
+#previewOverlay button:active,
+#previewModal button:active,
+.preview-modal button:active,
+.sa-reader button:active,
+#offlineLibraryOverlay button:active{
+  transform:none !important;
+  filter:none !important;
+}
+#mainSideMenu button:focus:not(:focus-visible),
+#mainSideMenu [role="button"]:focus:not(:focus-visible),
+.card .action-btn:focus:not(:focus-visible),
+.entry-subject-more-btn:focus:not(:focus-visible),
+#previewOverlay button:focus:not(:focus-visible),
+#previewModal button:focus:not(:focus-visible),
+.preview-modal button:focus:not(:focus-visible),
+.sa-reader button:focus:not(:focus-visible),
+#offlineLibraryOverlay button:focus:not(:focus-visible){
+  outline:none !important;
+  box-shadow:none !important;
+}
+`;
+    document.head.appendChild(style);
+  }
+
+  function compactActivityNumber(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw || raw === "—" || /[KMB]$/i.test(raw)) return raw;
+    const number = Number(raw.replace(/,/g, ""));
+    if (!Number.isFinite(number) || number < 1000) return raw;
+
+    const units = [
+      [1e9, "B"],
+      [1e6, "M"],
+      [1e3, "K"]
+    ];
+    const pair = units.find(([size]) => number >= size);
+    if (!pair) return raw;
+    const [size, suffix] = pair;
+    const scaled = number / size;
+    const digits = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 1;
+    return `${scaled.toFixed(digits).replace(/\.0$/, "")}${suffix}`;
+  }
+
+  function formatActivityElement(el) {
+    if (!el) return;
+    const next = compactActivityNumber(el.textContent);
+    if (next && next !== el.textContent) el.textContent = next;
+  }
+
+  function installActivityFormatting() {
+    const ids = ["summaryPreviewCount", "summaryDownloadCount"];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      formatActivityElement(el);
+      const observer = new MutationObserver(() => formatActivityElement(el));
+      observer.observe(el, { childList: true, characterData: true, subtree: true });
+    });
   }
 
   document.addEventListener("click", event => {
@@ -207,6 +287,7 @@
         event.preventDefault();
         event.stopImmediatePropagation();
         hideActionStatus();
+        savedOffline.blur?.();
         void Promise.resolve(window.openOfflineLibrary(String(id)));
       }
       return;
@@ -214,7 +295,9 @@
 
     const moreButton = target.closest(".entry-subject-more-btn");
     if (!moreButton) return;
-    if ((moreButton.textContent || "").trim().toLowerCase() !== "more") return;
+
+    const label = (moreButton.textContent || "").trim().toLowerCase();
+    if (label !== "more" && label !== "show less") return;
 
     const x = window.scrollX;
     const y = window.scrollY;
@@ -223,6 +306,7 @@
     const rootAnchor = root.style.overflowAnchor;
     const bodyAnchor = body?.style.overflowAnchor || "";
 
+    moreButton.blur?.();
     root.style.setProperty("overflow-anchor", "none", "important");
     body?.style.setProperty("overflow-anchor", "none", "important");
 
@@ -247,4 +331,15 @@
       });
     });
   }, true);
+
+  function install() {
+    installNoPressImpressionStyle();
+    installActivityFormatting();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
 })();
