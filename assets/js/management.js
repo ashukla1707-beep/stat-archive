@@ -2114,6 +2114,33 @@ document
           .value;
 
 
+      /*
+       * scanner.js owns the visible Drive method card. In some APK/WebView
+       * runs its click path can reveal the Drive field without this module's
+       * driveLinkMode flag staying in sync. Treat a populated, visible Drive
+       * field as authoritative.
+       */
+      const driveFieldElement =
+        document.getElementById(
+          "driveLinkField"
+        );
+
+      const usingDriveEntry =
+        !!driveUrl &&
+        !!driveFieldElement &&
+        getComputedStyle(
+          driveFieldElement
+        ).display !==
+          "none";
+
+
+      if (usingDriveEntry) {
+
+        driveLinkMode =
+          true;
+      }
+
+
       const typeLimit =
         maxBytesForType(
           selectedType
@@ -4360,7 +4387,7 @@ document
 
 
       if (
-        driveLinkMode &&
+        usingDriveEntry &&
         window.__statArchiveDriveReminderConfirmed !==
           driveUrl
       ) {
