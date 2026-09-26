@@ -4360,89 +4360,111 @@ document
 
 
       if (
-        driveLinkMode
+        driveLinkMode &&
+        !window.__statArchiveDriveReminderConfirmed
       ) {
 
-        const confirmedPublic =
-          await new Promise(resolve => {
+        const reminder =
+          document.getElementById(
+            "drivePublicReminderOverlay"
+          );
 
-            const reminder =
-              document.getElementById(
-                "drivePublicReminderOverlay"
-              );
+        const yes =
+          document.getElementById(
+            "drivePublicReminderYes"
+          );
 
-            const yes =
-              document.getElementById(
-                "drivePublicReminderYes"
-              );
-
-            const cancel =
-              document.getElementById(
-                "drivePublicReminderCancel"
-              );
+        const cancel =
+          document.getElementById(
+            "drivePublicReminderCancel"
+          );
 
 
-            if (
-              !reminder ||
-              !yes ||
-              !cancel
-            ) {
+        if (
+          reminder &&
+          yes &&
+          cancel
+        ) {
 
-              resolve(false);
-              return;
-            }
-
-
-            const finish =
-              value => {
-
-                reminder.style.display =
-                  "none";
-
-                yes.onclick =
-                  null;
-
-                cancel.onclick =
-                  null;
-
-                reminder.onclick =
-                  null;
-
-                resolve(value);
-              };
-
-
-            yes.onclick =
-              () => finish(true);
-
-            cancel.onclick =
-              () => finish(false);
-
-            reminder.onclick =
-              event => {
-
-                if (
-                  event.target ===
-                  reminder
-                ) {
-                  finish(false);
-                }
-              };
-
-
-            reminder.style.display =
-              "flex";
-          });
-
-
-        if (!confirmedPublic) {
-
+          /*
+           * Do not await inside the original form submit event.
+           * Android WebView can lose the submit/user-activation chain while
+           * a custom modal is open. Instead, stop this attempt and submit
+           * the form again after the user explicitly presses Yes.
+           */
           isUploading =
             false;
 
 
+          reminder.style.display =
+            "flex";
+
+
+          const closeReminder =
+            () => {
+
+              reminder.style.display =
+                "none";
+
+              yes.onclick =
+                null;
+
+              cancel.onclick =
+                null;
+
+              reminder.onclick =
+                null;
+            };
+
+
+          cancel.onclick =
+            closeReminder;
+
+
+          reminder.onclick =
+            event => {
+
+              if (
+                event.target ===
+                reminder
+              ) {
+                closeReminder();
+              }
+            };
+
+
+          yes.onclick =
+            () => {
+
+              closeReminder();
+
+              /*
+               * Skip the reminder exactly once, then run the normal upload
+               * path from the beginning with all existing validation.
+               */
+              window
+                .__statArchiveDriveReminderConfirmed =
+                  true;
+
+              document
+                .getElementById(
+                  "uploadForm"
+                )
+                .requestSubmit();
+            };
+
+
           return;
         }
+      }
+
+
+      if (
+        window.__statArchiveDriveReminderConfirmed
+      ) {
+
+        window.__statArchiveDriveReminderConfirmed =
+          false;
       }
 
 
