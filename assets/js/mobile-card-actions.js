@@ -113,18 +113,14 @@ body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);bac
   const style = document.createElement('style');
   style.id = 'statArchivePreviewPopupPolish';
   style.textContent = `
-@media(min-width:701px){
 html body #previewOverlay.overlay{align-items:center!important;justify-content:center!important;padding:14px!important;background:rgba(3,7,12,.76)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
-html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px,calc((100vw - 28px) * .5))!important;height:calc((100dvh - 28px) * .90)!important;max-width:560px!important;max-height:calc(100dvh - 28px)!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
+html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120px,calc(100vw - 28px))!important;height:min(900px,calc(100dvh - 28px))!important;max-width:1120px!important;max-height:900px!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
 .sa-toolbar-expand-btn,.sa-toolbar-extra-row{display:none}
 @media(max-width:700px){
   html body #previewOverlay.overlay{padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom))!important;align-items:center!important;justify-content:center!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active{width:calc(100vw - 20px)!important;height:min(88dvh,820px)!important;max-width:680px!important;max-height:calc(100dvh - 24px)!important;margin:auto!important;padding:12px!important;border-radius:18px!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active>.form-header{margin-bottom:8px!important}
-  /* Keep every reader control inside the rounded preview card on phones. */
-  html body #previewOverlay.overlay .preview-body{min-width:0!important;max-width:100%!important;overflow:hidden!important}
-  html body #previewOverlay.overlay .sa-reader-shell{min-width:0!important;max-width:100%!important;overflow:hidden!important}
-  html body #previewOverlay.overlay .sa-reader-toolbar{width:100%!important;max-width:100%!important;box-sizing:border-box!important;position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto 34px!important;align-items:center!important;column-gap:8px!important;row-gap:6px!important;overflow:visible!important;padding:7px!important}
+  html body #previewOverlay.overlay .sa-reader-toolbar{position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto 34px!important;align-items:center!important;column-gap:8px!important;row-gap:6px!important;overflow:visible!important;padding:7px!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group{min-width:0!important;margin:0!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:first-of-type{display:grid!important;grid-template-columns:34px minmax(70px,auto) 34px!important;align-items:center!important;gap:5px!important;justify-self:start!important}
   html body #previewOverlay.overlay .sa-reader-toolbar>.sa-reader-group:nth-of-type(2){display:grid!important;grid-template-columns:34px minmax(46px,auto) 34px!important;align-items:center!important;gap:5px!important;justify-self:end!important}
@@ -140,7 +136,6 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px
   .sa-toolbar-extra-row #saReaderDownload::after{content:'Download'}
   .sa-toolbar-extra-row #saReaderPrint::after{content:'Print'}
   body[data-theme="light"] .sa-toolbar-extra-row{background:#f7f3e9!important;box-shadow:0 12px 26px rgba(74,59,39,.16)!important}
-}
 }
 @media(max-width:430px){
   html body #previewOverlay.overlay .sa-reader-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px!important;column-gap:5px!important;padding:6px!important}
@@ -208,10 +203,7 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px
     });
   }
 
-  const enhance = () => {
-    if (!window.matchMedia('(max-width:700px)').matches) return;
-    document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
-  };
+  const enhance = () => document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
   const observer = new MutationObserver(enhance);
   const start = () => {
     enhance();
