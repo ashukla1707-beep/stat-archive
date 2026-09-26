@@ -76,3 +76,163 @@
     install();
   }
 })();
+
+/* =========================================================
+   OFFLINE SUBJECT FOCUS + SINGLE-OPEN ACCORDION
+
+   When a saved archive card's ✓ Offline button is pressed, offline.js opens
+   the library with that entry id. The canonical Offline Library previously
+   expanded the first alphabetical subject before trying to scroll to the
+   requested entry, so a saved Econometrics entry could land on another
+   subject instead.
+
+   Keep the canonical renderer in charge. After it opens, find the requested
+   entry in the already-rendered accordion, click that subject header through
+   the canonical event handler, then scroll to the requested entry. This also
+   preserves all current filtering, sizing and IndexedDB behaviour.
+
+   Subject headers are also made visually exclusive immediately: opening a
+   second subject collapses the currently-open one before the canonical async
+   redraw completes, so only one subject's entries are visible at any time.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  if (window.__STAT_ARCHIVE_OFFLINE_SUBJECT_FOCUS_FIX__) return;
+  window.__STAT_ARCHIVE_OFFLINE_SUBJECT_FOCUS_FIX__ = "1";
+
+  const selectorEscape = value => {
+    const text = String(value ?? "");
+    try { return CSS.escape(text); }
+    catch (_) { return text.replace(/["\\]/g, "\\$&"); }
+  };
+
+  function overlay() {
+    return document.getElementById("offlineLibraryOverlay");
+  }
+
+  function collapseOtherSubjects(keepGroup = null) {
+    const root = overlay();
+    if (!root) return;
+
+    root.querySelectorAll(".sa-offline-group.open").forEach(group => {
+      if (keepGroup && group === keepGroup) return;
+      group.classList.remove("open");
+      const chev = group.querySelector(".sa-offline-group-head .chev");
+      if (chev) chev.textContent = "›";
+      const body = group.querySelector(".sa-offline-group-body");
+      if (body) body.scrollTop = 0;
+    });
+  }
+
+  function focusedEntry(focusId) {
+    const root = overlay();
+    if (!root || focusId == null) return null;
+    return root.querySelector(
+      `[data-offline-id="${selectorEscape(String(focusId))}"]`
+    );
+  }
+
+  function finishFocus(focusId, attempts = 0) {
+    const root = overlay();
+    if (!root || focusId == null) return;
+
+    const entry = focusedEntry(focusId);
+    const group = entry?.closest(".sa-offline-group");
+
+    if (!entry || !group || !group.classList.contains("open")) {
+      if (attempts < 18) {
+        setTimeout(() => finishFocus(focusId, attempts + 1), 35);
+      }
+      return;
+    }
+
+    collapseOtherSubjects(group);
+
+    try {
+      entry.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    } catch (_) {
+      try { group.scrollIntoView({ block: "center", behavior: "auto" }); } catch (_) {}
+    }
+  }
+
+  function focusRequestedSubject(focusId) {
+    if (focusId == null) return;
+
+    const entry = focusedEntry(focusId);
+    const group = entry?.closest(".sa-offline-group");
+    if (!entry || !group) {
+      finishFocus(focusId, 0);
+      return;
+    }
+
+    if (!group.classList.contains("open")) {
+      /* Let offline-library-hybrid.js update its private openSubject state.
+         That guarantees the old subject is collapsed and the requested subject
+         remains the canonical open subject on the next redraw too. */
+      group.querySelector("[data-sa-toggle-subject]")?.click();
+    } else {
+      collapseOtherSubjects(group);
+    }
+
+    requestAnimationFrame(() => finishFocus(focusId, 0));
+  }
+
+  function wrapOfflineOpener() {
+    const current = window.openOfflineLibrary;
+    if (typeof current !== "function" || current.__saSubjectFocusWrapped) return;
+
+    const wrapped = async function (...args) {
+      const focusId = args[0] ?? null;
+      const result = await Promise.resolve(current.apply(this, args));
+
+      if (focusId != null) {
+        /* The canonical renderer has completed when its promise resolves, but
+           give DOM sizing one frame before activating/scolling the subject. */
+        requestAnimationFrame(() => focusRequestedSubject(focusId));
+      }
+
+      return result;
+    };
+
+    wrapped.__saSubjectFocusWrapped = true;
+    wrapped.__saOriginal = current;
+    window.openOfflineLibrary = wrapped;
+    try { openOfflineLibrary = wrapped; } catch (_) {}
+  }
+
+  function installSingleOpenGuard() {
+    document.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const toggle = target?.closest(
+        "#offlineLibraryOverlay #offlineLibraryList [data-sa-toggle-subject]"
+      );
+      if (!toggle) return;
+
+      const group = toggle.closest(".sa-offline-group");
+      if (!group) return;
+
+      /* Do not stop the event — the canonical listener must still update its
+         private state. We only collapse the previous group immediately. */
+      collapseOtherSubjects(group);
+    }, true);
+  }
+
+  function install() {
+    wrapOfflineOpener();
+    installSingleOpenGuard();
+
+    /* Protect against a late compatibility loader replacing the global opener
+       after this shim executes. Stop retrying quickly once startup settles. */
+    [100, 350, 900, 1800, 3200].forEach(ms => {
+      setTimeout(wrapOfflineOpener, ms);
+    });
+    window.addEventListener("pageshow", wrapOfflineOpener);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
+})();
