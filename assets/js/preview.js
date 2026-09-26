@@ -8,7 +8,61 @@
   const PAGE_PAD = 12;
   const DPR_MAX = 1.75;
   const FAST_DPR_MAX = 1.25;
-  const ENGINE_ID = "native-scroll-pinch-v4-frontend-lazy";
+  const ENGINE_ID = "native-scroll-pinch-v5-fast-open";
+  const PDF_CACHE_MAX = 3;
+  const pdfBlobCache = new Map();
+
+  function cacheKey(entry, fileUrl) {
+    return String(entry?.id || entry?.driveUrl || fileUrl || "");
+  }
+
+  function getCachedBlob(key) {
+    if (!key || !pdfBlobCache.has(key)) return null;
+    const blob = pdfBlobCache.get(key);
+    pdfBlobCache.delete(key);
+    pdfBlobCache.set(key, blob);
+    return blob;
+  }
+
+  function putCachedBlob(key, blob) {
+    if (!key || !blob) return;
+    pdfBlobCache.delete(key);
+    pdfBlobCache.set(key, blob);
+    while (pdfBlobCache.size > PDF_CACHE_MAX) {
+      pdfBlobCache.delete(pdfBlobCache.keys().next().value);
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return "";
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1) + " MB";
+  }
+
+  async function fetchBlobWithProgress(url, signal, onProgress) {
+    const response = await fetch(url, { cache: "default", signal });
+    if (!response.ok) throw new Error(`File request failed (${response.status})`);
+    const total = Number(response.headers.get("content-length")) || 0;
+    if (!response.body?.getReader) {
+      const blob = await response.blob();
+      onProgress?.(blob.size, total || blob.size, true);
+      return blob;
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.byteLength;
+      onProgress?.(loaded, total, false);
+    }
+    const type = response.headers.get("content-type") || "application/octet-stream";
+    const blob = new Blob(chunks, { type });
+    onProgress?.(loaded, total || loaded, true);
+    return blob;
+  }
 
   let state = null;
   let serial = 0;
@@ -831,6 +885,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     }
 
     console.info(`[Stat Archive Preview] ${ENGINE_ID} ready`, { pages: pdf.numPages });
+    console.info(`[Stat Archive Preview] first-page pipeline ready in ${Math.round(performance.now() - startedAt)} ms`);
     showStatus("Ready", 550);
     renderVisible();
   }
@@ -848,7 +903,8 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     document.body.classList.add("no-scroll");
     setReaderActive(true);
     title.textContent = entry?.title || entry?.filename || "Preview";
-    body.innerHTML = '<div class="sa-reader-loading">Loading preview…</div>';
+    const startedAt = performance.now();
+    body.innerHTML = '<div class="sa-reader-loading" id="saPreviewLoading">Preparing preview…</div>';
 
     try {
       if (typeof window.incrementActivity === "function") window.incrementActivity("preview");
@@ -868,11 +924,33 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
-      // Keep the backend unchanged. Fetch through the existing stable endpoint,
-      // then let the reader render only the visible pages and release distant canvases.
-      const response = await fetch(fileUrl, { cache: "default", signal: abort.signal });
-      if (!response.ok) throw new Error(`File request failed (${response.status})`);
-      const raw = await response.blob();
+      // Backend stays untouched. Reuse a recently fetched PDF when possible;
+      // otherwise show real download progress while the stable endpoint transfers it.
+      const key = cacheKey(entry, fileUrl);
+      let raw = getCachedBlob(key);
+      const loading = () => document.getElementById("saPreviewLoading");
+
+      if (raw) {
+        const el = loading();
+        if (el) el.textContent = "Opening cached preview…";
+      } else {
+        raw = await fetchBlobWithProgress(fileUrl, abort.signal, (loaded, total, done) => {
+          if (token !== serial) return;
+          const el = loading();
+          if (!el) return;
+          if (done) {
+            el.textContent = "Rendering first page…";
+          } else if (total > 0) {
+            const pct = Math.min(99, Math.round((loaded / total) * 100));
+            el.textContent = `Loading PDF… ${pct}% · ${formatBytes(loaded)} / ${formatBytes(total)}`;
+          } else {
+            el.textContent = `Loading PDF… ${formatBytes(loaded)}`;
+          }
+        });
+        if (token !== serial) return;
+        if (isPdf(entry, raw)) putCachedBlob(key, raw);
+      }
+
       if (token !== serial) return;
 
       if (isPdf(entry, raw)) {
