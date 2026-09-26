@@ -120,6 +120,9 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(560px
 @media(max-width:700px){
   html body #previewOverlay.overlay{padding:max(12px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom))!important;align-items:center!important;justify-content:center!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active{width:calc(100vw - 20px)!important;height:min(88dvh,820px)!important;max-width:680px!important;max-height:calc(100dvh - 24px)!important;margin:auto!important;padding:12px!important;border-radius:18px!important}
+  /* preview.js sets inset:0 on phones; reset those four offsets so the smaller
+     rounded card can actually stay centered instead of touching the edges. */
+  html body #previewOverlay.overlay .preview-card.sa-reader-active{position:relative!important;inset:auto!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important}
   html body #previewOverlay.overlay .preview-card.sa-reader-active>.form-header{margin-bottom:8px!important}
   /* Keep every reader control inside the rounded preview card on phones. */
   html body #previewOverlay.overlay .preview-body{min-width:0!important;max-width:100%!important;overflow:hidden!important}
