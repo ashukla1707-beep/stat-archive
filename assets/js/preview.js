@@ -8,7 +8,7 @@
   const PAGE_PAD = 12;
   const DPR_MAX = 1.75;
   const FAST_DPR_MAX = 1.25;
-  const ENGINE_ID = "native-scroll-pinch-v6-native-first";
+  const ENGINE_ID = "native-scroll-pinch-v7-r2-range";
   const PDF_CACHE_MAX = 3;
   const pdfBlobCache = new Map();
 
@@ -73,12 +73,12 @@
   const escapeHtml = (v) => String(v || "").replace(/[&<>"']/g, (c) => escMap[c]);
 
   function isPdf(entry, blob) {
-    const name = String(entry?.filename || entry?.title || "").toLowerCase();
+    const name = String(entry?.file_name || entry?.filename || entry?.title || "").toLowerCase();
     return name.endsWith(".pdf") || String(blob?.type || "").toLowerCase().includes("pdf");
   }
 
   function pdfName(entry) {
-    const raw = String(entry?.title || entry?.filename || "Document")
+    const raw = String(entry?.title || entry?.filename || entry?.file_name || "Document")
       .replace(/\.pdf$/i, "")
       .replace(/[\\/:*?"<>|]/g, "_")
       .replace(/\.+$/g, "")
@@ -307,15 +307,40 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     const body = document.getElementById("previewBody");
     if (!body) return;
 
+    const buildStartedAt = performance.now();
     const lib = await window.loadPdfJs();
-    // Frontend-only preview: the stable backend is left untouched.
-    // We fetch the PDF as a Blob first, then PDF.js renders pages lazily.
-    const pdfBlob = source;
+    const sourceUrl = typeof source === "string" ? source : null;
+    let pdfBlob = source instanceof Blob ? source : null;
+
+    const sourceOptions = sourceUrl
+      ? {
+          url: sourceUrl,
+          rangeChunkSize: 256 * 1024,
+          disableRange: false,
+          disableStream: true,
+          disableAutoFetch: true
+        }
+      : {
+          data: await pdfBlob.arrayBuffer()
+        };
+
     const pdf = await lib.getDocument({
-      data: await pdfBlob.arrayBuffer(),
+      ...sourceOptions,
       cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
       cMapPacked: true
     }).promise;
+
+    async function getFullPdfBlob() {
+      if (pdfBlob) return pdfBlob;
+      if (!sourceUrl) throw new Error("PDF source is unavailable");
+      const response = await fetch(sourceUrl, { cache: "default" });
+      if (!response.ok) throw new Error(`File request failed (${response.status})`);
+      const raw = await response.blob();
+      pdfBlob = raw.type === "application/pdf"
+        ? raw
+        : new Blob([raw], { type: "application/pdf" });
+      return pdfBlob;
+    }
 
     if (token !== serial) {
       try { pdf.destroy(); } catch (_) {}
@@ -375,8 +400,6 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     const firstViewport = firstPage.getViewport({ scale: 1 });
     const tasks = new Map();
     const rendered = new Set();
-    // Fit to the real reader viewport. On narrow phones, never force a
-    // 220px minimum wider than the space that is actually available.
     const desktopFitRatio = window.matchMedia("(min-width:701px)").matches ? 0.78 : 1;
     let fitWidth = Math.max(1, (viewport.clientWidth - PAGE_PAD * 2) * desktopFitRatio);
     const firstHeight = fitWidth * firstViewport.height / firstViewport.width;
@@ -404,6 +427,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     const s = {
       pdf,
       blob: pdfBlob,
+      sourceUrl,
       abort: state?.abort || new AbortController(),
       viewport,
       sizer,
@@ -574,9 +598,6 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         const rawViewport = page.getViewport({ scale: 1 });
         setMetaFromViewport(m, rawViewport);
 
-        // Render the first visible pass at a lighter pixel density so pages
-        // appear quickly, especially in Android WebView. Zoomed pages can still
-        // use the higher cap for readability.
         const dprCap = target <= 1.05 ? FAST_DPR_MAX : DPR_MAX;
         const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
         const fit = s.fitWidth / rawViewport.width;
@@ -608,8 +629,6 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     function renderVisible() {
       if (token !== serial || state !== s || s.pinch) return;
       const size = viewportSize();
-      // Prioritize what the user can actually see. The old reader rendered
-      // several off-screen pages immediately, competing with page 1.
       const top = Math.max(0, (viewport.scrollTop - size.h * 0.20) / s.zoom);
       const bottom = (viewport.scrollTop + size.h * 1.20) / s.zoom;
       let i = Math.max(0, pageIndexAt(top) - 1);
@@ -754,7 +773,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       if (s.handoff && event.touches.length === 0) s.handoff = null;
     }, { passive: false });
 
-    viewport.addEventListener("touchcancel", (event) => {
+    viewport.addEventListener("touchcancel", () => {
       if (s.pinch) finishPinch(null);
       s.handoff = null;
     }, { passive: true });
@@ -842,17 +861,26 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       commitZoom(size.w / 2, size.h / 2, 1);
     };
 
-    download.onclick = () => {
+    download.onclick = async () => {
       try {
-        if (typeof window.downloadEntry === "function") window.downloadEntry(entry, download);
-        else downloadBlob(pdfBlob, pdfName(entry));
+        if (typeof window.downloadEntry === "function") {
+          window.downloadEntry(entry, download);
+          return;
+        }
+        downloadBlob(await getFullPdfBlob(), pdfName(entry));
       } catch (err) {
         console.error(err);
-        downloadBlob(pdfBlob, pdfName(entry));
+        try { downloadBlob(await getFullPdfBlob(), pdfName(entry)); } catch (_) {}
       }
     };
-    print.onclick = () => printBlob(pdfBlob, print, pdfName(entry));
-    open.onclick = () => openBlob(pdfBlob, pdfName(entry));
+    print.onclick = async () => {
+      try { printBlob(await getFullPdfBlob(), print, pdfName(entry)); }
+      catch (err) { console.error(err); }
+    };
+    open.onclick = async () => {
+      try { await openBlob(await getFullPdfBlob(), pdfName(entry)); }
+      catch (err) { console.error(err); }
+    };
 
     if ("ResizeObserver" in window) {
       s.resizeObserver = new ResizeObserver(() => {
@@ -884,8 +912,8 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
       s.resizeObserver.observe(viewport);
     }
 
-    console.info(`[Stat Archive Preview] ${ENGINE_ID} ready`, { pages: pdf.numPages });
-    console.info(`[Stat Archive Preview] first-page pipeline ready in ${Math.round(performance.now() - startedAt)} ms`);
+    console.info(`[Stat Archive Preview] ${ENGINE_ID} ready`, { pages: pdf.numPages, range: Boolean(sourceUrl) });
+    console.info(`[Stat Archive Preview] first-page pipeline ready in ${Math.round(performance.now() - buildStartedAt)} ms`);
     showStatus("Ready", 550);
     renderVisible();
   }
@@ -902,7 +930,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     overlay.style.display = "flex";
     document.body.classList.add("no-scroll");
     setReaderActive(true);
-    title.textContent = entry?.title || entry?.filename || "Preview";
+    title.textContent = entry?.title || entry?.filename || entry?.file_name || "Preview";
     const startedAt = performance.now();
     body.innerHTML = '<div class="sa-reader-loading" id="saPreviewLoading">Preparing preview…</div>';
 
@@ -914,9 +942,6 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
     state = { abort, tasks: new Map() };
 
     try {
-      // Drive-backed entries use Stat Archive's same-origin stream too.
-      // Avoid Google's embedded viewer: Android/WebView can reject its account
-      // cookies even when the underlying Drive file is public.
       const fileUrl = entry?.driveUrl
         ? (typeof statArchiveDriveStreamUrl === "function"
             ? statArchiveDriveStreamUrl(entry, "inline")
@@ -924,12 +949,8 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
-      // Fastest frontend-only path: on desktop browsers, let the native PDF
-      // viewer consume the existing stable URL directly. This avoids waiting for
-      // JavaScript to build a full Blob before anything can be displayed.
-      // Android/WebView stays on the PDF.js path because embedded PDF support is
-      // inconsistent there.
-      const looksPdf = /\\.pdf(?:$|[?#])/i.test(String(entry?.filename || entry?.title || fileUrl));
+
+      const looksPdf = /\.pdf(?:$|[?#])/i.test(String(entry?.file_name || entry?.filename || entry?.title || fileUrl));
       const canUseNativePdf = looksPdf &&
         !(window.AndroidBridge && typeof window.AndroidBridge.openFile === "function") &&
         !/Android/i.test(navigator.userAgent || "");
@@ -940,7 +961,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
           <div style="width:100%;height:100%;min-height:0;background:#080c12">
             <iframe
               id="saNativePdfFrame"
-              title="${escapeHtml(entry?.title || entry?.filename || "PDF preview")}"
+              title="${escapeHtml(entry?.title || entry?.filename || entry?.file_name || "PDF preview")}"
               src="${escapeHtml(nativeUrl)}"
               style="display:block;width:100%;height:100%;border:0;background:#080c12"
               loading="eager"
@@ -950,8 +971,16 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         return;
       }
 
-      // PDF.js fallback for Android/WebView and browsers without the native path.
-      // Reuse a recently fetched PDF when possible; otherwise show real progress.
+      // R2 PDFs now go directly to PDF.js by URL. The Worker supports byte ranges,
+      // so PDF.js can request only the chunks needed for page 1 and later pages.
+      if (looksPdf && !entry?.driveUrl) {
+        const el = document.getElementById("saPreviewLoading");
+        if (el) el.textContent = "Opening PDF…";
+        await buildPdf(entry, fileUrl, token);
+        return;
+      }
+
+      // Drive files and non-PDF assets keep the existing Blob fallback.
       const key = cacheKey(entry, fileUrl);
       let raw = getCachedBlob(key);
       const loading = () => document.getElementById("saPreviewLoading");
