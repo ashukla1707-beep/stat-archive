@@ -113,6 +113,7 @@ body[data-theme="light"] .card-source-badge{border-color:rgba(90,58,115,.24);bac
   const style = document.createElement('style');
   style.id = 'statArchivePreviewPopupPolish';
   style.textContent = `
+@media(max-width:700px){
 html body #previewOverlay.overlay{align-items:center!important;justify-content:center!important;padding:14px!important;background:rgba(3,7,12,.76)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
 html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120px,calc(100vw - 28px))!important;height:min(900px,calc(100dvh - 28px))!important;max-width:1120px!important;max-height:900px!important;margin:auto!important;border-radius:18px!important;overflow:hidden!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important}
 .sa-toolbar-expand-btn,.sa-toolbar-extra-row{display:none}
@@ -136,6 +137,7 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
   .sa-toolbar-extra-row #saReaderDownload::after{content:'Download'}
   .sa-toolbar-extra-row #saReaderPrint::after{content:'Print'}
   body[data-theme="light"] .sa-toolbar-extra-row{background:#f7f3e9!important;box-shadow:0 12px 26px rgba(74,59,39,.16)!important}
+}
 }
 @media(max-width:430px){
   html body #previewOverlay.overlay .sa-reader-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px!important;column-gap:5px!important;padding:6px!important}
@@ -203,7 +205,10 @@ html body #previewOverlay.overlay .preview-card.sa-reader-active{width:min(1120p
     });
   }
 
-  const enhance = () => document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
+  const enhance = () => {
+    if (!window.matchMedia('(max-width:700px)').matches) return;
+    document.querySelectorAll('#previewOverlay .sa-reader-toolbar').forEach(enhanceToolbar);
+  };
   const observer = new MutationObserver(enhance);
   const start = () => {
     enhance();
