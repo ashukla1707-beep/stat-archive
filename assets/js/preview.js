@@ -865,7 +865,9 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
         : `${WORKER_URL}/file?id=${encodeURIComponent(entry.id)}&name=${encodeURIComponent(
             typeof archiveDownloadName === "function" ? archiveDownloadName(entry) : "Stat Archive file.pdf"
           )}`;
-      const response = await fetch(fileUrl, { cache: "no-store", signal: abort.signal });
+      // Let the browser/WebView reuse a previously fetched PDF. "no-store"
+      // forced every Preview tap to download the complete file again.
+      const response = await fetch(fileUrl, { cache: "default", signal: abort.signal });
       if (!response.ok) throw new Error(`File request failed (${response.status})`);
       const raw = await response.blob();
       if (token !== serial) return;
