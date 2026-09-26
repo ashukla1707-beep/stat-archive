@@ -4359,27 +4359,6 @@ document
       }
 
 
-      if (
-        driveLinkMode
-      ) {
-
-        const confirmedPublic =
-          window.confirm(
-            "Google Drive reminder\n\nBefore adding this entry, make sure the PDF sharing is set to:\n\nAnyone with the link → Viewer\n\nOtherwise students will not be able to preview the PDF.\n\nHave you made this file public?"
-          );
-
-
-        if (!confirmedPublic) {
-
-          isUploading =
-            false;
-
-
-          return;
-        }
-      }
-
-
       const submitBtn =
         document.getElementById(
           "submitBtn"
