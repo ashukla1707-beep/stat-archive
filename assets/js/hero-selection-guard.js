@@ -337,7 +337,7 @@ body[data-theme="light"] #statArchiveActionStatus .sa-status-bar{color:#70428f}
           worker.addEventListener('statechange',()=>{
             if(worker.state==='installed'){
               if(navigator.serviceWorker.controller){
-                showActionStatus('Update ready · applying changes…','success',2400);
+                showActionStatus('Update ready · applying changes…','success',2400,100);
               }
             }else if(worker.state==='redundant'){
               showActionStatus('Update could not be installed','error',4200);
