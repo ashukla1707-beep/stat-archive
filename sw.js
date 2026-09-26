@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260926-preview-revert-v1";
+const CACHE = "stat-archive-shell-v20260926-mobile-preview-full-revert-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
@@ -26,7 +26,7 @@ const HERO_FIX_SCRIPT_TAG = '<script src="./assets/js/hero-layout-fix.js?v=20260
 const PHONE_LANDSCAPE_HERO_TAG = '<script src="./assets/js/phone-landscape-hero.js?v=20260916-no-progress-v10"></script>';
 const HERO_SELECTION_GUARD_TAG = '<script src="./assets/js/hero-selection-guard.js?v=20260926-update-progress-fix"></script>';
 const ACTION_SPACING_FIX_TAG = '<script src="./assets/js/action-spacing-fix.js?v=20260916-no-progress-v10"></script>';
-const MOBILE_CARD_ACTIONS_TAG = '<script src="./assets/js/mobile-card-actions.js?v=20260926-preview-revert-v1"></script>';
+const MOBILE_CARD_ACTIONS_TAG = '<script src="./assets/js/mobile-card-actions.js?v=20260926-mobile-preview-full-revert-v1"></script>';
 const SPEED_SCRIPT_TAG = '<script src="./assets/js/speed-boost.js?v=20260910-bugfix-3"></script>';
 const SEARCH_SUGGESTIONS_TAG = '<script src="./assets/js/search-suggestions.js?v=20260910-bugfix-1"></script>';
 const SEARCH_FILTER_FIX_TAG = '<script src="./assets/js/search-filter-fix.js?v=20260905-1"></script>';
