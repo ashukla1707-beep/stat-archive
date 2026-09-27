@@ -1,11 +1,9 @@
-/* Stat Archive — two-block About panel.
-   Keeps the existing overlay/close-button wiring intact and only rebuilds
-   the content inside the About card. */
+/* Stat Archive — creator About panel. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_ABOUT_DUAL_V3__) return;
-  window.__STAT_ARCHIVE_ABOUT_DUAL_V3__ = true;
+  if (window.__STAT_ARCHIVE_ABOUT_DUAL_V4__) return;
+  window.__STAT_ARCHIVE_ABOUT_DUAL_V4__ = true;
 
   const STYLE_ID = "statArchiveAboutDualStyle";
 
@@ -17,8 +15,8 @@
     style.id = STYLE_ID;
     style.textContent = `
 #aboutArchiveOverlay .about-archive-card.about-dual-card{
-  width:min(760px,calc(100vw - 30px))!important;
-  max-width:760px!important;
+  width:min(620px,calc(100vw - 30px))!important;
+  max-width:620px!important;
   max-height:min(88vh,820px)!important;
   padding:0!important;
   overflow:hidden!important;
@@ -36,7 +34,7 @@
 }
 #aboutArchiveOverlay .about-dual-body{
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-columns:1fr;
   gap:16px;
   padding:22px 24px 24px;
   max-height:calc(88vh - 82px);
@@ -58,12 +56,6 @@
   font:700 9.5px/1.2 'JetBrains Mono',monospace;
   letter-spacing:.16em;
 }
-#aboutArchiveOverlay .about-info-block h3{
-  margin:0 0 14px;
-  color:var(--text,#eef2f7);
-  font:700 17px/1.25 'JetBrains Mono',monospace;
-  letter-spacing:.055em;
-}
 #aboutArchiveOverlay .about-info-block p{
   margin:0;
   color:var(--muted,#929baa);
@@ -72,6 +64,7 @@
 #aboutArchiveOverlay .about-info-block p + p{margin-top:18px;}
 #aboutArchiveOverlay .about-creator-name{
   margin:0 0 5px!important;
+  color:var(--text,#eef2f7);
   font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif!important;
   font-size:28px!important;
   line-height:1.08!important;
@@ -115,11 +108,7 @@
   transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease;
   -webkit-tap-highlight-color:transparent;
 }
-#aboutArchiveOverlay .about-connect-icon svg{
-  width:21px;
-  height:21px;
-  display:block;
-}
+#aboutArchiveOverlay .about-connect-icon svg{width:21px;height:21px;display:block;}
 #aboutArchiveOverlay .about-connect-icon:hover{
   border-color:rgba(103,216,207,.48);
   background:rgba(103,216,207,.075);
@@ -127,7 +116,6 @@
 }
 #aboutArchiveOverlay .about-connect-icon:active{transform:scale(.94);}
 #aboutArchiveOverlay .about-dual-signoff{
-  grid-column:1/-1;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -182,13 +170,9 @@ html[data-theme="light"] #aboutArchiveOverlay .about-connect-icon{
     max-height:calc(100dvh - 36px)!important;
     border-radius:20px!important;
   }
-  #aboutArchiveOverlay .about-dual-header{
-    padding:19px 18px 15px!important;
-  }
+  #aboutArchiveOverlay .about-dual-header{padding:19px 18px 15px!important;}
   #aboutArchiveOverlay .about-dual-header .form-title{font-size:18px!important;}
   #aboutArchiveOverlay .about-dual-body{
-    grid-template-columns:1fr;
-    gap:14px;
     padding:16px 16px 20px;
     max-height:calc(100dvh - 104px);
   }
@@ -197,16 +181,11 @@ html[data-theme="light"] #aboutArchiveOverlay .about-connect-icon{
     border-radius:16px;
   }
   #aboutArchiveOverlay .about-block-label{margin-bottom:14px;}
-  #aboutArchiveOverlay .about-info-block h3{font-size:16px;margin-bottom:12px;}
   #aboutArchiveOverlay .about-info-block p{font-size:13.5px;line-height:1.78;}
   #aboutArchiveOverlay .about-creator-name{font-size:25px!important;}
   #aboutArchiveOverlay .about-connect{margin-top:21px;padding-top:18px;}
   #aboutArchiveOverlay .about-connect-links{gap:11px;}
-  #aboutArchiveOverlay .about-connect-icon{
-    width:48px;
-    height:48px;
-    flex-basis:48px;
-  }
+  #aboutArchiveOverlay .about-connect-icon{width:48px;height:48px;flex-basis:48px;}
   #aboutArchiveOverlay .about-connect-icon svg{width:20px;height:20px;}
   #aboutArchiveOverlay .about-dual-signoff{
     flex-direction:column;
@@ -226,12 +205,12 @@ html[data-theme="light"] #aboutArchiveOverlay .about-connect-icon{
     const close = header?.querySelector("#closeAboutArchiveBtn");
 
     if (!overlay || !card || !header || !close) return false;
-    if (card.dataset.aboutDualReady === "3") return true;
+    if (card.dataset.aboutDualReady === "4") return true;
 
     installStyles();
-
     card.classList.add("about-dual-card");
     header.classList.add("about-dual-header");
+
     if (title) {
       title.id = "aboutArchiveTitle";
       title.textContent = "About Stat Archive";
@@ -268,12 +247,6 @@ html[data-theme="light"] #aboutArchiveOverlay .about-connect-icon{
         </div>
       </section>
 
-      <section class="about-info-block about-project-block" aria-labelledby="aboutIdeaHeading">
-        <div class="about-block-label">ABOUT STAT ARCHIVE</div>
-        <h3 id="aboutIdeaHeading">THE IDEA</h3>
-        <p>Stat Archive began with a simple thought: useful academic material should not disappear when one batch graduates. Notes, books and question papers become more valuable when they stay organized, searchable and available to the students who come next.</p>
-      </section>
-
       <div class="about-dual-signoff" aria-label="Stat Archive tagline">
         <strong>Stat Archive</strong>
         <span>LEARN · ANALYZE · GROW</span>
@@ -281,7 +254,7 @@ html[data-theme="light"] #aboutArchiveOverlay .about-connect-icon{
 
     card.appendChild(body);
     body.scrollTop = 0;
-    card.dataset.aboutDualReady = "3";
+    card.dataset.aboutDualReady = "4";
     return true;
   }
 
