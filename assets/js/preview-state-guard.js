@@ -228,3 +228,26 @@
     loadEntrySubjectTransitionV2();
   }
 })();
+
+/* Load the redesigned two-block About Stat Archive panel from a network-first
+   runtime so website/PWA/APK sessions pick it up without an HTML cache reset. */
+(() => {
+  "use strict";
+  if (window.__STAT_ARCHIVE_ABOUT_DUAL_LOADER_V1__) return;
+  window.__STAT_ARCHIVE_ABOUT_DUAL_LOADER_V1__ = true;
+
+  function loadAboutDual() {
+    if (document.querySelector('script[data-stat-about-dual="1"]')) return;
+    const script = document.createElement("script");
+    script.src = "./assets/js/about-dual.js?v=20260927-1";
+    script.async = false;
+    script.dataset.statAboutDual = "1";
+    document.body.appendChild(script);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadAboutDual, { once:true });
+  } else {
+    loadAboutDual();
+  }
+})();
