@@ -99,3 +99,31 @@ test('new native bridge waits for confirmed save and propagates cancellation',as
 test('native adapter is not installed inside child frames',()=>{
  const window={top:{},StatArchiveNative:{postMessage(){throw Error('must not send');}}};vm.runInNewContext(read('assets/js/native-bridge.js'),{window});assert.equal(window.AndroidBridge,undefined);
 });
+function downloadHarness(bridge) {
+ const source=read('assets/js/download-progress-canonical.js');
+ const save=source.slice(source.indexOf('  async function saveAndroid('),source.indexOf('  function saveBrowser('));
+ const transfer=source.slice(source.indexOf('  async function transfer('),source.indexOf('  window.statArchiveCanonicalDownload'));
+ const results={marked:0,activity:0,status:[]};
+ const context={window:{AndroidStreamBridge:bridge,incrementActivity(){results.activity++;}},hasStreamBridge:()=>true,isAndroid:()=>true,blobToBase64:async()=> 'YQ==',filenameOf:()=> 'file.pdf',markComplete(){results.marked++;},showStatus:(...args)=>results.status.push(args),console:{error(){}},Error};
+ vm.runInNewContext(save+transfer+';this.run=transfer;',context);
+ return {results,run:()=>context.run({_offlineBlob:new Blob(['a'],{type:'application/pdf'})})};
+}
+test('canonical download does not mark/count before native save acknowledgement',async()=>{
+ let finish;const gate=new Promise(r=>finish=r);
+ const h=downloadHarness({protocolVersion:2,beginBlobTransfer:async()=>true,appendBlobChunk:async()=>true,finishBlobTransfer:()=>gate});
+ const result=h.run();await new Promise(r=>setImmediate(r));assert.equal(h.results.marked,0);assert.equal(h.results.activity,0);
+ finish(true);assert.equal(await result,true);assert.equal(h.results.marked,1);assert.equal(h.results.activity,1);
+});
+test('cancelled native save never marks or increments downloads',async()=>{
+ const h=downloadHarness({protocolVersion:2,beginBlobTransfer:async()=>true,appendBlobChunk:async()=>true,finishBlobTransfer:async()=>{throw Error('Save cancelled.');},cancelBlobTransfer:async()=>true});
+ assert.equal(await h.run(),false);assert.equal(h.results.marked,0);assert.equal(h.results.activity,0);
+});
+test('legacy picker acknowledgement is not counted as completed saving',async()=>{
+ const h=downloadHarness({beginBlobTransfer:()=>true,appendBlobChunk:()=>true,finishBlobTransfer:()=>true});
+ assert.equal(await h.run(),false);assert.equal(h.results.marked,0);assert.equal(h.results.activity,0);
+});
+test('failed stream chunk aborts transfer without opening picker',async()=>{
+ let cancelled=false,finished=false;
+ const h=downloadHarness({protocolVersion:2,beginBlobTransfer:async()=>true,appendBlobChunk:async()=>false,finishBlobTransfer:async()=>{finished=true;},cancelBlobTransfer:async()=>{cancelled=true;}});
+ assert.equal(await h.run(),false);assert.equal(cancelled,true);assert.equal(finished,false);assert.equal(h.results.marked,0);
+});
