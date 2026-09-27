@@ -509,7 +509,7 @@ function render() {
         const delta = afterTop - beforeTop;
         if (Math.abs(delta) > 0.5) {
           const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-window.scrollBy({ top: delta, left: 0, behavior: motion });
+          window.scrollBy({ top: delta, left: 0, behavior: motion });
         }
       }
     };
