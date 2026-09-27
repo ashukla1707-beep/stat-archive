@@ -2,3 +2,4 @@
 .github/
 tests/
 AUDIT_FIXES.md
+maintenance/

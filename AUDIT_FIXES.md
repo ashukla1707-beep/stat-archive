@@ -18,3 +18,5 @@ Run `node --test tests/*.test.mjs` and syntax-check worker.js, sw.js, and assets
 ## Release order and remaining checks
 
 Deploy this website adapter before releasing Android 1.5.22. The website works with older APKs, but those binaries retain their old native security implementation until users update. Do not advance version.json until a signed 1.5.22 artifact exists and has been verified. Verify PDF preview, offline launch, native scanner, save/cancel/share/open, auth autofill, and mobile layouts on actual devices. This branch is not a device-test certificate and has not been deployed by this change.
+
+Validation also identified 14 pre-existing invalid one-time repair workflows. These were preserved verbatim in maintenance/legacy-workflows with .disabled extensions, outside the active Actions directory; active validation workflows remain enabled.
