@@ -1,0 +1,162 @@
+name: Test and patch menu level switch
+
+on:
+  push:
+    branches:
+      - fix/menu-level-switch-2026-09-27
+    paths:
+      - '.github/workflows/test-fix-menu-level-switch-2026-09-27.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/menu-level-switch-2026-09-27
+
+      - name: Apply minimal history-state fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          core = Path('assets/js/core.js')
+          text = core.read_text(encoding='utf-8')
+          old = 'window.history.replaceState({ level: value }, "", url.href);'
+          new = 'window.history.replaceState({ ...(window.history.state || {}), level: value }, "", url.href);'
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected exactly one setLevelUI history replacement, found {text.count(old)}')
+          core.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          sw = Path('sw.js')
+          sw_text = sw.read_text(encoding='utf-8')
+          first = 'const CACHE = "stat-archive-shell-v20260926-android-version-v1521";'
+          replacement = 'const CACHE = "stat-archive-shell-v20260927-menu-level-state-v1";'
+          if first not in sw_text:
+              raise SystemExit('Expected service-worker cache version was not found')
+          sw.write_text(sw_text.replace(first, replacement, 1), encoding='utf-8')
+          PY
+
+      - name: Static regression checks
+        run: |
+          grep -F 'window.history.replaceState({ ...(window.history.state || {}), level: value }, "", url.href);' assets/js/core.js
+          grep -F 'stat-archive-shell-v20260927-menu-level-state-v1' sw.js
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run menu level switch regression test
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/statarchive-menu-test.log 2>&1 &
+          sleep 1
+          cat > /tmp/menu-level-test.cjs <<'NODE'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext({viewport:{width:390,height:844}, reducedMotion:'reduce'});
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', e => errors.push(String(e)));
+
+            await page.route('https://stat-archive-api.lustats.workers.dev/**', async route => {
+              const url = new URL(route.request().url());
+              const level = url.searchParams.get('level') === 'bsc' ? 'bsc' : 'msc';
+              if (url.pathname.endsWith('/entries')) {
+                await route.fulfill({status:200, contentType:'application/json', body:JSON.stringify({entries:[]})});
+                return;
+              }
+              if (url.pathname.endsWith('/subjects')) {
+                const subjects = level === 'bsc'
+                  ? [{id:'bsc-test',code:'BSC_TEST',name:'BSc Menu Test Subject'}]
+                  : [{id:'msc-test',code:'MSC_TEST',name:'MSc Menu Test Subject'}];
+                await route.fulfill({status:200, contentType:'application/json', body:JSON.stringify({subjects})});
+                return;
+              }
+              await route.fulfill({status:200, contentType:'application/json', body:'{}'});
+            });
+
+            await page.goto('http://127.0.0.1:4173/index.html?level=msc', {waitUntil:'domcontentloaded', timeout:30000});
+            await page.waitForFunction(() => !!window.__statArchiveNavigation, null, {timeout:15000});
+            await page.waitForFunction(() => document.querySelector('#subjectFilterRow')?.textContent?.includes('MSc Menu Test Subject'), null, {timeout:15000});
+
+            // Menu -> B.Sc -> close Menu must preserve both the navigation state
+            // and the newly selected archive level.
+            await page.click('#mainMenuBtn');
+            await page.waitForSelector('#mainSideMenu.is-open');
+            let state = await page.evaluate(() => history.state);
+            if (state?.statArchiveNav !== 'menu') throw new Error('Menu history state missing before switch: '+JSON.stringify(state));
+
+            await page.click('#menuBscLevelBtn');
+            await page.waitForFunction(() => new URL(location.href).searchParams.get('level') === 'bsc');
+            await page.waitForFunction(() => document.querySelector('#subjectFilterRow')?.textContent?.includes('BSc Menu Test Subject'), null, {timeout:10000});
+            state = await page.evaluate(() => history.state);
+            if (state?.statArchiveNav !== 'menu' || state?.level !== 'bsc') {
+              throw new Error('Level switch erased Menu history state: '+JSON.stringify(state));
+            }
+            await page.click('#mainMenuCloseBtn');
+            await page.waitForFunction(() => !document.getElementById('mainSideMenu')?.classList.contains('is-open'));
+            await page.waitForFunction(() => window.__statArchiveNavigation?.state?.() === 'home');
+            let snapshot = await page.evaluate(() => ({
+              level:new URL(location.href).searchParams.get('level'),
+              text:document.querySelector('#subjectFilterRow')?.textContent || '',
+              nav:window.__statArchiveNavigation?.state?.()
+            }));
+            if (snapshot.level !== 'bsc' || !snapshot.text.includes('BSc Menu Test Subject') || snapshot.text.includes('MSc Menu Test Subject') || snapshot.nav !== 'home') {
+              throw new Error('B.Sc did not survive Menu close: '+JSON.stringify(snapshot));
+            }
+
+            // Repeat the other direction.
+            await page.click('#mainMenuBtn');
+            await page.waitForSelector('#mainSideMenu.is-open');
+            await page.click('#menuMscLevelBtn');
+            await page.waitForFunction(() => new URL(location.href).searchParams.get('level') === 'msc');
+            await page.waitForFunction(() => document.querySelector('#subjectFilterRow')?.textContent?.includes('MSc Menu Test Subject'), null, {timeout:10000});
+            state = await page.evaluate(() => history.state);
+            if (state?.statArchiveNav !== 'menu' || state?.level !== 'msc') {
+              throw new Error('M.Sc switch erased Menu history state: '+JSON.stringify(state));
+            }
+            await page.click('#mainMenuCloseBtn');
+            await page.waitForFunction(() => window.__statArchiveNavigation?.state?.() === 'home');
+            snapshot = await page.evaluate(() => ({
+              level:new URL(location.href).searchParams.get('level'),
+              text:document.querySelector('#subjectFilterRow')?.textContent || '',
+              nav:window.__statArchiveNavigation?.state?.()
+            }));
+            if (snapshot.level !== 'msc' || !snapshot.text.includes('MSc Menu Test Subject') || snapshot.text.includes('BSc Menu Test Subject') || snapshot.nav !== 'home') {
+              throw new Error('M.Sc did not survive Menu close: '+JSON.stringify(snapshot));
+            }
+
+            // The hero switch must remain unaffected.
+            await page.click('#levelBscBtn');
+            await page.waitForFunction(() => new URL(location.href).searchParams.get('level') === 'bsc');
+            await page.waitForFunction(() => document.querySelector('#subjectFilterRow')?.textContent?.includes('BSc Menu Test Subject'), null, {timeout:10000});
+
+            if (errors.length) console.log('Non-fatal page errors:', errors);
+            await context.close();
+            await browser.close();
+            console.log('Menu and hero level switch regression test passed.');
+          })().catch(err => { console.error(err); process.exit(1); });
+          NODE
+          node /tmp/menu-level-test.cjs
+
+      - name: Commit tested fix to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/js/core.js sw.js
+          git commit -m "Preserve menu navigation state during level switch"
+          git push origin HEAD:fix/menu-level-switch-2026-09-27
