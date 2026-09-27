@@ -216,7 +216,7 @@
   function loadEntrySubjectTransitionV2() {
     if (document.querySelector('script[data-entry-subject-transition-v2="1"]')) return;
     const script = document.createElement("script");
-    script.src = "./assets/js/entry-subject-transition.js?v=20260927-v2";
+    script.src = "./assets/js/entry-subject-transition.js?v=20260927-v4";
     script.async = false;
     script.dataset.entrySubjectTransitionV2 = "1";
     document.body.appendChild(script);

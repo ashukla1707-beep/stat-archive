@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260927-more-transition-v2";
+const CACHE = "stat-archive-shell-v20260927-more-transition-v4";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [

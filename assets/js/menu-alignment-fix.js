@@ -354,11 +354,12 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
 (() => {
   "use strict";
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;
-  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V3_BOOTSTRAP__) return;
-  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V3_BOOTSTRAP__ = true;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__ = true;
 
   const script = document.createElement("script");
-  script.src = "assets/js/entry-subject-transition.js?v=20260927-v3";
+  script.src = "assets/js/entry-subject-transition.js?v=20260927-v4";
   script.async = false;
   script.dataset.entrySubjectTransitionV3 = "1";
   document.body.appendChild(script);
