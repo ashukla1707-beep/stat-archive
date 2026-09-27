@@ -1,4 +1,4 @@
-name: Publish More transition V4
+name: Publish More transition V5
 
 on:
   workflow_dispatch:
@@ -17,49 +17,71 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish V4 toggle runtime
+      - name: Publish rebuilt V5 runtime
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          # Direct app-shell load: V4 must own the click immediately after archive-ui.
+          version = '20260927-v5'
+
+          # One direct app-shell owner immediately after archive-ui.
           index = Path('index.html')
           text = index.read_text(encoding='utf-8')
           text = re.sub(
               r'assets/js/entry-subject-transition\.js\?v=[^"\']+',
-              'assets/js/entry-subject-transition.js?v=20260927-v4',
+              f'assets/js/entry-subject-transition.js?v={version}',
               text,
               count=1
           )
           index.write_text(text, encoding='utf-8')
 
-          # Network-first bootstrap: prevent cached V2/V3 from registering and
-          # request the V4 URL explicitly.
+          # Network-first bootstrap for installed APK/PWA sessions. It blocks
+          # all earlier runtime generations before requesting the fresh V5 URL.
           align = Path('assets/js/menu-alignment-fix.js')
           text = align.read_text(encoding='utf-8')
-          text = text.replace(
-              'window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;\n  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V3_BOOTSTRAP__) return;\n  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V3_BOOTSTRAP__ = true;',
-              'window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;\n  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;\n  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__) return;\n  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__ = true;'
-          )
-          text = text.replace(
-              'assets/js/entry-subject-transition.js?v=20260927-v3',
-              'assets/js/entry-subject-transition.js?v=20260927-v4'
-          )
+          marker = '/* =========================================================\n   MORE / SHOW LESS V3 BOOTSTRAP'
+          if marker in text:
+              prefix = text.split(marker, 1)[0]
+              text = prefix + '''/* =========================================================
+   MORE / SHOW LESS V5 BOOTSTRAP
+   ========================================================= */
+(() => {
+  "use strict";
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true;
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V5_BOOTSTRAP__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V5_BOOTSTRAP__ = true;
+
+  const script = document.createElement("script");
+  script.src = "assets/js/entry-subject-transition.js?v=20260927-v5";
+  script.async = false;
+  script.dataset.entrySubjectTransitionV5 = "1";
+  document.body.appendChild(script);
+})();
+'''
+          else:
+              text = re.sub(
+                  r'assets/js/entry-subject-transition\.js\?v=20260927-v[1-4]',
+                  f'assets/js/entry-subject-transition.js?v={version}',
+                  text
+              )
           align.write_text(text, encoding='utf-8')
 
-          # Later fallback loaders should point at the same V4 asset.
+          # Any later fallback loader requests the same V5 file and can no
+          # longer revive an older generation from cache.
           for filename in ['assets/js/menu-header-reference.js', 'assets/js/preview-state-guard.js']:
               path = Path(filename)
               text = path.read_text(encoding='utf-8')
               text = re.sub(
-                  r'assets/js/entry-subject-transition\.js\?v=20260927-v[123]',
-                  'assets/js/entry-subject-transition.js?v=20260927-v4',
+                  r'assets/js/entry-subject-transition\.js\?v=20260927-v[1-4]',
+                  f'assets/js/entry-subject-transition.js?v={version}',
                   text
               )
               text = re.sub(
-                  r'__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V[123]__',
-                  '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V4__',
+                  r'__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V[1-4]__',
+                  '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V5__',
                   text
               )
               path.write_text(text, encoding='utf-8')
@@ -68,22 +90,22 @@ jobs:
           text = sw.read_text(encoding='utf-8')
           text = re.sub(
               r'const CACHE = "[^"]+";',
-              'const CACHE = "stat-archive-shell-v20260927-more-transition-v4";',
+              'const CACHE = "stat-archive-shell-v20260927-more-transition-v5";',
               text,
               count=1
           )
           sw.write_text(text, encoding='utf-8')
           PY
 
-      - name: Verify V4 runtime
+      - name: Verify rebuilt V5 runtime
         run: |
           node --check assets/js/entry-subject-transition.js
-          grep -F 'entry-subject-transition.js?v=20260927-v4' index.html
-          grep -F '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true' assets/js/menu-alignment-fix.js
-          grep -F 'entry-subject-transition.js?v=20260927-v4' assets/js/menu-alignment-fix.js
-          grep -F 'stat-archive-shell-v20260927-more-transition-v4' sw.js
+          grep -F 'entry-subject-transition.js?v=20260927-v5' index.html
+          grep -F '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true' assets/js/menu-alignment-fix.js
+          grep -F 'entry-subject-transition.js?v=20260927-v5' assets/js/menu-alignment-fix.js
+          grep -F 'stat-archive-shell-v20260927-more-transition-v5' sw.js
 
-      - name: Commit cache-safe V4 wiring
+      - name: Commit V5 wiring
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -91,8 +113,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes needed"
           else
-            git commit -m "Publish natural Show less transition V4"
+            git commit -m "Publish rebuilt More transition V5"
             git push origin HEAD:main
           fi
-
-# Trigger after workflow registration.
