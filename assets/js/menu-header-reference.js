@@ -394,3 +394,16 @@ body[data-theme="light"] #mainSideMenu .stat-menu-reference-head #mainMenuCloseB
     window.location.assign(destination);
   }, true);
 })();
+
+/* Load the dedicated entry-subject accordion transition after archive-ui.js. */
+(() => {
+  "use strict";
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V1__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V1__ = true;
+  if (document.querySelector('script[data-entry-subject-transition]')) return;
+  const script = document.createElement("script");
+  script.src = "assets/js/entry-subject-transition.js?v=20260927-v1";
+  script.async = false;
+  script.dataset.entrySubjectTransition = "1";
+  document.body.appendChild(script);
+})();
