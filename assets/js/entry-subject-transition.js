@@ -1,50 +1,37 @@
-/* Stat Archive — More / Show less V6
-   Clean rebuild for Android/WebView smoothness.
+/* Stat Archive — More / Show less V7
+   Rebuilt around the browser compositor instead of document scrolling.
 
    Rules:
    - More never scrolls the document.
    - Show less stays after the final expanded subject.
-   - No subject-row fade-out, no spacer, no height animation.
-   - On collapse, the expanded content stays fully visible while the browser's
-     native smooth scroll returns to the collapsed boundary. Only then are the
-     extra rows removed, below the viewport, so there is no blank frame/jump.
+   - Collapse does not animate card heights and does not scroll through subjects.
+   - Modern Chrome/Android WebView uses the View Transition API so the current
+     viewport is snapshotted by the compositor, the compact DOM is rendered at
+     its natural bottom position, and the two visual states are blended/moved
+     smoothly without exposing the intermediate page travel.
 */
 (() => {
   "use strict";
-  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V6__) return;
-  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V6__ = true;
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V7__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V7__ = true;
 
-  // Prevent any older cached transition runtime from registering afterwards.
+  // Block every older cached runtime from registering after V7.
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V6__ = true;
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V5__ = true;
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true;
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;
 
+  const TRANSITION_MS = 320;
   let busy = false;
-  let transitionToken = 0;
+  let token = 0;
 
   function prefersReducedMotion() {
     return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
   }
 
-  function visibleLimit() {
-    try {
-      return typeof VISIBLE_ENTRY_SUBJECT_LIMIT === "number"
-        ? VISIBLE_ENTRY_SUBJECT_LIMIT
-        : 6;
-    } catch (_) {
-      return 6;
-    }
-  }
-
   function host() {
     return document.getElementById("grid");
-  }
-
-  function rows() {
-    const grid = host();
-    if (!grid) return [];
-    return Array.from(grid.querySelectorAll(":scope > .subject-row[data-subject-code]"));
   }
 
   function toggleWrap() {
@@ -60,23 +47,27 @@
   }
 
   function maxY() {
-    const doc = document.documentElement;
-    return Math.max(0, Math.max(doc.scrollHeight, document.body?.scrollHeight || 0) - window.innerHeight);
+    const root = document.documentElement;
+    const body = document.body;
+    return Math.max(
+      0,
+      Math.max(root?.scrollHeight || 0, body?.scrollHeight || 0) - window.innerHeight
+    );
   }
 
   function forceY(y) {
     const root = document.documentElement;
-    const previous = root.style.scrollBehavior;
+    const old = root.style.scrollBehavior;
     root.style.setProperty("scroll-behavior", "auto", "important");
     window.scrollTo(0, Math.max(0, Math.min(y, maxY())));
-    if (previous) root.style.scrollBehavior = previous;
+    if (old) root.style.scrollBehavior = old;
     else root.style.removeProperty("scroll-behavior");
   }
 
   function ensureStyle() {
-    if (document.getElementById("statArchiveEntrySubjectTransitionV6Style")) return;
+    if (document.getElementById("statArchiveEntrySubjectTransitionV7Style")) return;
     const style = document.createElement("style");
-    style.id = "statArchiveEntrySubjectTransitionV6Style";
+    style.id = "statArchiveEntrySubjectTransitionV7Style";
     style.textContent = `
 html.sa-entry-more-layout-lock,
 html.sa-entry-more-layout-lock body,
@@ -85,20 +76,36 @@ html.sa-entry-more-layout-lock #grid > *{
   overflow-anchor:none !important;
 }
 
-html.sa-entry-more-native-scroll .entry-subject-more-btn{
+html.sa-entry-more-transitioning .entry-subject-more-btn{
   pointer-events:none !important;
+}
+
+@keyframes sa-entry-vt-old{
+  from{opacity:1;transform:translateY(0) scale(1);}
+  to{opacity:0;transform:translateY(-10px) scale(.997);}
+}
+@keyframes sa-entry-vt-new{
+  from{opacity:0;transform:translateY(10px) scale(.997);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+
+::view-transition-old(root){
+  animation:${TRANSITION_MS}ms cubic-bezier(.2,.7,.2,1) both sa-entry-vt-old !important;
+}
+::view-transition-new(root){
+  animation:${TRANSITION_MS}ms cubic-bezier(.2,.7,.2,1) both sa-entry-vt-new !important;
 }
 `;
     document.head.appendChild(style);
   }
 
-  function pinExpansionY(savedY, token) {
+  function pinExpansion(savedY, localToken) {
     forceY(savedY);
     requestAnimationFrame(() => {
-      if (token !== transitionToken) return;
+      if (localToken !== token) return;
       forceY(savedY);
       requestAnimationFrame(() => {
-        if (token !== transitionToken) return;
+        if (localToken !== token) return;
         forceY(savedY);
         document.documentElement.classList.remove("sa-entry-more-layout-lock");
       });
@@ -107,8 +114,8 @@ html.sa-entry-more-native-scroll .entry-subject-more-btn{
 
   function expand(button) {
     if (busy) return;
-    transitionToken += 1;
-    const token = transitionToken;
+    token += 1;
+    const localToken = token;
     const savedY = currentY();
 
     button.blur();
@@ -123,74 +130,22 @@ html.sa-entry-more-native-scroll .entry-subject-more-btn{
       replacement.setAttribute("aria-expanded", "true");
     }
 
-    // Rendering inserts subjects below the current viewport. Pin the exact
-    // pre-click position across two paints to defeat delayed WebView anchoring.
-    pinExpansionY(savedY, token);
+    // Adding rows below the viewport must never move the reader.
+    pinExpansion(savedY, localToken);
   }
 
-  function waitForNativeScroll(targetY, token) {
-    return new Promise(resolve => {
-      const started = performance.now();
-      let nearFrames = 0;
-
-      function frame(now) {
-        if (token !== transitionToken) {
-          resolve(false);
-          return;
-        }
-
-        const distance = Math.abs(currentY() - targetY);
-        if (distance <= 2) nearFrames += 1;
-        else nearFrames = 0;
-
-        if (nearFrames >= 3) {
-          resolve(true);
-          return;
-        }
-
-        if (now - started > 1300) {
-          // A tiny WebView rounding remainder is safe to correct instantly.
-          if (distance <= 40) {
-            forceY(targetY);
-            resolve(true);
-          } else {
-            resolve(false);
-          }
-          return;
-        }
-
-        requestAnimationFrame(frame);
-      }
-
-      requestAnimationFrame(frame);
-    });
-  }
-
-  function collapsedBoundaryTarget(allRows) {
-    const limit = visibleLimit();
-    const firstExtra = allRows[limit];
-    if (!firstExtra) return currentY();
-
-    // The first extra subject begins almost exactly where the collapsed More
-    // control belongs. Bring that boundary near the lower part of the viewport,
-    // leaving enough breathing room for the More button after the final render.
-    const boundaryDocumentY = currentY() + firstExtra.getBoundingClientRect().top;
-    const desiredViewportY = Math.max(110, window.innerHeight - 170);
-    const target = boundaryDocumentY - desiredViewportY;
-
-    // Collapse must never push the reader farther down the page.
-    return Math.max(0, Math.min(currentY(), Math.min(target, maxY())));
-  }
-
-  function commitCollapsedState(token) {
-    if (token !== transitionToken) return;
-
-    const savedY = currentY();
+  function renderCollapsedAtNaturalBottom() {
     document.documentElement.classList.add("sa-entry-more-layout-lock");
 
     showAllEntrySubjects = false;
     render();
-    forceY(savedY);
+
+    // The reader pressed Show less at the natural end of the expanded list.
+    // After collapse, keep the equivalent natural end position: More at the
+    // bottom of the compact list. This happens while the old viewport snapshot
+    // is still covering the page, so no travel through intermediate subjects
+    // is ever shown.
+    forceY(maxY());
 
     const replacement = toggleButton();
     if (replacement) {
@@ -198,17 +153,18 @@ html.sa-entry-more-native-scroll .entry-subject-more-btn{
       replacement.setAttribute("aria-expanded", "false");
       replacement.removeAttribute("aria-busy");
     }
+  }
 
-    // The removed rows were below the viewport at this point. Re-pin for the
-    // delayed WebView layout pass, then restore normal scroll anchoring.
+  function finishCollapse(localToken) {
+    if (localToken !== token) return;
     requestAnimationFrame(() => {
-      if (token !== transitionToken) return;
-      forceY(savedY);
+      if (localToken !== token) return;
+      forceY(maxY());
       requestAnimationFrame(() => {
-        if (token !== transitionToken) return;
-        forceY(savedY);
+        if (localToken !== token) return;
+        forceY(maxY());
         document.documentElement.classList.remove("sa-entry-more-layout-lock");
-        document.documentElement.classList.remove("sa-entry-more-native-scroll");
+        document.documentElement.classList.remove("sa-entry-more-transitioning");
         busy = false;
       });
     });
@@ -217,50 +173,41 @@ html.sa-entry-more-native-scroll .entry-subject-more-btn{
   async function collapse(button) {
     if (busy) return;
     busy = true;
-    transitionToken += 1;
-    const token = transitionToken;
-    const allRows = rows();
-
-    if (allRows.length <= visibleLimit()) {
-      showAllEntrySubjects = false;
-      render();
-      busy = false;
-      return;
-    }
+    token += 1;
+    const localToken = token;
 
     button.blur();
     button.setAttribute("aria-busy", "true");
+    document.documentElement.classList.add("sa-entry-more-transitioning");
 
-    const targetY = collapsedBoundaryTarget(allRows);
-    const distance = Math.abs(currentY() - targetY);
-
-    if (prefersReducedMotion() || distance < 12) {
-      if (distance >= 1) forceY(targetY);
-      commitCollapsedState(token);
+    // Reduced-motion users and very old WebViews get a direct state change.
+    if (prefersReducedMotion() || typeof document.startViewTransition !== "function") {
+      renderCollapsedAtNaturalBottom();
+      finishCollapse(localToken);
       return;
     }
 
-    document.documentElement.classList.add("sa-entry-more-native-scroll");
+    try {
+      const transition = document.startViewTransition(() => {
+        if (localToken !== token) return;
+        renderCollapsedAtNaturalBottom();
+      });
 
-    // Keep every real subject visible while the browser/WebView performs its
-    // compositor-native smooth scroll. We only alter the DOM after arrival.
-    window.scrollTo({ top: targetY, left: 0, behavior: "smooth" });
-    const arrived = await waitForNativeScroll(targetY, token);
-
-    if (!arrived || token !== transitionToken) {
-      document.documentElement.classList.remove("sa-entry-more-native-scroll");
-      button.removeAttribute("aria-busy");
-      busy = false;
-      return;
+      // ready means the new-state snapshot exists; finished means the compositor
+      // animation is fully complete. Ignore transient API errors and still leave
+      // the DOM in the correct compact state.
+      await transition.finished.catch(() => {});
+    } catch (_) {
+      if (localToken === token) renderCollapsedAtNaturalBottom();
     }
 
-    commitCollapsedState(token);
+    finishCollapse(localToken);
   }
 
   ensureStyle();
 
-  // Own this control in capture phase so archive-ui.js's older inline
-  // scroll-compensation handler never runs.
+  // Single owner in capture phase. This prevents archive-ui.js's historical
+  // inline scroll-compensation onclick from executing at all.
   window.addEventListener("click", event => {
     const target = event.target instanceof Element ? event.target : null;
     const button = target?.closest?.(".entry-subject-more-btn");
