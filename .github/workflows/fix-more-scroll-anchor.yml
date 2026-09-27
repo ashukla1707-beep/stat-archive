@@ -72,3 +72,5 @@ jobs:
             git commit -m "Publish More transition V2"
             git push origin HEAD:main
           fi
+
+# Touch this file once after registration so GitHub executes the new workflow.
