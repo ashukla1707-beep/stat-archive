@@ -1,4 +1,4 @@
-name: Publish More transition V2
+name: Publish More transition V4
 
 on:
   workflow_dispatch:
@@ -17,60 +17,80 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish V2 loader and network-first runtime
+      - name: Publish V4 toggle runtime
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          menu = Path('assets/js/menu-header-reference.js')
-          text = menu.read_text(encoding='utf-8')
+          # Direct app-shell load: V4 must own the click immediately after archive-ui.
+          index = Path('index.html')
+          text = index.read_text(encoding='utf-8')
+          text = re.sub(
+              r'assets/js/entry-subject-transition\.js\?v=[^"\']+',
+              'assets/js/entry-subject-transition.js?v=20260927-v4',
+              text,
+              count=1
+          )
+          index.write_text(text, encoding='utf-8')
+
+          # Network-first bootstrap: prevent cached V2/V3 from registering and
+          # request the V4 URL explicitly.
+          align = Path('assets/js/menu-alignment-fix.js')
+          text = align.read_text(encoding='utf-8')
           text = text.replace(
-              'assets/js/entry-subject-transition.js?v=20260927-v1',
-              'assets/js/entry-subject-transition.js?v=20260927-v2'
+              'window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;\n  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V3_BOOTSTRAP__) return;\n  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V3_BOOTSTRAP__ = true;',
+              'window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;\n  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;\n  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__) return;\n  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__ = true;'
           )
           text = text.replace(
-              '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V1__',
-              '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V2__'
+              'assets/js/entry-subject-transition.js?v=20260927-v3',
+              'assets/js/entry-subject-transition.js?v=20260927-v4'
           )
-          menu.write_text(text, encoding='utf-8')
+          align.write_text(text, encoding='utf-8')
+
+          # Later fallback loaders should point at the same V4 asset.
+          for filename in ['assets/js/menu-header-reference.js', 'assets/js/preview-state-guard.js']:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              text = re.sub(
+                  r'assets/js/entry-subject-transition\.js\?v=20260927-v[123]',
+                  'assets/js/entry-subject-transition.js?v=20260927-v4',
+                  text
+              )
+              text = re.sub(
+                  r'__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V[123]__',
+                  '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V4__',
+                  text
+              )
+              path.write_text(text, encoding='utf-8')
 
           sw = Path('sw.js')
           text = sw.read_text(encoding='utf-8')
           text = re.sub(
               r'const CACHE = "[^"]+";',
-              'const CACHE = "stat-archive-shell-v20260927-more-transition-v2";',
+              'const CACHE = "stat-archive-shell-v20260927-more-transition-v4";',
               text,
               count=1
           )
-
-          marker = "url.pathname.endsWith('/assets/js/menu-header-reference.js')||"
-          live = "url.pathname.endsWith('/assets/js/entry-subject-transition.js')||"
-          if live not in text:
-              if marker not in text:
-                  raise SystemExit('service-worker live-runtime anchor not found')
-              text = text.replace(marker, marker + live, 1)
-
           sw.write_text(text, encoding='utf-8')
           PY
 
-      - name: Verify V2 runtime
+      - name: Verify V4 runtime
         run: |
           node --check assets/js/entry-subject-transition.js
-          grep -F 'entry-subject-transition.js?v=20260927-v2' assets/js/menu-header-reference.js
-          grep -F "url.pathname.endsWith('/assets/js/entry-subject-transition.js')" sw.js
-          grep -F 'stat-archive-shell-v20260927-more-transition-v2' sw.js
+          grep -F 'entry-subject-transition.js?v=20260927-v4' index.html
+          grep -F '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true' assets/js/menu-alignment-fix.js
+          grep -F 'entry-subject-transition.js?v=20260927-v4' assets/js/menu-alignment-fix.js
+          grep -F 'stat-archive-shell-v20260927-more-transition-v4' sw.js
 
-      - name: Commit cache-safe V2 wiring
+      - name: Commit cache-safe V4 wiring
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/js/menu-header-reference.js sw.js
+          git add index.html assets/js/menu-alignment-fix.js assets/js/menu-header-reference.js assets/js/preview-state-guard.js sw.js
           if git diff --cached --quiet; then
             echo "No changes needed"
           else
-            git commit -m "Publish More transition V2"
+            git commit -m "Publish natural Show less transition V4"
             git push origin HEAD:main
           fi
-
-# Touch this file once after registration so GitHub executes the new workflow.
