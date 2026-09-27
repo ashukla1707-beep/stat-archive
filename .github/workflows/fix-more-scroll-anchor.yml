@@ -25,13 +25,21 @@ jobs:
 
           p = Path('assets/js/archive-ui.js')
           s = p.read_text(encoding='utf-8')
-          old = 'window.scrollBy({ top: delta, left: 0, behavior: "auto" });'
-          new = '''const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
+          old = '          window.scrollBy({ top: delta, left: 0, behavior: "auto" });'
+          good = '''          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
           window.scrollBy({ top: delta, left: 0, behavior: motion });'''
-          count = s.count(old)
-          if count != 1:
-              raise SystemExit(f'Expected exactly one More/Show less scroll compensation, found {count}')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          bad_indent = '''          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+window.scrollBy({ top: delta, left: 0, behavior: motion });'''
+
+          if old in s:
+              s = s.replace(old, good, 1)
+          elif bad_indent in s:
+              s = s.replace(bad_indent, good, 1)
+          elif good not in s:
+              raise SystemExit('More/Show less scroll compensation target not found')
+
+          p.write_text(s, encoding='utf-8')
 
           sw = Path('sw.js')
           t = sw.read_text(encoding='utf-8')
@@ -47,7 +55,7 @@ jobs:
       - name: Verify patch
         run: |
           grep -F 'const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";' assets/js/archive-ui.js
-          grep -F 'behavior: motion' assets/js/archive-ui.js
+          grep -F 'window.scrollBy({ top: delta, left: 0, behavior: motion });' assets/js/archive-ui.js
           grep -F 'stat-archive-shell-v20260927-more-smooth-v1' sw.js
 
       - name: Commit fix
@@ -58,6 +66,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes needed"
           else
-            git commit -m "Smooth More and Show less transition"
+            git commit -m "Polish More and Show less transition"
             git push origin HEAD:main
           fi
