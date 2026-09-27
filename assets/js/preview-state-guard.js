@@ -204,3 +204,27 @@
     loadOfflineHeadingSearchFix();
   }
 })();
+
+/* Force the compositor-friendly More / Show less V2 runtime through a fresh
+   query key. This file is network-first, so both web and APK receive it
+   without waiting for an old app-shell cache entry to age out. */
+(() => {
+  "use strict";
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V2_FORCE_LOADER__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V2_FORCE_LOADER__ = true;
+
+  function loadEntrySubjectTransitionV2() {
+    if (document.querySelector('script[data-entry-subject-transition-v2="1"]')) return;
+    const script = document.createElement("script");
+    script.src = "./assets/js/entry-subject-transition.js?v=20260927-v2";
+    script.async = false;
+    script.dataset.entrySubjectTransitionV2 = "1";
+    document.body.appendChild(script);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadEntrySubjectTransitionV2, { once:true });
+  } else {
+    loadEntrySubjectTransitionV2();
+  }
+})();
