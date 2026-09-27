@@ -1,5 +1,4 @@
-# Triggered after workflow registration on main.
-name: Fix More scroll anchor
+name: Install entry subject accordion transition
 
 on:
   workflow_dispatch:
@@ -17,55 +16,62 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Smooth More and Show less movement
+
+      - name: Wire accordion runtime into the app shell
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          p = Path('assets/js/archive-ui.js')
-          s = p.read_text(encoding='utf-8')
+          index = Path("index.html")
+          html = index.read_text(encoding="utf-8")
+          tag = '<script src="assets/js/entry-subject-transition.js?v=20260927-v1"></script>'
+          anchor = '<script src="assets/js/archive-ui.js"></script>'
 
-          old = '          window.scrollBy({ top: delta, left: 0, behavior: "auto" });'
-          motion_line = '          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";'
-          scroll_line = '          window.scrollBy({ top: delta, left: 0, behavior: motion });'
-          good = motion_line + '\n' + scroll_line
-          bad_indent = motion_line + '\n' + 'window.scrollBy({ top: delta, left: 0, behavior: motion });'
+          if tag not in html:
+              if anchor not in html:
+                  raise SystemExit("archive-ui script tag not found")
+              html = html.replace(anchor, anchor + tag, 1)
+              index.write_text(html, encoding="utf-8")
 
-          if old in s:
-              s = s.replace(old, good, 1)
-          elif bad_indent in s:
-              s = s.replace(bad_indent, good, 1)
-          elif good not in s:
-              raise SystemExit('More/Show less scroll compensation target not found')
+          sw = Path("sw.js")
+          text = sw.read_text(encoding="utf-8")
+          asset = '"./assets/js/entry-subject-transition.js"'
+          shell_anchor = '"./assets/js/pdf.js","./assets/js/core.js","./assets/js/archive-ui.js",'
 
-          p.write_text(s, encoding='utf-8')
+          if asset not in text:
+              if shell_anchor not in text:
+                  raise SystemExit("service-worker app-shell anchor not found")
+              text = text.replace(
+                  shell_anchor,
+                  shell_anchor + '\n  ' + asset + ',',
+                  1
+              )
 
-          sw = Path('sw.js')
-          t = sw.read_text(encoding='utf-8')
-          t = re.sub(
+          text = re.sub(
               r'const CACHE = "[^"]+";',
-              'const CACHE = "stat-archive-shell-v20260927-more-smooth-v1";',
-              t,
+              'const CACHE = "stat-archive-shell-v20260927-entry-accordion-v1";',
+              text,
               count=1
           )
-          sw.write_text(t, encoding='utf-8')
+          sw.write_text(text, encoding="utf-8")
           PY
 
-      - name: Verify patch
+      - name: Verify transition runtime
         run: |
-          grep -F 'const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";' assets/js/archive-ui.js
-          grep -F '          window.scrollBy({ top: delta, left: 0, behavior: motion });' assets/js/archive-ui.js
-          grep -F 'stat-archive-shell-v20260927-more-smooth-v1' sw.js
+          node --check assets/js/entry-subject-transition.js
+          grep -F 'entry-subject-transition.js?v=20260927-v1' index.html
+          grep -F '"./assets/js/entry-subject-transition.js"' sw.js
+          grep -F 'stat-archive-shell-v20260927-entry-accordion-v1' sw.js
 
-      - name: Commit fix
+      - name: Commit app-shell wiring
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/js/archive-ui.js sw.js
+          git add index.html sw.js
           if git diff --cached --quiet; then
             echo "No changes needed"
           else
-            git commit -m "Polish More and Show less transition"
+            git commit -m "Use accordion transition for More and Show less"
             git push origin HEAD:main
           fi
