@@ -4,15 +4,16 @@
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_ABOUT_DUAL_V1__) return;
-  window.__STAT_ARCHIVE_ABOUT_DUAL_V1__ = true;
+  if (window.__STAT_ARCHIVE_ABOUT_DUAL_V2__) return;
+  window.__STAT_ARCHIVE_ABOUT_DUAL_V2__ = true;
 
   const STYLE_ID = "statArchiveAboutDualStyle";
 
   function installStyles() {
-    if (document.getElementById(STYLE_ID)) return;
+    let style = document.getElementById(STYLE_ID);
+    if (style) style.remove();
 
-    const style = document.createElement("style");
+    style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
 #aboutArchiveOverlay .about-archive-card.about-dual-card{
@@ -82,6 +83,46 @@
   font:700 9px/1.3 'JetBrains Mono',monospace;
   letter-spacing:.14em;
 }
+#aboutArchiveOverlay .about-connect{
+  margin-top:24px;
+  padding-top:20px;
+  border-top:1px solid rgba(148,163,184,.12);
+}
+#aboutArchiveOverlay .about-connect-label{
+  margin:0 0 11px;
+  color:#778497;
+  font:700 9px/1.2 'JetBrains Mono',monospace;
+  letter-spacing:.16em;
+}
+#aboutArchiveOverlay .about-connect-links{
+  display:grid;
+  gap:9px;
+}
+#aboutArchiveOverlay .about-connect-link{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  min-height:47px;
+  padding:0 14px;
+  border:1px solid rgba(148,163,184,.16);
+  border-radius:13px;
+  color:var(--text,#eef2f7);
+  background:rgba(255,255,255,.018);
+  text-decoration:none;
+  font:600 12px/1.2 'JetBrains Mono',monospace;
+  transition:border-color .18s ease,background .18s ease,transform .18s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+#aboutArchiveOverlay .about-connect-link:hover{
+  border-color:rgba(103,216,207,.38);
+  background:rgba(103,216,207,.055);
+}
+#aboutArchiveOverlay .about-connect-link:active{transform:scale(.985);}
+#aboutArchiveOverlay .about-connect-link span:last-child{
+  color:var(--cyan-2,#67d8cf);
+  font-size:14px;
+}
 #aboutArchiveOverlay .about-dual-signoff{
   grid-column:1/-1;
   display:flex;
@@ -112,12 +153,21 @@ html[data-theme="light"] #aboutArchiveOverlay .about-info-block{
 }
 body[data-theme="light"] #aboutArchiveOverlay .about-block-label,
 body[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff span,
+body[data-theme="light"] #aboutArchiveOverlay .about-connect-label,
 html[data-theme="light"] #aboutArchiveOverlay .about-block-label,
-html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff span{color:#727b75;}
+html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff span,
+html[data-theme="light"] #aboutArchiveOverlay .about-connect-label{color:#727b75;}
 body[data-theme="light"] #aboutArchiveOverlay .about-creator-role,
 html[data-theme="light"] #aboutArchiveOverlay .about-creator-role{color:#347d73;}
 body[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff,
-html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff{border-top-color:#ddd7cb;}
+body[data-theme="light"] #aboutArchiveOverlay .about-connect,
+html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff,
+html[data-theme="light"] #aboutArchiveOverlay .about-connect{border-top-color:#ddd7cb;}
+body[data-theme="light"] #aboutArchiveOverlay .about-connect-link,
+html[data-theme="light"] #aboutArchiveOverlay .about-connect-link{
+  border-color:#ddd7cb;
+  background:rgba(255,255,255,.44);
+}
 @media(max-width:700px){
   #aboutArchiveOverlay{
     align-items:flex-start!important;
@@ -146,6 +196,8 @@ html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff{border-top-col
   #aboutArchiveOverlay .about-info-block h3{font-size:16px;margin-bottom:12px;}
   #aboutArchiveOverlay .about-info-block p{font-size:13.5px;line-height:1.78;}
   #aboutArchiveOverlay .about-creator-name{font-size:25px!important;}
+  #aboutArchiveOverlay .about-connect{margin-top:21px;padding-top:18px;}
+  #aboutArchiveOverlay .about-connect-link{min-height:50px;padding:0 15px;}
   #aboutArchiveOverlay .about-dual-signoff{
     flex-direction:column;
     align-items:flex-start;
@@ -164,7 +216,7 @@ html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff{border-top-col
     const close = header?.querySelector("#closeAboutArchiveBtn");
 
     if (!overlay || !card || !header || !close) return false;
-    if (card.dataset.aboutDualReady === "1") return true;
+    if (card.dataset.aboutDualReady === "2") return true;
 
     installStyles();
 
@@ -183,18 +235,33 @@ html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff{border-top-col
     const body = document.createElement("div");
     body.className = "about-dual-body";
     body.innerHTML = `
-      <section class="about-info-block about-project-block" aria-labelledby="aboutIdeaHeading">
-        <div class="about-block-label">ABOUT STAT ARCHIVE</div>
-        <h3 id="aboutIdeaHeading">THE IDEA</h3>
-        <p>Stat Archive began with a simple thought: useful academic material should not disappear when one batch graduates. Notes, books and question papers become more valuable when they stay organized, searchable and available to the students who come next.</p>
-      </section>
-
       <section class="about-info-block about-creator-block" aria-labelledby="aboutCreatorHeading">
         <div class="about-block-label">ABOUT ME · CREATOR</div>
         <h3 id="aboutCreatorHeading" class="about-creator-name">Adarsh Shukla</h3>
         <div class="about-creator-role">CREATOR OF STAT ARCHIVE</div>
         <p>I like building things that solve problems I encounter myself. What started as a small attempt to organize study material gradually became something I wanted to make useful for everyone. I enjoy learning through experimentation — trying an idea, finding what doesn’t work, and improving it until it does.</p>
         <p>Stat Archive is one of those experiments, and certainly not the last.</p>
+
+        <div class="about-connect" aria-label="Connect with Adarsh Shukla">
+          <div class="about-connect-label">CONNECT</div>
+          <div class="about-connect-links">
+            <a class="about-connect-link" href="https://www.linkedin.com/in/adarsh-shukla-b7509727b" target="_blank" rel="noopener noreferrer">
+              <span>LinkedIn</span><span aria-hidden="true">↗</span>
+            </a>
+            <a class="about-connect-link" href="https://www.instagram.com/the_illusionistic_07?igsi=MTFuNmN0djQ0eXNxYg==" target="_blank" rel="noopener noreferrer">
+              <span>Instagram</span><span aria-hidden="true">↗</span>
+            </a>
+            <a class="about-connect-link" href="mailto:a.shukla.1707@gmail.com">
+              <span>Email</span><span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-info-block about-project-block" aria-labelledby="aboutIdeaHeading">
+        <div class="about-block-label">ABOUT STAT ARCHIVE</div>
+        <h3 id="aboutIdeaHeading">THE IDEA</h3>
+        <p>Stat Archive began with a simple thought: useful academic material should not disappear when one batch graduates. Notes, books and question papers become more valuable when they stay organized, searchable and available to the students who come next.</p>
       </section>
 
       <div class="about-dual-signoff" aria-label="Stat Archive tagline">
@@ -203,7 +270,8 @@ html[data-theme="light"] #aboutArchiveOverlay .about-dual-signoff{border-top-col
       </div>`;
 
     card.appendChild(body);
-    card.dataset.aboutDualReady = "1";
+    body.scrollTop = 0;
+    card.dataset.aboutDualReady = "2";
     return true;
   }
 
