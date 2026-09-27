@@ -212,23 +212,28 @@ body[data-theme="light"] #statArchiveActionStatus .sa-status-bar{background:#704
         typeof bridge.beginBlobTransfer === "function" &&
         typeof bridge.appendBlobChunk === "function" &&
         typeof bridge.finishBlobTransfer === "function" &&
-        bridge.beginBlobTransfer(name, mime, "save")
+        await bridge.beginBlobTransfer(name, mime, "save")
       ) {
+        try {
         const step = 256 * 1024;
         for (let i = 0; i < blob.size; i += step) {
-          const ok = bridge.appendBlobChunk(
+          const ok = await bridge.appendBlobChunk(
             await blobToBase64(blob.slice(i, Math.min(i + step, blob.size)))
           );
           if (!ok) throw new Error("Android transfer interrupted");
         }
-        if (!bridge.finishBlobTransfer()) throw new Error("Android transfer could not finish");
-        return;
+        if (!await bridge.finishBlobTransfer()) throw new Error("Android transfer could not finish");
+        return bridge.protocolVersion >= 2;
+        } catch (error) {
+          if (bridge.protocolVersion >= 2) await bridge.cancelBlobTransfer().catch(() => {});
+          throw error;
+        }
       }
     }
 
     if (typeof window.AndroidBridge?.saveFile === "function") {
-      window.AndroidBridge.saveFile(await blobToBase64(blob), name, mime);
-      return;
+      await window.AndroidBridge.saveFile(await blobToBase64(blob), name, mime);
+      return window.AndroidBridge.protocolVersion >= 2;
     }
 
     throw new Error("Android file saving is unavailable");
@@ -303,11 +308,18 @@ body[data-theme="light"] #statArchiveActionStatus .sa-status-bar{background:#704
       }
 
       const name = filenameOf(entry, mime);
-      if (isAndroid()) await saveAndroid(blob, name, mime);
-      else saveBrowser(blob, name);
+      if (isAndroid()) {
+        const confirmed = await saveAndroid(blob, name, mime);
+        if (!confirmed) {
+          // Old APKs only acknowledge opening a picker, not saving the file.
+          if (btn) { btn.disabled = false; btn.innerHTML = original; }
+          showStatus("Complete saving in the Android file picker", "success", 4000, null);
+          return false;
+        }
+      } else saveBrowser(blob, name);
 
       markComplete(entry, btn);
-      showStatus("Download started successfully", "success", 2600, 100);
+      showStatus(isAndroid() ? "File saved successfully" : "Download started successfully", "success", 2600, 100);
 
       try { window.incrementActivity?.("download"); } catch (_) {}
       return true;
@@ -384,3 +396,4 @@ body[data-theme="light"] #statArchiveActionStatus .sa-status-bar{background:#704
     void transfer(entry, btn);
   }, true);
 })();
+

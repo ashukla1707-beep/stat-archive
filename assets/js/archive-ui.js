@@ -168,7 +168,7 @@ function buildCard(entry) {
   let notesSubtitle = "";
   if (isNotes) {
     const raw = entry.title || "";
-    const notesPrefix = new RegExp(`^${escapeRegExp(notesBaseTitle)}\s*[:：-]?\s*`, "i");
+    const notesPrefix = new RegExp(`^${escapeRegExp(notesBaseTitle)}\\s*[:：-]?\\s*`, "i");
     if (notesPrefix.test(raw)) notesSubtitle = raw.replace(notesPrefix, "").trim();
   }
   const displayTitle = (isNotes || isBook) ? "" : (entry.title || "");
@@ -519,4 +519,5 @@ function render() {
   restoreCarouselPositions(carouselPositions);
   setupCardTilt();
 }
+
 
