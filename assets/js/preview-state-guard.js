@@ -233,15 +233,15 @@
    runtime so website/PWA/APK sessions pick it up without an HTML cache reset. */
 (() => {
   "use strict";
-  if (window.__STAT_ARCHIVE_ABOUT_DUAL_LOADER_V2__) return;
-  window.__STAT_ARCHIVE_ABOUT_DUAL_LOADER_V2__ = true;
+  if (window.__STAT_ARCHIVE_ABOUT_DUAL_LOADER_V3__) return;
+  window.__STAT_ARCHIVE_ABOUT_DUAL_LOADER_V3__ = true;
 
   function loadAboutDual() {
-    if (document.querySelector('script[data-stat-about-dual="2"]')) return;
+    if (document.querySelector('script[data-stat-about-dual="3"]')) return;
     const script = document.createElement("script");
-    script.src = "./assets/js/about-dual.js?v=20260927-2";
+    script.src = "./assets/js/about-dual.js?v=20260927-3";
     script.async = false;
-    script.dataset.statAboutDual = "2";
+    script.dataset.statAboutDual = "3";
     document.body.appendChild(script);
   }
 
