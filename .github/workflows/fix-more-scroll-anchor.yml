@@ -27,10 +27,10 @@ jobs:
           s = p.read_text(encoding='utf-8')
 
           old = '          window.scrollBy({ top: delta, left: 0, behavior: "auto" });'
-          good = '''          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-          window.scrollBy({ top: delta, left: 0, behavior: motion });'''
-          bad_indent = '''          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-window.scrollBy({ top: delta, left: 0, behavior: motion });'''
+          motion_line = '          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";'
+          scroll_line = '          window.scrollBy({ top: delta, left: 0, behavior: motion });'
+          good = motion_line + '\n' + scroll_line
+          bad_indent = motion_line + '\n' + 'window.scrollBy({ top: delta, left: 0, behavior: motion });'
 
           if old in s:
               s = s.replace(old, good, 1)
@@ -55,7 +55,7 @@ window.scrollBy({ top: delta, left: 0, behavior: motion });'''
       - name: Verify patch
         run: |
           grep -F 'const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";' assets/js/archive-ui.js
-          grep -F 'window.scrollBy({ top: delta, left: 0, behavior: motion });' assets/js/archive-ui.js
+          grep -F '          window.scrollBy({ top: delta, left: 0, behavior: motion });' assets/js/archive-ui.js
           grep -F 'stat-archive-shell-v20260927-more-smooth-v1' sw.js
 
       - name: Commit fix
