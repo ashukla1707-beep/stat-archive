@@ -121,25 +121,34 @@
   setTimeout(setupSearchFilterFix, 1000);
 })();
 
-/* Stat Archive — keep the Android install/version UI synchronized with the
-   current APK metadata even when an older service worker has version.json
-   cached. This file is a network-first runtime asset, so the repair reaches
-   already-installed web clients without waiting for the old shell cache. */
+/* Stat Archive — authoritative Android release UI sync.
+   The Android repository publishes downloads/version.json beside every
+   official APK. This network-first runtime reads that canonical file directly,
+   so future Android releases update the website automatically. */
 (() => {
   "use strict";
 
-  if (window.__STAT_ARCHIVE_ANDROID_VERSION_UI_FIX_1520__) return;
-  window.__STAT_ARCHIVE_ANDROID_VERSION_UI_FIX_1520__ = true;
+  if (window.__STAT_ARCHIVE_ANDROID_RELEASE_SYNC_V1__) return;
+  window.__STAT_ARCHIVE_ANDROID_RELEASE_SYNC_V1__ = true;
+
+  const RELEASE_META_URL =
+    "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/version.json";
 
   const FALLBACK = {
-    versionName: "1.5.20",
-    versionCode: 27,
-    apkUrl: "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk"
+    versionName: "1.5.25",
+    versionCode: 32,
+    apkUrl: "https://raw.githubusercontent.com/ashukla1707-beep/statarchive-android/main/downloads/stat-archive.apk",
+    apkSizeBytes: 816652
   };
 
   let meta = { ...FALLBACK };
   let paintQueued = false;
   let refreshPromise = null;
+
+  function formatBytes(bytes) {
+    const n = Number(bytes);
+    return Number.isFinite(n) && n > 0 ? `${(n / 1000000).toFixed(2)} MB` : null;
+  }
 
   function setTextIfDifferent(el, value) {
     if (el && el.textContent !== value) el.textContent = value;
@@ -148,15 +157,24 @@
   function paint() {
     const versionName = String(meta.versionName || FALLBACK.versionName);
     const apkUrl = String(meta.apkUrl || FALLBACK.apkUrl);
+    const sizeText = formatBytes(meta.apkSizeBytes || FALLBACK.apkSizeBytes);
 
     setTextIfDifferent(document.getElementById("statAndroidVersion"), `v${versionName}`);
     setTextIfDifferent(document.getElementById("menuAndroidAppMeta"), `Official APK · v${versionName}`);
+
+    if (sizeText) {
+      document.querySelectorAll("[data-stat-apk-size]").forEach(el => {
+        setTextIfDifferent(el, sizeText);
+      });
+    }
 
     document.querySelectorAll("#statAndroidDownload, #statAndroidAutoBanner .stat-android-auto-install").forEach(link => {
       if (!(link instanceof HTMLAnchorElement)) return;
       if (link.href !== apkUrl) link.href = apkUrl;
       if (link.id === "statAndroidDownload") link.setAttribute("download", "stat-archive.apk");
     });
+
+    window.__STAT_ARCHIVE_RELEASE_META__ = { ...meta };
   }
 
   function schedulePaint() {
@@ -174,10 +192,7 @@
     refreshPromise = (async () => {
       paint();
       try {
-        // Unique query string deliberately bypasses stale cache entries created
-        // by an older service worker that cached /version.json by request URL.
-        const url = `./version.json?v=${encodeURIComponent(FALLBACK.versionName)}&t=${Date.now()}`;
-        const response = await fetch(url, {
+        const response = await fetch(`${RELEASE_META_URL}?t=${Date.now()}`, {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
         });
@@ -189,11 +204,11 @@
         meta = {
           versionName: String(data.versionName || meta.versionName || FALLBACK.versionName),
           versionCode: Number(data.versionCode || meta.versionCode || FALLBACK.versionCode),
-          apkUrl: String(data.apkUrl || meta.apkUrl || FALLBACK.apkUrl)
+          apkUrl: String(data.apkUrl || meta.apkUrl || FALLBACK.apkUrl),
+          apkSizeBytes: Number(data.apkSizeBytes || meta.apkSizeBytes || FALLBACK.apkSizeBytes)
         };
       } catch (_) {
-        // FALLBACK is the current official release, so the UI remains correct
-        // even if metadata cannot be reached temporarily.
+        // Keep the latest official fallback if GitHub is temporarily unavailable.
       } finally {
         paint();
         refreshPromise = null;
@@ -207,11 +222,15 @@
     paint();
     refresh();
 
+    /* Some older cached UI modules still know an old local version.json.
+       Watch their output and immediately restore the canonical release data. */
     const observer = new MutationObserver(schedulePaint);
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      characterData: true
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["href"]
     });
 
     document.addEventListener("click", event => {
