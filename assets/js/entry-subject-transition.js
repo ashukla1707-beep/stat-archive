@@ -1,27 +1,36 @@
-/* Stat Archive: natural More / Show less transition V4.
-   - More never auto-scrolls the page.
-   - Expanded subjects keep the natural document order.
-   - Show less remains after the final expanded subject.
-   - Collapsing uses one compositor-friendly scroll back to the compact control,
-     then removes the hidden rows, avoiding the large layout snap. */
+/* Stat Archive — More / Show less V5
+   Rebuilt from scratch around one lightweight DOM transition.
+
+   Design:
+   - More never scrolls the document.
+   - Show less always remains after the final expanded subject.
+   - The legacy archive render still owns subject/card construction.
+   - Collapse never animates the heavy subject/card DOM. Extra rows fade once,
+     are replaced by one empty spacer of the same measured height, and only that
+     spacer is animated closed. There is no scripted page-scroll animation.
+*/
 (() => {
   "use strict";
-  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__) return;
-  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true;
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V5__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V5__ = true;
 
-  /* Prevent older cached runtimes from installing after this one. */
+  // Stop any older cached transition runtime from registering after V5.
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true;
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;
   window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;
 
-  const COLLAPSE_MS = 390;
+  const ENTER_MS = 210;
+  const FADE_OUT_MS = 115;
+  const COLLAPSE_MS = 460;
+
   let collapsing = false;
-  let collapseToken = 0;
+  let transitionToken = 0;
 
   function prefersReducedMotion() {
     return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
   }
 
-  function limit() {
+  function visibleLimit() {
     try {
       return typeof VISIBLE_ENTRY_SUBJECT_LIMIT === "number"
         ? VISIBLE_ENTRY_SUBJECT_LIMIT
@@ -31,215 +40,260 @@
     }
   }
 
-  function host() {
+  function grid() {
     return document.getElementById("grid");
   }
 
-  function rows() {
-    const grid = host();
-    if (!grid) return [];
-    return Array.from(grid.querySelectorAll(":scope > .subject-row[data-subject-code]"));
+  function subjectRows() {
+    const host = grid();
+    if (!host) return [];
+    return Array.from(
+      host.querySelectorAll(":scope > .subject-row[data-subject-code]")
+    );
   }
 
-  function extras() {
-    return rows().slice(limit());
+  function extraRows() {
+    return subjectRows().slice(visibleLimit());
+  }
+
+  function toggleWrap() {
+    return grid()?.querySelector(":scope > .entry-subject-more-wrap") || null;
+  }
+
+  function toggleButton() {
+    return toggleWrap()?.querySelector(".entry-subject-more-btn") || null;
   }
 
   function currentY() {
     return window.scrollY || window.pageYOffset || 0;
   }
 
-  function maxY() {
-    const doc = document.documentElement;
-    const body = document.body;
-    const height = Math.max(
-      doc?.scrollHeight || 0,
-      body?.scrollHeight || 0,
-      doc?.offsetHeight || 0,
-      body?.offsetHeight || 0
-    );
-    return Math.max(0, height - window.innerHeight);
-  }
-
-  function clampY(value) {
-    return Math.max(0, Math.min(maxY(), Number(value) || 0));
+  function setInstantScroll(y) {
+    const root = document.documentElement;
+    const old = root.style.scrollBehavior;
+    root.style.setProperty("scroll-behavior", "auto", "important");
+    window.scrollTo(0, y);
+    if (old) root.style.scrollBehavior = old;
+    else root.style.removeProperty("scroll-behavior");
   }
 
   function ensureStyle() {
-    if (document.getElementById("statArchiveEntrySubjectTransitionV4Style")) return;
+    if (document.getElementById("statArchiveEntrySubjectTransitionV5Style")) return;
+
     const style = document.createElement("style");
-    style.id = "statArchiveEntrySubjectTransitionV4Style";
+    style.id = "statArchiveEntrySubjectTransitionV5Style";
     style.textContent = `
-html.sa-entry-subject-mutating,
-html.sa-entry-subject-mutating body,
-html.sa-entry-subject-mutating #grid,
-html.sa-entry-subject-mutating #grid > *{
+html.sa-entry-more-expanding,
+html.sa-entry-more-expanding body,
+html.sa-entry-more-expanding #grid,
+html.sa-entry-more-expanding #grid > *{
   overflow-anchor:none !important;
+}
+
+#grid > .sa-entry-collapse-spacer{
+  display:block !important;
+  width:100% !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  overflow:hidden !important;
+  pointer-events:none !important;
+  contain:layout style paint !important;
+  will-change:height !important;
+}
+
+html.sa-entry-more-collapsing #grid > .subject-row[data-subject-code]{
+  overflow-anchor:none !important;
+}
+html.sa-entry-more-collapsing #grid > .sa-entry-collapse-spacer{
+  overflow-anchor:none !important;
+}
+html.sa-entry-more-collapsing #grid > .entry-subject-more-wrap{
+  overflow-anchor:auto !important;
 }
 `;
     document.head.appendChild(style);
   }
 
-  function suppressAnchoring(on) {
-    document.documentElement.classList.toggle("sa-entry-subject-mutating", on);
-  }
-
-  function animateIn(list) {
+  function animateExtrasIn(rows) {
     if (prefersReducedMotion()) return;
-    list.forEach((row, index) => {
+
+    rows.forEach((row, index) => {
       try {
         row.animate(
           [
-            { opacity: 0, transform: "translateY(6px)" },
+            { opacity: 0, transform: "translateY(7px)" },
             { opacity: 1, transform: "translateY(0)" }
           ],
           {
-            duration: 230,
-            delay: Math.min(index * 22, 110),
-            easing: "cubic-bezier(.22,.8,.24,1)"
+            duration: ENTER_MS,
+            delay: Math.min(index * 18, 90),
+            easing: "cubic-bezier(.2,.75,.2,1)"
           }
         );
       } catch (_) {}
     });
   }
 
-  function animateOut(list) {
-    if (prefersReducedMotion()) return;
-    list.forEach(row => {
+  function fadeExtrasOut(rows) {
+    if (prefersReducedMotion()) return Promise.resolve();
+
+    const animations = rows.map(row => {
       try {
-        row.animate(
+        return row.animate(
           [
             { opacity: 1, transform: "translateY(0)" },
-            { opacity: .35, transform: "translateY(-3px)" }
+            { opacity: 0, transform: "translateY(-3px)" }
           ],
           {
-            duration: Math.min(COLLAPSE_MS, 260),
+            duration: FADE_OUT_MS,
             easing: "ease-out",
             fill: "forwards"
           }
-        );
-      } catch (_) {}
+        ).finished.catch(() => {});
+      } catch (_) {
+        return Promise.resolve();
+      }
     });
-  }
 
-  function easeInOutCubic(t) {
-    return t < .5
-      ? 4 * t * t * t
-      : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
-
-  function animateWindowScroll(targetY, duration) {
-    const from = currentY();
-    const to = clampY(targetY);
-    if (Math.abs(to - from) < 1 || prefersReducedMotion()) {
-      window.scrollTo(0, to);
-      return Promise.resolve();
-    }
-
-    return new Promise(resolve => {
-      const started = performance.now();
-      const token = collapseToken;
-
-      const step = now => {
-        if (token !== collapseToken) {
-          resolve();
-          return;
-        }
-        const p = Math.min(1, (now - started) / duration);
-        const eased = easeInOutCubic(p);
-        window.scrollTo(0, from + (to - from) * eased);
-        if (p < 1) requestAnimationFrame(step);
-        else resolve();
-      };
-
-      requestAnimationFrame(step);
-    });
+    return Promise.all(animations);
   }
 
   function expand(button) {
-    collapseToken += 1;
+    transitionToken += 1;
     collapsing = false;
-    button.blur();
-
-    /* Keep the exact viewport position. The newly revealed subjects are added
-       below the six compact rows, while render() naturally leaves Show less at
-       the very end of the expanded list. */
+    const token = transitionToken;
     const savedY = currentY();
-    suppressAnchoring(true);
+
+    button.blur();
+    document.documentElement.classList.add("sa-entry-more-expanding");
+
+    // Rendering all subjects is instantaneous from the user's current point.
+    // The replacement Show less button remains in the natural final position.
     showAllEntrySubjects = true;
     render();
-    window.scrollTo(0, savedY);
+    setInstantScroll(savedY);
 
-    const newExtras = extras();
-    const endButton = host()?.querySelector(":scope > .entry-subject-more-wrap .entry-subject-more-btn");
-    if (endButton) {
-      endButton.textContent = "Show less";
-      endButton.setAttribute("aria-expanded", "true");
+    if (token !== transitionToken) return;
+
+    const replacement = toggleButton();
+    if (replacement) {
+      replacement.textContent = "Show less";
+      replacement.setAttribute("aria-expanded", "true");
     }
-    animateIn(newExtras);
 
+    animateExtrasIn(extraRows());
+
+    // Android WebView may apply delayed scroll anchoring one frame after the
+    // DOM grows. Pin the exact pre-click Y once more, then return anchoring to
+    // normal. This is not a visible scroll animation.
     requestAnimationFrame(() => {
-      /* A second pin defeats delayed scroll anchoring in Android WebView without
-         causing any visible page travel. */
-      window.scrollTo(0, savedY);
-      requestAnimationFrame(() => suppressAnchoring(false));
+      if (token !== transitionToken) return;
+      setInstantScroll(savedY);
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove("sa-entry-more-expanding");
+      });
     });
   }
 
   async function collapse(button) {
     if (collapsing) return;
     collapsing = true;
-    collapseToken += 1;
-    const token = collapseToken;
+    transitionToken += 1;
+    const token = transitionToken;
 
-    button.blur();
-    button.disabled = true;
-    button.setAttribute("aria-busy", "true");
+    const host = grid();
+    const rows = extraRows();
+    const wrap = toggleWrap();
 
-    const list = extras();
-    if (!list.length) {
+    if (!host || !wrap || !rows.length) {
       showAllEntrySubjects = false;
       render();
       collapsing = false;
       return;
     }
 
-    suppressAnchoring(true);
+    button.blur();
+    button.textContent = "More";
+    button.setAttribute("aria-expanded", "false");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
 
-    /* The compact More control will occupy the point immediately before the
-       first extra subject. Scroll there while the expanded DOM still exists;
-       only after that smooth movement do we remove the extra rows. */
-    const buttonViewportTop = button.getBoundingClientRect().top;
-    const compactDocTop = currentY() + list[0].getBoundingClientRect().top;
-    const targetY = compactDocTop - buttonViewportTop;
+    document.documentElement.classList.add("sa-entry-more-collapsing");
 
-    animateOut(list);
-    await animateWindowScroll(targetY, COLLAPSE_MS);
+    // Measure the exact document space occupied by all extra subjects. We keep
+    // the real rows completely static during the short fade; no layout property
+    // on a card/carousel is animated.
+    const firstTop = rows[0].getBoundingClientRect().top;
+    const buttonTopBefore = wrap.getBoundingClientRect().top;
+    const occupiedHeight = Math.max(0, buttonTopBefore - firstTop);
 
-    if (token !== collapseToken) return;
+    await fadeExtrasOut(rows);
+    if (token !== transitionToken) return;
+
+    // One empty block takes over the exact space of the removed heavy rows.
+    // Removing those rows therefore does not move the button or viewport.
+    const spacer = document.createElement("div");
+    spacer.className = "sa-entry-collapse-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    spacer.style.height = `${occupiedHeight}px`;
+    host.insertBefore(spacer, rows[0]);
+    rows.forEach(row => row.remove());
+
+    // Correct for margins/gaps peculiar to the live grid so the Show less/More
+    // control remains pixel-stable at the handoff from rows to spacer.
+    const buttonTopAfterSwap = wrap.getBoundingClientRect().top;
+    const correction = buttonTopBefore - buttonTopAfterSwap;
+    const correctedHeight = Math.max(0, occupiedHeight + correction);
+    spacer.style.height = `${correctedHeight}px`;
+    spacer.getBoundingClientRect();
 
     showAllEntrySubjects = false;
-    render();
 
-    const replacement = host()?.querySelector(":scope > .entry-subject-more-wrap .entry-subject-more-btn");
-    if (replacement) {
-      replacement.textContent = "More";
-      replacement.setAttribute("aria-expanded", "false");
-      const correction = replacement.getBoundingClientRect().top - buttonViewportTop;
-      if (Math.abs(correction) > .5) {
-        window.scrollBy({ top: correction, left: 0, behavior: "auto" });
-      }
+    if (prefersReducedMotion() || correctedHeight < 1) {
+      spacer.remove();
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      document.documentElement.classList.remove("sa-entry-more-collapsing");
+      collapsing = false;
+      return;
     }
 
-    requestAnimationFrame(() => {
-      suppressAnchoring(false);
-      collapsing = false;
-    });
+    // Animate only this empty spacer. Browser scroll anchoring keeps the toggle
+    // stable when possible; at the document bottom, normal scroll-range clamping
+    // follows the shrinking page naturally. There is no scrollTo/scrollBy loop.
+    let animation;
+    try {
+      animation = spacer.animate(
+        [
+          { height: `${correctedHeight}px` },
+          { height: "0px" }
+        ],
+        {
+          duration: COLLAPSE_MS,
+          easing: "cubic-bezier(.22,.72,.2,1)",
+          fill: "forwards"
+        }
+      );
+      await animation.finished.catch(() => {});
+    } catch (_) {
+      spacer.style.height = "0px";
+    }
+
+    if (token !== transitionToken) return;
+
+    spacer.remove();
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    document.documentElement.classList.remove("sa-entry-more-collapsing");
+    collapsing = false;
   }
 
   ensureStyle();
 
-  /* Own the toggle before archive-ui.js's legacy inline onclick can run. */
+  // Capture at window level. This is the single owner of the control and stops
+  // archive-ui.js's older inline scroll-compensation onclick before it runs.
   window.addEventListener("click", event => {
     const target = event.target instanceof Element ? event.target : null;
     const button = target?.closest?.(".entry-subject-more-btn");
