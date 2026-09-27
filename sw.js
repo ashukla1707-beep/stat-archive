@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20260926-android-version-v1521";
+const CACHE = "stat-archive-shell-v20260927-more-smooth-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
