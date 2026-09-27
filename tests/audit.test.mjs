@@ -80,7 +80,7 @@ function swHarness(fail='') {
 }
 test('fresh precache serves versioned launch, scripts, scanner and PDF engine offline',async()=>{
  const sw=swHarness();await sw.install();sw.offline();
- for(const path of ['/launch.html?v=20260915-approved-v3','/assets/js/offline.js?v=anything','/assets/js/scanner.js','/assets/js/native-bridge.js?v=1','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'])assert.equal((await sw.fetch(path,path.includes('launch'))).status,200,path);
+ for(const path of ['/launch.html?v=20260915-approved-v3','/assets/js/offline.js?v=anything','/assets/js/scanner.js','/assets/js/native-bridge.js?v=1','/assets/js/entry-subject-toggle.js?v=1','/assets/js/hero-animation.js?native-replay=123','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'])assert.equal((await sw.fetch(path,path.includes('launch'))).status,200,path);
 });
 test('critical shell or external dependency failure prevents takeover',async()=>{
  for(const fail of ['core.js','pdf.worker.min.js']){const sw=swHarness(fail);await assert.rejects(sw.install());assert.equal(sw.activated,false);}

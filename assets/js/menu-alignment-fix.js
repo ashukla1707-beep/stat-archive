@@ -341,3 +341,26 @@ body #mainSideMenu #menuLocalFeedbackBtn > .main-menu-arrow{flex:0 0 auto !impor
 `;
   document.head.appendChild(style);
 })();
+
+/* =========================================================
+   MORE / SHOW LESS V3 BOOTSTRAP
+
+   This runtime is network-first and runs before the later Menu reference
+   loader. Reserve the V2 guard so the old window-level auto-scroll handler
+   cannot register, then load the stationary V3 interaction with a fresh URL.
+   The much older document-level V1 handler is harmless because V3 captures
+   the click at window level before the event reaches document.
+   ========================================================= */
+(() => {
+  "use strict";
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V4_BOOTSTRAP__ = true;
+
+  const script = document.createElement("script");
+  script.src = "assets/js/entry-subject-transition.js?v=20260927-v4";
+  script.async = false;
+  script.dataset.entrySubjectTransitionV3 = "1";
+  document.body.appendChild(script);
+})();

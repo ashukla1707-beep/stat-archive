@@ -217,3 +217,106 @@ body[data-theme='light'] .stat-search-suggestion:hover,body[data-theme='light'] 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
   else init();
 })();
+
+/* =========================================================
+   MENU LEVEL SWITCH -> HOME HISTORY HANDOFF
+
+   The Menu is a real history row. If its level changes, a normal Back would
+   reveal the older Home row with the previous M.Sc/B.Sc level. In that one
+   case, close the Menu by converting the current row into Home at the newly
+   selected level. Normal Menu closes (no level change) keep their existing
+   history.back() behavior.
+   ========================================================= */
+(() => {
+  "use strict";
+  if (window.__STAT_ARCHIVE_MENU_LEVEL_HOME_HANDOFF_V1__) return;
+  window.__STAT_ARCHIVE_MENU_LEVEL_HOME_HANDOFF_V1__ = true;
+
+  let levelAtMenuOpen = "";
+  let menuWasOpen = false;
+
+  function urlLevel() {
+    try {
+      const value = new URL(location.href).searchParams.get("level");
+      if (value === "bsc" || value === "msc") return value;
+    } catch (_) {}
+    try { return localStorage.getItem("statArchiveLevel") === "bsc" ? "bsc" : "msc"; }
+    catch (_) { return "msc"; }
+  }
+
+  function rememberMenuOpenLevel() {
+    const menu = document.getElementById("mainSideMenu");
+    const isOpen = !!menu?.classList.contains("is-open");
+    if (isOpen && !menuWasOpen) levelAtMenuOpen = urlLevel();
+    if (!isOpen && menuWasOpen) levelAtMenuOpen = "";
+    menuWasOpen = isOpen;
+  }
+
+  function closeChangedLevelMenu() {
+    const currentLevel = urlLevel();
+    const url = new URL(location.href);
+    url.searchParams.set("level", currentLevel);
+    url.searchParams.delete("menu");
+
+    const next = { ...(history.state || {}), statArchiveNav:"home", level:currentLevel };
+    delete next.statArchiveChild;
+    delete next.statArchiveMenuOpen;
+
+    history.replaceState(next, "", url.href);
+
+    const nav = window.__statArchiveNavigation;
+    try { nav?.closeChildren?.(); } catch (_) {}
+    try { nav?.closeMenu?.(); } catch (_) {}
+    try { nav?.releaseMenuScrollLock?.(); } catch (_) {}
+
+    const menu = document.getElementById("mainSideMenu");
+    const backdrop = document.getElementById("mainMenuBackdrop");
+    const button = document.getElementById("mainMenuBtn");
+    menu?.classList.remove("is-open");
+    backdrop?.classList.remove("is-open");
+    menu?.setAttribute("aria-hidden", "true");
+    backdrop?.setAttribute("aria-hidden", "true");
+    button?.setAttribute("aria-expanded", "false");
+
+    levelAtMenuOpen = "";
+    menuWasOpen = false;
+  }
+
+  function installObserver() {
+    const menu = document.getElementById("mainSideMenu");
+    if (!menu || menu.dataset.statLevelHandoffObserver === "1") return;
+    menu.dataset.statLevelHandoffObserver = "1";
+    rememberMenuOpenLevel();
+    new MutationObserver(rememberMenuOpenLevel).observe(menu, {
+      attributes:true,
+      attributeFilter:["class"]
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installObserver, { once:true });
+  } else {
+    installObserver();
+  }
+
+  window.addEventListener("click", event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const menu = document.getElementById("mainSideMenu");
+    if (target.closest("#mainMenuBtn") && !menu?.classList.contains("is-open")) {
+      levelAtMenuOpen = urlLevel();
+      return;
+    }
+
+    if (!menu?.classList.contains("is-open")) return;
+    if (!target.closest("#mainMenuCloseBtn") && !target.closest("#mainMenuBackdrop")) return;
+
+    const currentLevel = urlLevel();
+    if (!levelAtMenuOpen || currentLevel === levelAtMenuOpen) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeChangedLevelMenu();
+  }, true);
+})();

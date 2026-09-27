@@ -1,5 +1,4 @@
-# Triggered after workflow registration on main.
-name: Fix More scroll anchor
+name: Publish More transition V5
 
 on:
   workflow_dispatch:
@@ -17,78 +16,106 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Keep position when expanding entry subjects
+
+      - name: Publish rebuilt V5 runtime
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          p = Path('assets/js/archive-ui.js')
-          s = p.read_text()
-          old = '''    moreBtn.onclick = () => {
-      // Preserve the viewport relative to this results control while render()
-      // inserts/removes subject groups above it. This is the "More" shown
-      // beneath the archive subject sections (not the filter-row More).
-      const beforeTop = moreWrap.getBoundingClientRect().top;
-      moreBtn.blur();
+          version = '20260927-v5'
 
-      showAllEntrySubjects = !showAllEntrySubjects;
-      render();
+          # One direct app-shell owner immediately after archive-ui.
+          index = Path('index.html')
+          text = index.read_text(encoding='utf-8')
+          text = re.sub(
+              r'assets/js/entry-subject-transition\.js\?v=[^"\']+',
+              f'assets/js/entry-subject-transition.js?v={version}',
+              text,
+              count=1
+          )
+          index.write_text(text, encoding='utf-8')
 
-      // Find the newly rendered More/Show less control and compensate only
-      // for the layout displacement caused by inserting/removing groups.
-      const replacement = grid.querySelector(".entry-subject-more-wrap");
-      if (replacement) {
-        const afterTop = replacement.getBoundingClientRect().top;
-        const delta = afterTop - beforeTop;
-        if (Math.abs(delta) > 0.5) {
-          window.scrollBy({ top: delta, left: 0, behavior: "auto" });
-        }
-      }
-    };'''
-          new = '''    moreBtn.onclick = () => {
-      // Keep the last currently visible subject row anchored in the same
-      // viewport position. Expanding should continue naturally from the entry
-      // above More, not move the user to the newly-created bottom of the list.
-      const rows = grid.querySelectorAll(".subject-row[data-subject-code]");
-      const anchorRow = rows.length ? rows[rows.length - 1] : null;
-      const anchorCode = anchorRow?.dataset.subjectCode || "";
-      const anchorTop = anchorRow ? anchorRow.getBoundingClientRect().top : null;
-      moreBtn.blur();
+          # Network-first bootstrap for installed APK/PWA sessions. It blocks
+          # all earlier runtime generations before requesting the fresh V5 URL.
+          align = Path('assets/js/menu-alignment-fix.js')
+          text = align.read_text(encoding='utf-8')
+          marker = '/* =========================================================\n   MORE / SHOW LESS V3 BOOTSTRAP'
+          if marker in text:
+              prefix = text.split(marker, 1)[0]
+              text = prefix + '''/* =========================================================
+   MORE / SHOW LESS V5 BOOTSTRAP
+   ========================================================= */
+(() => {
+  "use strict";
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V2__ = true;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V3__ = true;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true;
+  if (window.__STAT_ARCHIVE_ENTRY_SUBJECT_V5_BOOTSTRAP__) return;
+  window.__STAT_ARCHIVE_ENTRY_SUBJECT_V5_BOOTSTRAP__ = true;
 
-      showAllEntrySubjects = !showAllEntrySubjects;
-      render();
+  const script = document.createElement("script");
+  script.src = "assets/js/entry-subject-transition.js?v=20260927-v5";
+  script.async = false;
+  script.dataset.entrySubjectTransitionV5 = "1";
+  document.body.appendChild(script);
+})();
+'''
+          else:
+              text = re.sub(
+                  r'assets/js/entry-subject-transition\.js\?v=20260927-v[1-4]',
+                  f'assets/js/entry-subject-transition.js?v={version}',
+                  text
+              )
+          align.write_text(text, encoding='utf-8')
 
-      if (anchorCode && Number.isFinite(anchorTop)) {
-        requestAnimationFrame(() => {
-          const replacement = grid.querySelector(`.subject-row[data-subject-code="${CSS.escape(anchorCode)}"]`);
-          if (!replacement) return;
-          const delta = replacement.getBoundingClientRect().top - anchorTop;
-          if (Math.abs(delta) > 0.5) {
-            window.scrollBy({ top: delta, left: 0, behavior: "auto" });
-          }
-        });
-      }
-    };'''
-          if old not in s:
-              raise SystemExit('More handler target not found')
-          p.write_text(s.replace(old, new, 1))
+          # Any later fallback loader requests the same V5 file and can no
+          # longer revive an older generation from cache.
+          for filename in ['assets/js/menu-header-reference.js', 'assets/js/preview-state-guard.js']:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              text = re.sub(
+                  r'assets/js/entry-subject-transition\.js\?v=20260927-v[1-4]',
+                  f'assets/js/entry-subject-transition.js?v={version}',
+                  text
+              )
+              text = re.sub(
+                  r'__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V[1-4]__',
+                  '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_LOADER_V5__',
+                  text
+              )
+              path.write_text(text, encoding='utf-8')
 
           sw = Path('sw.js')
-          t = sw.read_text()
-          import re
-          t = re.sub(r'const CACHE = "[^"]+";', 'const CACHE = "stat-archive-shell-v20260914-more-anchor-v1";', t, count=1)
-          sw.write_text(t)
+          text = sw.read_text(encoding='utf-8')
+          text = re.sub(
+              r'const CACHE = "[^"]+";',
+              'const CACHE = "stat-archive-shell-v20260927-more-transition-v5";',
+              text,
+              count=1
+          )
+          sw.write_text(text, encoding='utf-8')
           PY
 
-      - name: Commit fix
+      - name: Verify rebuilt V5 runtime
+        run: |
+          node --check assets/js/entry-subject-transition.js
+          grep -F 'entry-subject-transition.js?v=20260927-v5' index.html
+          grep -F '__STAT_ARCHIVE_ENTRY_SUBJECT_TRANSITION_V4__ = true' assets/js/menu-alignment-fix.js
+          grep -F 'entry-subject-transition.js?v=20260927-v5' assets/js/menu-alignment-fix.js
+          grep -F 'stat-archive-shell-v20260927-more-transition-v5' sw.js
+
+      - name: Commit V5 wiring
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "4189823+github-actions[bot]@users.noreply.github.com"
-          git add assets/js/archive-ui.js sw.js
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html assets/js/menu-alignment-fix.js assets/js/menu-header-reference.js assets/js/preview-state-guard.js sw.js
           if git diff --cached --quiet; then
             echo "No changes needed"
           else
-            git commit -m "Keep scroll position when expanding More"
+            git commit -m "Publish rebuilt More transition V5"
             git push origin HEAD:main
           fi
+
+# Registered workflow trigger.
 

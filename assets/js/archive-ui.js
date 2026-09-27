@@ -508,7 +508,8 @@ function render() {
         const afterTop = replacement.getBoundingClientRect().top;
         const delta = afterTop - beforeTop;
         if (Math.abs(delta) > 0.5) {
-          window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+          const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+          window.scrollBy({ top: delta, left: 0, behavior: motion });
         }
       }
     };
