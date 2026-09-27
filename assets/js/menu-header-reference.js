@@ -1,3 +1,40 @@
+/* =========================================================
+   LEVEL SWITCH HISTORY COMPATIBILITY GUARD
+
+   core.js updates the level URL with replaceState({ level }, ...). When the
+   switch is made from an open Menu, that single-key replacement used to erase
+   statArchiveNav:"menu". The deterministic Menu close handler then treated
+   ?menu=1 as a stale Menu row and history.back() returned to the previous
+   level, making the archive appear to ignore the Menu switch.
+
+   Preserve all existing navigation/history metadata whenever that legacy
+   single-key level write occurs. Other replaceState calls are untouched.
+   ========================================================= */
+(() => {
+  "use strict";
+  if (window.__STAT_ARCHIVE_LEVEL_HISTORY_GUARD_V1__) return;
+  window.__STAT_ARCHIVE_LEVEL_HISTORY_GUARD_V1__ = true;
+
+  const rawReplaceState = history.replaceState.bind(history);
+  history.replaceState = function(state, title, url) {
+    const keys = state && typeof state === "object" ? Object.keys(state) : [];
+    const isLegacyLevelWrite =
+      keys.length === 1 &&
+      keys[0] === "level" &&
+      (state.level === "msc" || state.level === "bsc");
+
+    if (isLegacyLevelWrite) {
+      return rawReplaceState(
+        { ...(history.state || {}), level: state.level },
+        title,
+        url
+      );
+    }
+
+    return rawReplaceState(state, title, url);
+  };
+})();
+
 /* Stat Archive — compact fixed Menu header v6
    Header is fixed inside the Menu panel; only the body below it scrolls.
    Any menu sections injected later are automatically moved into the scroll body. */
