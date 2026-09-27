@@ -116,3 +116,5 @@ jobs:
             git commit -m "Publish rebuilt More transition V5"
             git push origin HEAD:main
           fi
+
+# Registered workflow trigger.
