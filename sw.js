@@ -1,9 +1,10 @@
-const CACHE = "stat-archive-shell-v20260927-more-smooth-v1";
+const CACHE = "stat-archive-shell-v20260927-entry-accordion-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
   "./","./index.html","./assets/styles.css","./assets/scanner.css",
   "./assets/js/pdf.js","./assets/js/core.js","./assets/js/archive-ui.js",
+  "./assets/js/entry-subject-transition.js",
   "./assets/js/preview.js","./assets/js/preview-state-guard.js","./assets/js/offline.js",
   "./assets/js/management.js","./assets/js/speed-boost.js","./assets/js/download-fix.js","./assets/js/download-progress-canonical.js",
   "./assets/js/search-suggestions.js","./assets/js/search-filter-fix.js","./assets/js/runtime.js",
