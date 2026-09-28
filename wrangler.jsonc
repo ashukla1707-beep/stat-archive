@@ -6,7 +6,12 @@
     "directory": ".",
     "html_handling": "none",
     "not_found_handling": "single-page-application",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/downloads/stat-archive.apk",
+      "/api/*",
+      "/drive-file"
+    ]
   },
   "durable_objects": {
     "bindings": [
@@ -19,7 +24,9 @@
   "migrations": [
     {
       "tag": "reviews-v1",
-      "new_sqlite_classes": ["ReviewsStore"]
+      "new_sqlite_classes": [
+        "ReviewsStore"
+      ]
     }
   ],
   "main": "worker.js"

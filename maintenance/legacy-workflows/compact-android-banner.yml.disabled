@@ -72,3 +72,4 @@ body[data-theme='light'] .stat-android-auto-banner{background:rgba(251,250,247,.
           git diff --cached --quiet || git commit -m 'Use compact Android install suggestion'
           git push
 # trigger v2
+
