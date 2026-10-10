@@ -1,7 +1,7 @@
 # Stat Archive — Project Context
 
 Last updated: 2026-10-10
-Status: Active project; copyright compliance work **deferred until after exams**.
+Status: Active project; book copyright compliance and IP registration **deferred until after exams**.
 Repository: ashukla1707-beep/stat-archive
 Website: https://stat-archive.lustats.workers.dev
 
@@ -48,3 +48,33 @@ The owner's Stat Archive preview serves a separately hosted copy (Google Drive o
 - This context file is documentation only; no website or storage changes are authorized.
 - When the owner resumes, inspect the repository and current production configuration first, verify the book inventory and licensing, present a concrete plan, and obtain approval before modifying access or deploying.
 - Avoid assuming that a university-hosted PDF or publicly accessible Google Drive link authorizes republication.
+
+## Intellectual property registration plan — DEFERRED (2026-10-10)
+The owner wants to consider formal legal protection for Stat Archive in India **after exams**. No applications or registrations have been filed as part of this work.
+
+### Copyright
+- Original source code and qualifying original artwork/documentation may receive copyright protection automatically; registration can provide a formal record.
+- Review actual authorship, ownership, contributions, third-party libraries, open-source licenses, and any substantial AI-generated code before applying.
+- Prepare code extracts and other documents according to the Copyright Office's then-current software registration rules.
+- Verify current filing requirements and fees at https://copyright.gov.in/ before submission.
+- Registering Stat Archive software **does not** authorize redistribution of third-party textbook PDFs.
+
+### Trademark
+- Search the Indian trademark register for STAT ARCHIVE and confusingly similar names before filing.
+- Consider word mark and logo; evaluate classes 41 (education), 42 (software/technology services), and 9 (downloadable software) based on actual goods/services.
+- Confirm filing eligibility, fees, and class coverage at https://ipindia.gov.in/ before filing.
+
+### Patent
+- Do not assume an educational platform, generic software features, or algorithms are patentable in India; Section 3(k) and other patentability rules apply.
+- Seek a qualified patent professional's opinion **only if** there is a specific novel technical invention. Disclose existing public website/releases because prior disclosure may affect novelty.
+
+### Suggested later workflow
+1. Preserve dated GitHub history, design records, screenshots and evidence of development.
+2. Clarify authorship/ownership, including AI assistance and external components.
+3. Prepare copyright registration materials for eligible original works.
+4. Perform trademark clearance and select appropriate classes before filing.
+5. Consider a patentability assessment only for a clearly identified technical invention.
+6. Verify current official procedures, costs and legal requirements; consult an Indian IP professional for uncertain points.
+
+### Hold instruction
+**Do not submit any copyright, trademark, or patent applications, pay fees, alter branding, or change the website until the owner explicitly resumes this work after exams.**
