@@ -72,3 +72,4 @@ jobs:
             git commit -m "Open offline PDFs with browser handler on web"
             git push origin HEAD:main
           fi
+

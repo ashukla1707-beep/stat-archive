@@ -254,7 +254,7 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
 
   async function openBlob(blob, name) {
     if (window.AndroidBridge && typeof window.AndroidBridge.openFile === "function") {
-      window.AndroidBridge.openFile(await blobToBase64(blob), name, "application/pdf");
+      await window.AndroidBridge.openFile(await blobToBase64(blob), name, "application/pdf");
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -326,6 +326,8 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
 
     const pdf = await lib.getDocument({
       ...sourceOptions,
+      // CVE-2024-4367: never evaluate code generated from PDF input.
+      isEvalSupported: false,
       cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
       cMapPacked: true
     }).promise;
@@ -1029,3 +1031,4 @@ body[data-theme="light"] .sa-reader-status{background:rgba(255,250,241,.88);colo
   window.closePreview = closePreview;
   window.escapeHtml = window.escapeHtml || escapeHtml;
 })();
+

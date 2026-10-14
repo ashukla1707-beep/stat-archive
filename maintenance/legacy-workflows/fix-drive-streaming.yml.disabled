@@ -160,3 +160,4 @@ jobs:
           git add worker.js wrangler.jsonc assets/js/core.js assets/js/download-fix.js assets/js/offline.js assets/js/archive-ui.js assets/js/mobile-card-actions.js
           git diff --cached --quiet || git commit -m "Fix Drive offline and download naming"
           git push origin HEAD:main
+
