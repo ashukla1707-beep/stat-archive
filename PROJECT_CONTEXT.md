@@ -78,3 +78,50 @@ The owner wants to consider formal legal protection for Stat Archive in India **
 
 ### Hold instruction
 **Do not submit any copyright, trademark, or patent applications, pay fees, alter branding, or change the website until the owner explicitly resumes this work after exams.**
+
+
+## Google Play Store launch — PAUSED / RESUME LATER (2026-11-16)
+
+The owner has decided to pause the Google Play Store launch work and continue it later. Preserve the current release work; do not submit or publish anything until the owner explicitly resumes.
+
+### Repositories
+- Website: `ashukla1707-beep/stat-archive` (Cloudflare Workers deployment; not Vercel).
+- Android app: `ashukla1707-beep/statarchive-android`.
+- Android application ID: `com.statarchive.app`.
+
+### Work completed
+- Website PR #5 was merged into `main`. It included website audit fixes for PDF.js, offline caching, download/save reliability, review moderation/throttling, Android bridge integration and APK download routing. The merge is confirmed; production deployment after merge was **not independently verified**.
+- Android PR #4 was merged into `main`. It included origin-scoped WebMessageListener security, bridge-origin tests, file-save completion/cancellation handling and clean-checkout build improvements.
+- Android release workflow run: https://github.com/ashukla1707-beep/statarchive-android/actions/runs/43924509317 — completed successfully.
+- Release built: **v1.5.26**, versionCode **33**, target SDK **36**, package `com.statarchive.app`.
+- Signed APK and AAB artifacts were generated and uploaded by the workflow. The AAB signature was verified, and its signing certificate SHA-256 fingerprint matched the previous v1.5.25 AAB, confirming signing-key continuity.
+- The app manifest was checked and currently declares only `android.permission.INTERNET`.
+- The self-update installer flow and `REQUEST_INSTALL_PACKAGES` permission were removed. Play-distributed app updates should be delivered through Google Play, not an in-app APK installer.
+- GitHub release metadata was updated in `downloads/version.json` to versionCode 33 / versionName 1.5.26.
+- The Android PR notes record that automated tests, lint and signed release build/artifact upload passed.
+
+### Release artifact reference
+- Workflow artifacts: AAB `StatArchive-AAB` (artifact ID `14256005540`); APK `StatArchive-APK` (artifact ID `14256130468`).
+- SHA-256 AAB: `a715edd0f0342802927dd5171dd8772ae82681670d1eeafb93d4f1c383ff736b`.
+- SHA-256 APK: `849129253c64632652a22e0452ff3fdbcd9a9c3b724f13aa446e764a04034aa5`.
+- These are build outputs, not evidence that the app has been published on Google Play.
+
+### Outstanding before Play submission
+1. Confirm the owner has a verified Google Play Console developer account and determine whether it is a personal or organization account and whether production access is available.
+2. If a new personal developer account is subject to Google's testing gate, complete the required closed test (currently generally 12 opted-in testers for 14 continuous days) and apply for production access. Re-check the current Play Console requirements when resuming.
+3. Perform real-device QA of sign-in, navigation, PDF viewing, downloads/saving, offline behavior, Android bridge behavior and app lifecycle.
+4. Prepare the store listing: app title/description, icon, feature graphic, phone screenshots and any other required assets.
+5. Publish and verify a public privacy policy that accurately reflects the app's actual data practices. The privacy-policy page and data practices were not fully audited during this work.
+6. Complete Play Console App Content and declarations accurately: Data safety, content rating, target audience, ads, permissions, account deletion (if applicable), and any other required declarations.
+7. Resolve copyright/permission status for educational PDFs before public distribution. The existing book inventory and rights audit in this file remains incomplete; a public app release must not be treated as permission to redistribute third-party textbooks.
+8. Upload the signed AAB to the appropriate Play testing track, validate Play's pre-launch checks, then submit for review only after the owner approves.
+
+### Important limitations / do not claim
+- No Play Console app creation, AAB upload to Play Console, testing-track setup, production-access request, review submission or public Play Store release has occurred.
+- A verified Play Console account / production access has not yet been confirmed by the owner.
+- Physical-device QA, privacy policy, store listing assets and Play declarations remain outstanding.
+- Cloudflare production deployment following the website PR merge was not independently verified.
+- Do not state or imply that Stat Archive is live on Google Play until a Play Store listing is actually published and verified.
+
+### Resume instructions
+When the owner resumes, inspect the latest state of both repositories, confirm the current signed release and Play Console account status, re-check current Google Play policies, and work through the outstanding checklist. Preserve the existing signing key and verify certificate continuity for every future release. Obtain explicit approval before uploading/submitting a release or making a public launch.
