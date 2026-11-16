@@ -192,18 +192,7 @@ function buildCard(entry) {
 
     <div class="card-actions">
       
-  <button
-    class="action-btn pv-btn${previewedEntryIds.has(String(entry.id)) ? " is-previewed" : ""}"
-  >
-    ⊙ Preview
-  </button>
-
-  <button
-    class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}"
-    title="${offlineEntryIds.has(String(entry.id)) ? "Already saved offline — open Offline library" : "Save inside Stat Archive for offline access"}"
-  >
-    ${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}
-  </button>
+  ${isBook ? (entry.driveUrl ? `<button class="action-btn book-link-btn" type="button">↗ Visit Website</button>` : `<span class="card-type">Website link pending</span>`) : `<button class="action-btn pv-btn${previewedEntryIds.has(String(entry.id)) ? " is-previewed" : ""}">⊙ Preview</button><button class="action-btn offline-btn${offlineEntryIds.has(String(entry.id)) ? " is-saved" : ""}">${offlineEntryIds.has(String(entry.id)) ? "✓ Offline" : "⇩ Offline"}</button>`}
 
       ${canEdit ? `<button class="action-btn edit-btn" title="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}" aria-label="${archiveRole === "admin" ? "Edit entry" : "Edit one of the 3 newest entries"}">✎ Edit</button>` : ""}
       ${canDelete ? `<button class="action-btn del-btn" style="color:#FF8A8A;" title="Delete entry" aria-label="Delete entry">🗑</button>` : ""}
