@@ -31,15 +31,19 @@ let editDriveLinkMode = false;
 
   function setEditDriveMode(on, value = "") {
     editDriveLinkMode = !!on;
-    if (editDriveLinkMode) {
-      driveInput.value = value || driveInput.value || "";
-    }
+    const isBook = typeSelect?.value === "Book";
+    const linkLabel = driveField.querySelector("label");
+    const linkHint = driveField.querySelector(".hint");
+    if (linkLabel) linkLabel.textContent = isBook ? "Original website URL" : "Google Drive link";
+    if (linkHint) linkHint.textContent = isBook ? "Students will be sent directly to the original website. Do not paste a PDF upload link." : "Use the Google Drive Share link. This replaces the stored file.";
+    driveInput.placeholder = isBook ? "https://example.edu/book-page" : "Paste the Google Drive share link";
+    if (editDriveLinkMode) driveInput.value = value || driveInput.value || "";
     driveField.style.display = editDriveLinkMode ? "block" : "none";
-    onBtn.style.display = (!editDriveLinkMode && isAllowedType()) ? "inline-flex" : "none";
-    offBtn.style.display = editDriveLinkMode ? "inline-flex" : "none";
-    fileInput.style.display = editDriveLinkMode ? "none" : "";
-    if (fileLabel) fileLabel.style.display = editDriveLinkMode ? "none" : "";
-    if (fileHint) fileHint.style.display = editDriveLinkMode ? "none" : "";
+    onBtn.style.display = (!editDriveLinkMode && isAllowedType() && !isBook) ? "inline-flex" : "none";
+    offBtn.style.display = (editDriveLinkMode && !isBook) ? "inline-flex" : "none";
+    fileInput.style.display = (editDriveLinkMode || isBook) ? "none" : "";
+    if (fileLabel) fileLabel.style.display = (editDriveLinkMode || isBook) ? "none" : "";
+    if (fileHint) fileHint.style.display = (editDriveLinkMode || isBook) ? "none" : "";
 
     if (editDriveLinkMode) {
       fileInput.value = "";
@@ -56,15 +60,9 @@ let editDriveLinkMode = false;
         "Google Drive links are only available for Notes, Book, and Others. Choose a replacement file for this type."
       );
     } else {
-      onBtn.style.display =
-        (!editDriveLinkMode && allowed)
-          ? "inline-flex"
-          : "none";
-
-      offBtn.style.display =
-        editDriveLinkMode
-          ? "inline-flex"
-          : "none";
+      const isBook = typeSelect?.value === "Book";
+      onBtn.style.display = (!editDriveLinkMode && allowed && !isBook) ? "inline-flex" : "none";
+      offBtn.style.display = (editDriveLinkMode && !isBook) ? "inline-flex" : "none";
     }
   }
 
