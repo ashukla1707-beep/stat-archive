@@ -50,7 +50,7 @@ function chooser(){
  label.parentNode.insertBefore(d,label);
  function fileVisible(on){if(label)label.style.display=on?'':'none';input.style.display=on?'':'none';if(hint)hint.style.display=on?'':'none';}
  function leaveDrive(){var f=$('driveLinkField');if(f&&getComputedStyle(f).display!=='none')$('driveToggleOffBtn')&&$('driveToggleOffBtn').click();}
- function syncDrive(){var b=$('entryDriveMethod');if(b)b.style.display=['Notes','Book','Others'].indexOf($('typeSelect').value)>=0?'flex':'none';}
+ function syncDrive(){var type=$('typeSelect')?$('typeSelect').value:'';var isBook=type==='Book';d.style.display=isBook?'none':'';var b=$('entryDriveMethod');if(b)b.style.display=['Notes','Book','Others'].indexOf(type)>=0?'flex':'none';if(isBook)fileVisible(false);}
  $('entryScanMethod').onclick=function(){leaveDrive();fileVisible(false);openScanner();};
  $('entryUploadMethod').onclick=function(){leaveDrive();fileVisible(true);input.click();};
  $('entryDriveMethod').onclick=function(){fileVisible(false);$('driveToggleBtn')&&$('driveToggleBtn').click();};
