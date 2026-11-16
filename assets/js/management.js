@@ -433,11 +433,7 @@ function openEditEntry(entry) {
     window.__statArchiveEditDrive
   ) {
 
-    if (
-      entry.driveUrl &&
-      window
-        .__statArchiveEditDrive
-        .allowedTypes
+    if ((entry.driveUrl || canonicalEntryType(entry.type) === "Book") && window.__statArchiveEditDrive.allowedTypes
         .includes(
           canonicalEntryType(
             entry.type
@@ -957,41 +953,20 @@ document
         }
 
 
-        const editDriveUrl =
-          normalizeDriveUrl(
-            document
-              .getElementById(
-                "editDriveLinkInput"
-              )
-              ?.value || ""
-          );
+        const editDriveUrl = normalizeDriveUrl(document.getElementById("editDriveLinkInput")?.value || "");
 
 
-        if (
-          editDriveLinkMode
-        ) {
-
+        if (type === "Book" || editDriveLinkMode) {
           if (!editDriveUrl) {
-
-            showEditEntryError(
-              "Paste the Google Drive share link."
-            );
+            showEditEntryError(type === "Book" ? "Paste the original website URL for this book." : "Paste the Google Drive share link.");
 
             return;
           }
 
 
-          if (
-            !isLikelyDriveLink(
-              editDriveUrl
-            )
-          ) {
-
-            showEditEntryError(
-              "That doesn't look like a Google Drive link. Copy the \"Share\" link from Drive."
-            );
-
-            return;
+          if (type === "Book" ? !isValidExternalWebsiteUrl(editDriveUrl) : !isLikelyDriveLink(editDriveUrl)) {
+            showEditEntryError(type === "Book" ? "Enter a valid http:// or https:// website URL." : "That does not look like a Google Drive share link.");
+return;
           }
 
 
@@ -1198,14 +1173,7 @@ document
           );
 
 
-          if (
-            editDriveLinkMode
-          ) {
-
-            form.append(
-              "drive_url",
-              editDriveUrl
-            );
+          if (type === "Book" || editDriveLinkMode) { form.append("drive_url", editDriveUrl);
 
           } else if (
             file
@@ -1647,10 +1615,10 @@ document
           "noopener"
         );
 
-      } else if (
-        btn.classList.contains(
-          "edit-btn"
-        )
+      } else if (btn.classList.contains("book-link-btn")) {
+        const target = String(entry.driveUrl || "");
+        if (isValidExternalWebsiteUrl(target)) { incrementActivity("preview"); window.open(target, "_blank", "noopener,noreferrer"); }
+      } else if (btn.classList.contains("edit-btn")
       ) {
 
         openEditEntry(
@@ -3616,47 +3584,36 @@ let driveLinkMode =
 
 
   function setDriveMode(on) {
-
-    driveLinkMode =
-      on;
-
-
+    driveLinkMode = on;
+    const isBook = typeSelect?.value === "Book";
+    const linkLabel = document.getElementById("driveLinkLabel");
+    const linkHint = document.getElementById("driveLinkHint");
+    const linkInput = document.getElementById("driveLinkInput");
+    if (linkLabel) linkLabel.textContent = isBook ? "Original website URL" : "Google Drive share link";
+    if (linkHint) linkHint.textContent = isBook ? "Paste the publisher, library, university, or other original website URL. Students visit the source directly." : 'Make sure link sharing is set to "Anyone with the link can view" before pasting it here.';
+    if (linkInput) linkInput.placeholder = isBook ? "https://example.edu/book-page" : "https://drive.google.com/file/d/…/view";
     driveField.style.display =
       on
         ? "block"
         : "none";
 
 
-    onBtn.style.display =
-      (
-        on ||
-        !isDriveAllowedForCurrentType()
-      )
-        ? "none"
-        : "inline-flex";
+    onBtn.style.display = (on || !isDriveAllowedForCurrentType() || isBook) ? "none" : "inline-flex";
+    offBtn.style.display = isBook ? "none" : (on ? "inline-flex" : "none");
 
 
-    fileInput.style.display =
-      on
-        ? "none"
-        : "";
+    fileInput.style.display = (on || isBook) ? "none" : "";
 
 
     if (fileLabel) {
 
-      fileLabel.style.display =
-        on
-          ? "none"
-          : "";
+      fileLabel.style.display = (on || isBook) ? "none" : "";
     }
 
 
     if (fileSizeHint) {
 
-      fileSizeHint.style.display =
-        on
-          ? "none"
-          : "";
+      fileSizeHint.style.display = (on || isBook) ? "none" : "";
     }
 
 
@@ -3678,9 +3635,8 @@ let driveLinkMode =
 
 
   function syncDriveToggleForType() {
-
-    const allowed =
-      isDriveAllowedForCurrentType();
+    const allowed = isDriveAllowedForCurrentType();
+    if (typeSelect?.value === "Book") { setDriveMode(true); return; }
 
 
     if (
@@ -3774,6 +3730,11 @@ function normalizeDriveUrl(url) {
     : `https://${raw}`;
 }
 
+
+function isValidExternalWebsiteUrl(url) {
+  try { const p = new URL(String(url || "")); return (p.protocol === "https:" || p.protocol === "http:") && !!p.hostname && !p.username && !p.password; }
+  catch (_) { return false; }
+}
 
 function isLikelyDriveLink(url) {
 
@@ -3975,33 +3936,13 @@ document
           .files[0];
 
 
-      const driveUrl =
-        normalizeDriveUrl(
-          document
-            .getElementById(
-              "driveLinkInput"
-            )
-            .value
-        );
+      const selectedType = document.getElementById("typeSelect").value;
+      const driveUrl = normalizeDriveUrl(document.getElementById("driveLinkInput").value);
 
 
-      const selectedType =
-        document
-          .getElementById(
-            "typeSelect"
-          )
-          .value;
-
-
-      if (
-        driveLinkMode
-      ) {
-
+      if (selectedType === "Book" || driveLinkMode) {
         if (!driveUrl) {
-
-          showFormError(
-            "Paste the Google Drive share link."
-          );
+          showFormError(selectedType === "Book" ? "Paste the original website URL for this book." : "Paste the Google Drive share link.");
 
 
           isUploading =
@@ -4012,18 +3953,9 @@ document
         }
 
 
-        if (
-          !isLikelyDriveLink(
-            driveUrl
-          )
-        ) {
-
-          showFormError(
-            "That doesn't look like a Google Drive link. Copy the \"Share\" link from Drive."
-          );
-
-
-          isUploading =
+        if (selectedType === "Book" ? !isValidExternalWebsiteUrl(driveUrl) : !isLikelyDriveLink(driveUrl)) {
+          showFormError(selectedType === "Book" ? "Enter a valid http:// or https:// website URL." : "That does not look like a Google Drive share link.");
+isUploading =
             false;
 
 
@@ -4390,14 +4322,7 @@ document
           new FormData();
 
 
-        if (
-          driveLinkMode
-        ) {
-
-          form.append(
-            "drive_url",
-            driveUrl
-          );
+        if (selectedType === "Book" || driveLinkMode) { form.append("drive_url", driveUrl);
 
         } else {
 
