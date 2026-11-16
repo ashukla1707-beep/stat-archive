@@ -111,3 +111,4 @@ jobs:
           git add worker.js assets/js/public-reviews.js sw.js
           git commit -m "Fix public review publishing and refresh"
           git push
+

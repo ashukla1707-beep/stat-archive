@@ -1,0 +1,22 @@
+name: Audit regression validation
+on:
+  pull_request:
+  push:
+    branches: [main, fix/audit-20260927]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check production JavaScript syntax
+        run: |
+          node --check worker.js
+          node --check sw.js
+          find assets/js -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Run audit regressions
+        run: node --test tests/*.test.mjs

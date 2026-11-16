@@ -106,7 +106,7 @@ function normalizeModerationText(value) {
 function hasAbusiveContent(value) {
   const text = normalizeModerationText(value);
   if (!text) return false;
-  const compact = text.replace(/\s+/g, "");
+
 
   const wordPatterns = [
     /\bf+u+c+k+(?:er|ing|ed|s)?\b/,
@@ -163,7 +163,11 @@ function hasAbusiveContent(value) {
     /m+o+t+h+e+r+f+u+c+k+e+r/,
     /a+s+s+h+o+l+e/
   ];
-  return compactPatterns.some(pattern => pattern.test(compact));
+  // Match obfuscated standalone tokens, never substrings of legitimate words.
+  return compactPatterns.some(pattern => {
+    const spaced = pattern.source.replace(/([a-z])\+/g, "$1+\\s*");
+    return new RegExp(`\\b(?:${spaced})\\b`).test(text);
+  });
 }
 
 function moderationError() {
@@ -207,10 +211,38 @@ export class ReviewsStore {
     return pair ? { key: pair[0], item: pair[1] } : null;
   }
 
-  async fetch(request) {
+  async alarm() {
+    const now = Date.now();
+    let startAfter;
+    do {
+      const batch = await this.state.storage.list({ prefix: "throttle:", limit: 1000, ...(startAfter ? {startAfter} : {}) });
+      const expired = [...batch].filter(([, time]) => now - Number(time) >= 120000).map(([key]) => key);
+      if (expired.length) await this.state.storage.delete(expired);
+      startAfter = batch.size === 1000 ? [...batch.keys()].pop() : undefined;
+    } while (startAfter);
+    if ((await this.state.storage.list({prefix: "throttle:", limit: 1})).size) {
+      await this.state.storage.setAlarm(now + 120000);
+    }
+  }
+
+  async rememberThrottle(key) {
+    await this.state.storage.put(key, Date.now());
+    if (!await this.state.storage.getAlarm()) await this.state.storage.setAlarm(Date.now() + 120000);
+  }
+
+  fetch(request) {
+    // Serialize read-modify-write operations, including rate-limit checks.
+    return this.state.blockConcurrencyWhile(() => this.handleRequest(request));
+  }
+
+  async handleRequest(request) {
+    // Also schedule cleanup for legacy throttle records lacking an alarm.
+    if (!await this.state.storage.getAlarm()) await this.state.storage.setAlarm(Date.now() + 120000);
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
-    const parts = url.pathname.replace(/^\/api\/reviews\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+    let parts;
+    try { parts = url.pathname.replace(/^\/api\/reviews\/?/, "").split("/").filter(Boolean).map(decodeURIComponent); }
+    catch (_) { return json({error: "Invalid URL encoding."}, 400); }
     const reviewId = parts[0] || "";
     const action = parts[1] || "";
     const childId = parts[2] || "";
@@ -244,7 +276,7 @@ export class ReviewsStore {
       if (hasAbusiveContent(name) || hasAbusiveContent(review)) return moderationError();
       const item = { id: crypto.randomUUID(), name, rating, review, createdAt: new Date().toISOString(), isAdmin: adminRequest, likedBy: [], replies: [] };
       await this.state.storage.put(`review:${item.createdAt}:${item.id}`, item);
-      await this.state.storage.put(throttleKey, Date.now(), { expirationTtl: 120 });
+      await this.rememberThrottle(throttleKey);
       return json({ review: publicReview(item, clientId) }, 201);
     }
 
@@ -261,6 +293,9 @@ export class ReviewsStore {
     }
 
     if (method === "POST" && reviewId && action === "reply") {
+      const throttleKey = `throttle:reply:${request.headers.get("X-Stat-Client") || "unknown"}`;
+      const last = Number(await this.state.storage.get(throttleKey) || 0);
+      if (Date.now() - last < 30000) return json({error: "Please wait before posting another reply."}, 429);
       let body;
       try { body = await request.json(); } catch (_) { return json({ error: "Invalid reply data." }, 400); }
       const name = adminRequest ? "Admin" : String(body?.name || "").trim().slice(0, 50);
@@ -272,10 +307,12 @@ export class ReviewsStore {
       const found = await this.findReview(reviewId);
       if (!found) return json({ error: "Review not found." }, 404);
       const replies = Array.isArray(found.item.replies) ? [...found.item.replies] : [];
+      if (replies.length >= 50) return json({error: "This discussion has reached its reply limit. Existing replies are preserved."}, 409);
       const reply = { id: crypto.randomUUID(), name, reply: text, createdAt: new Date().toISOString(), isAdmin: adminRequest };
       replies.push(reply);
-      found.item.replies = replies.slice(-50);
+      found.item.replies = replies;
       await this.state.storage.put(found.key, found.item);
+      await this.rememberThrottle(throttleKey);
       return json({ reply }, 201);
     }
 
@@ -304,6 +341,13 @@ export class ReviewsStore {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/downloads/stat-archive.apk") {
+      return new Response(null, {status: 302, headers: {
+        Location: "https://github.com/ashukla1707-beep/statarchive-android/raw/refs/heads/main/downloads/stat-archive.apk",
+        "Cache-Control": "no-store"
+      }});
+    }
 
     if (url.pathname === "/api/reviews" || url.pathname.startsWith("/api/reviews/")) {
       const isAdmin = await isAdminRequest(request);

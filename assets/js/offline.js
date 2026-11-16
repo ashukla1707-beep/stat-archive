@@ -1452,7 +1452,7 @@ async function openOfflineFile(id) {
       );
 
 
-    window.AndroidBridge.openFile(
+    await window.AndroidBridge.openFile(
       base64,
       filename,
       mime
@@ -1650,7 +1650,7 @@ async function shareOfflineFile(id) {
       );
 
 
-    window.AndroidBridge.shareFile(
+    await window.AndroidBridge.shareFile(
       base64,
       filename,
       mime
@@ -1839,7 +1839,7 @@ if (
   const base64 =
     await blobToBase64(blob);
 
-  window.AndroidBridge.saveFile(
+  await window.AndroidBridge.saveFile(
     base64,
     filename,
     mime
@@ -1903,3 +1903,4 @@ a.download =
     }
   }
 }
+
