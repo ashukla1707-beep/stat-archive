@@ -5603,3 +5603,21 @@ body[data-theme="light"] #menuOfflineLibraryCount{
   }
 }
 
+/* Keep the upload action reachable on short mobile viewports and while the
+   Android WebView resizes around the on-screen keyboard. */
+#uploadForm > #submitBtn {
+  display: block !important;
+  visibility: visible !important;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  flex: 0 0 auto;
+  margin-top: 18px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  box-shadow: 0 -10px 18px rgba(8, 12, 20, .12);
+}
+#uploadForm {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
