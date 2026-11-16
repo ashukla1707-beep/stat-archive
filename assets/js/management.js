@@ -1787,30 +1787,16 @@ function closeAndResetUploadForm() {
       );
 
 
-    if (driveField) {
-      driveField.style.display =
-        "none";
-    }
+    if (driveField) driveField.style.display = "none";
+    if (onBtn) onBtn.style.display = "inline-flex";
+    if (fileInput) fileInput.style.display = "";
+    if (fileLabel) fileLabel.style.display = "";
+    if (fileSizeHint) fileSizeHint.style.display = "";
 
-    if (onBtn) {
-      onBtn.style.display =
-        "inline-flex";
-    }
-
-    if (fileInput) {
-      fileInput.style.display =
-        "";
-    }
-
-    if (fileLabel) {
-      fileLabel.style.display =
-        "";
-    }
-
-    if (fileSizeHint) {
-      fileSizeHint.style.display =
-        "";
-    }
+    // Re-apply the selected type's rules after resetting. In particular,
+    // Book must immediately return to website-only mode and never expose
+    // the native PDF picker (including Android's Scan/Upload chooser).
+    window.__statArchiveDriveMode?.sync?.();
   }
 }
 
@@ -3703,6 +3689,14 @@ let driveLinkMode =
 
 
   syncDriveToggleForType();
+
+  // Expose a small internal API so form reset/open flows can re-apply the
+  // type-specific upload mode instead of accidentally showing the PDF picker.
+  window.__statArchiveDriveMode = {
+    setMode: setDriveMode,
+    sync: syncDriveToggleForType,
+    isBook: () => typeSelect?.value === "Book"
+  };
 
 })();
 
