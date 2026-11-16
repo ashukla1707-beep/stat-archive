@@ -187,7 +187,7 @@ function buildCard(entry) {
     <div class="card-meta-row">
       <span class="card-type"${isBook && entry.title ? ` data-full-title="${escapeHtml(typeLabel)}" tabindex="0"` : ""}>${escapeHtml(typeLabel)}</span>
       ${entry.year ? `<span class="card-year">${escapeHtml(entry.year)}</span>` : ""}
-      ${entry.driveUrl ? `<span class="card-source-badge" title="File hosted on Google Drive">DRIVE</span>` : ""}
+      ${entry.driveUrl ? `<span class="card-source-badge" title="${isBook ? "Original website link" : "File hosted on Google Drive"}">${isBook ? "WEBSITE" : "DRIVE"}</span>` : ""}
     </div>
 
     <div class="card-actions">
