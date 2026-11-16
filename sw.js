@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20261117-book-chooser-fix-1";
+const CACHE = "stat-archive-shell-v20261117-book-chooser-fix-1-submit-button";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
