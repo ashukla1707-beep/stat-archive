@@ -229,16 +229,21 @@
     history.pushState(withNav("child", child), "", menuUrl());
   }
 
-  /* Normalize the current entry first. The URL marker is a fallback for a
-     history restoration where WebView loses the JS state object. */
+  /* Every full document load starts at Home, including a hard refresh
+     performed while the Menu or one of its child screens is open.
+     Back/Forward navigation within the current page still uses the normal
+     history states created by enterMenuState() and enterChildState(). */
   const initialUrl = new URL(location.href);
-  if (initialUrl.searchParams.get(MENU_PARAM) === "1") {
-    if (!history.state?.[NAV_KEY] || history.state?.[NAV_KEY] === "home") {
-      history.replaceState(withNav("menu"), "", location.href);
-    }
-  } else if (!history.state?.[NAV_KEY]) {
-    history.replaceState(withNav("home"), "", homeUrl());
-  }
+  initialUrl.searchParams.delete(MENU_PARAM);
+
+  const initialState = {
+    ...(history.state || {}),
+    [NAV_KEY]: "home"
+  };
+  delete initialState[CHILD_KEY];
+  delete initialState.statArchiveMenuOpen;
+
+  history.replaceState(initialState, "", initialUrl.href);
 
   /* Register this capture listener before accessibility.js. It normalizes the
      state before later menu handlers run, preventing duplicate history rows. */
