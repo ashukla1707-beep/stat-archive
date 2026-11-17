@@ -1,4 +1,4 @@
-const CACHE = "stat-archive-shell-v20261117-book-external-url-fix-3";
+const CACHE = "stat-archive-shell-v20261117-hard-refresh-home-v1";
 const EXTERNAL_CACHE = "stat-archive-external-v2";
 
 const APP_SHELL = [
